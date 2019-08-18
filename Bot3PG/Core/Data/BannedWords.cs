@@ -9,7 +9,7 @@ namespace Bot3PG
         private const string BanWordsFolder = "Resources";
         private const string BanWordsFile = "ban-words.txt";
 
-        public BannedWords()
+        protected BannedWords()
         {
             if (!Directory.Exists(BanWordsFolder))
             {

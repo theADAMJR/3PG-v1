@@ -8,7 +8,7 @@ namespace Bot3PG
         private const string BanLinksFolder = "Resources";
         private const string BanLinksFile = "ban-links.txt";
 
-        public BannedLinks()
+        protected BannedLinks()
         {
             if (!Directory.Exists(BanLinksFolder))
                 Directory.CreateDirectory(BanLinksFolder);
