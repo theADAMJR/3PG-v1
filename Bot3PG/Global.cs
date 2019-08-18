@@ -1,32 +1,34 @@
 ﻿using Bot3PG.DataStructs;
+using Bot3PG.Modules.General;
+using Discord.Commands;
 using Discord.WebSocket;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Victoria;
 
 namespace Bot3PG
 {
-    public static class Global
+    public class Global
     {
-        public static DiscordSocketClient Client { get; set; }
-        public static ulong RuleboxMessageID { get; set; }
-        public static ulong VoteboxMessageID { get; set; }
-        public static Config Config { get; set; }
+        public static DiscordSocketClient Client { get; private set; }
+        public static LavaSocketClient Lavalink { get; private set; }
+        public static Config Config { get; private set; }
+        public static Config.DatabaseConfig DatabaseConfig { get; private set; }
+        public static CommandService CommandService { get; private set; }
 
         private static DateTime _startTime;
         public static TimeSpan Uptime
         {
-            get
-            {
-                var duration = DateTime.Now - _startTime;
-                return duration;
-            }
+            get => DateTime.Now - _startTime;
+            private set => Uptime = value;
         }
 
-        public static void InitializeStartTime()
+        public Global(DiscordSocketClient discordSocketClient, LavaSocketClient lavaSocketClient, Config config, CommandService commandService)
         {
+            Client = discordSocketClient;
+            Lavalink = lavaSocketClient;
+            Config = config;
+            CommandService = commandService;
+            DatabaseConfig = config.DB;
             _startTime = DateTime.Now;
         }
     }

@@ -5,7 +5,6 @@ namespace Bot3PG
 {
     public class Program
     {       
-        private static Task Main(string[] args)
-            => new DiscordService().InitializeAsync();
+        private static Task Main(string[] args) => new DiscordService().InitializeAsync();
     }
 }

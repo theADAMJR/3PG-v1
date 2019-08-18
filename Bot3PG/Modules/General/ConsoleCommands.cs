@@ -1,17 +1,8 @@
-﻿using Bot3PG.Core;
-using Bot3PG.Core.Users;
-using Bot3PG.Modules;
-using Bot3PG.Services;
-using Discord;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
-using System.Text;
 using System.Threading.Tasks;
-using Victoria;
 
 namespace Bot3PG.Modules
 {

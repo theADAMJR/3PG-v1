@@ -1,8 +1,5 @@
 ﻿using Discord;
-using Discord.WebSocket;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Bot3PG.Services
@@ -21,9 +18,9 @@ namespace Bot3PG.Services
 
             if (!string.IsNullOrWhiteSpace(message))
                 await Append($"{message}\n", ConsoleColor.White);
-            else if (exception == null)
+            else if (exception is null)
                 await Append("Unknown Exception. Exception Returned Null.\n", ConsoleColor.DarkRed);
-            else if (exception.Message == null)
+            else if (exception.Message is null)
                 await Append($"Unknown \n{exception.StackTrace}\n", GetConsoleColor(severity));
             else
                 await Append($"{exception.Message ?? "Unknown"}\n{exception.StackTrace ?? "Unknown"}\n", GetConsoleColor(severity));
@@ -42,7 +39,8 @@ namespace Bot3PG.Services
 
         private static async Task Append(string message, ConsoleColor color)
         {
-            await Task.Run(() => {
+            await Task.Run(() => 
+            {
                 Console.ForegroundColor = color;
                 Console.Write(message);
             });
@@ -60,14 +58,17 @@ namespace Bot3PG.Services
                     return "GTWAY";
                 case "blacklist":
                     return "BLAKL";
+                case "victoria":
+                    return "VCTRA";
                 case "bot":
                     return "BOTWN";
+                case "database":
+                    return "MONGO";
                 default:
                     return src;
             }
         }
 
-        /* Swap The Severity To a String So We Can Output It To The Console */
         private static string GetSeverityString(LogSeverity severity)
         {
             switch (severity)
@@ -88,7 +89,6 @@ namespace Bot3PG.Services
             }
         }
 
-        /* Return The Console Color Based On Severity Selected */
         private static ConsoleColor GetConsoleColor(LogSeverity severity)
         {
             switch (severity)

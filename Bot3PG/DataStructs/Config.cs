@@ -1,31 +1,20 @@
 ﻿namespace Bot3PG.DataStructs
 {
-    public class Config
+    public  class Config
     {
-        public string Token;
-        public string CommandPrefix;
-        public string GameStatus;
+        public string Token { get; set; }
+        public string GameStatus { get; set; }
+        public string WelcomeLink { get; set; }
+        public string WebappLink { get; set; }
 
-        // guild config
-        public bool AnnounceEnabled;
-        public ulong AnnounceChannelID;
-        public bool XPBot;
-        public uint XPPerMessage;
-        public uint XPMessageLengthThreshold;
-        public uint XPMessageLengthThresholdMute;
-        public uint XPCooldown;
-        public uint ExtendedXPCooldown;
-        public uint MessageSpamThreshold;
-        public uint MessageSpamThresholdMute;
-        public uint AutoMuteSeconds;
-        public int LeaderboardSize;
-        public int MaxLeaderboardPage;
-        public bool AutoModerationEnabled;
-        public bool ModCommandsEnabled;
-        public int WarningNumberToKick;
-        public int WarningNumberToBan;
-        public string AgreeRoleName;
-        public ulong RuleboxMessageID;
-        public ulong StaffLogChannelID;
+        public DatabaseConfig DB;
+
+        public struct DatabaseConfig
+        {
+            public string Server { get; set; }
+            public string Database { get; set; }
+            public string UserID { get; set; }
+            public string Password { get; set; }
+        }
     }
 }

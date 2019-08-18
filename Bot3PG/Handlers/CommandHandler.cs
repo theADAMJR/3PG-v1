@@ -1,17 +1,16 @@
-﻿using Bot3PG.Core.LevelingSystem;
-using Bot3PG.Core.Users;
-using Bot3PG.Services;
+﻿using Bot3PG.Modules;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
-using Victoria;
+using Bot3PG.Core.Data;
+using Bot3PG.Modules.XP;
+using Bot3PG.Modules.General;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Bot3PG.Handlers
 {
@@ -19,6 +18,7 @@ namespace Bot3PG.Handlers
     {
         private readonly CommandService commands;
         private readonly IServiceProvider services;
+        private CommandHelp commandHelp;
 
         public CommandHandler(IServiceProvider services)
         {
@@ -33,22 +33,23 @@ namespace Bot3PG.Handlers
             await commands.AddModulesAsync(
                 assembly: Assembly.GetEntryAssembly(),
                 services: services);
+            commandHelp = new CommandHelp(new Dictionary<string, Command>(), commands);
         }
-        
-        public void HookEvents()
-        {
-            Global.Client.MessageReceived += HandleCommandAsync;
-        }
-        
+
+        public void HookEvents() => Global.Client.MessageReceived += HandleCommandAsync;
+
         private async Task HandleCommandAsync(SocketMessage socketMessage)
         {
-            var argPos = 0;
+            int argPos = 0;
             if (!(socketMessage is SocketUserMessage message) || message.Author.IsBot || message.Author.IsWebhook || message.Channel is IPrivateChannel)
                 return;
-            
-            if (!message.HasStringPrefix(Global.Config.CommandPrefix, ref argPos))
+
+            var guild = await Guilds.GetAsync((socketMessage.Author as SocketGuildUser).Guild);
+            var commandPrefix = guild.Config.CommandPrefix ?? "/";
+
+            if (!message.HasStringPrefix(commandPrefix, ref argPos))
             {
-                Leveling.ValidateMessageForXP(socketMessage as SocketUserMessage);
+                LevelingSystem.ValidateMessageForXP(socketMessage as SocketUserMessage);
                 return;
             }
 
@@ -66,12 +67,50 @@ namespace Bot3PG.Handlers
                 return Task.CompletedTask;
             } */
             //else
+
             var result = commands.ExecuteAsync(context, argPos, services, MultiMatchHandling.Best);
-            
+
             if (!result.Result.IsSuccess)
             {
-                await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Error", $"{result.Result.ErrorReason}", Color.Red));
+                switch (result.Result.Error)
+                {
+                    case CommandError.BadArgCount:
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, commandPrefix)}", Color.Red));
+                        break;
+                    case CommandError.Exception:
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Something went wrong", $"{result.Result.ErrorReason}"));
+                        break;
+                    case CommandError.ParseFailed:
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, commandPrefix)}", Color.Red));
+                        break;
+                    case CommandError.UnknownCommand:
+                        var errorMessage = CorrectCommandUsage(message, commandPrefix) != null ? 
+                            $"**Did you mean** " + CorrectCommandUsage(message, commandPrefix) + "?" : $"No similar commands found. Type `{commandPrefix}help` for a list of commands.";
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Unknown command", errorMessage, Color.Red));
+                        break;
+                    case CommandError.ObjectNotFound:
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("⚠💀 Extreme Error!", $"{result.Result.ErrorReason}"));
+                        break;
+                    case CommandError.UnmetPrecondition:
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", $"**Required permissions:** "));
+                        break;
+                    default:
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Error", $"{result.Result.ErrorReason}"));
+                        break;
+                }
             }
+        }
+
+        private string CorrectCommandUsage(SocketUserMessage message, string prefix)
+        {
+            foreach (var command in commandHelp)
+            {
+                if (message.Content.ToLower().Contains(command.Key))
+                {
+                    return "`" + prefix + commandHelp[command.Key].Usage + "`";
+                }
+            }
+            return null;
         }
     }
 }

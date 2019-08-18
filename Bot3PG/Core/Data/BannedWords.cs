@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Text;
 
 namespace Bot3PG
 {
@@ -14,7 +12,9 @@ namespace Bot3PG
         public BannedWords()
         {
             if (!Directory.Exists(BanWordsFolder))
+            {
                 Directory.CreateDirectory(BanWordsFolder);
+            }
 
             if (!File.Exists(BanWordsFolder + "/" + BanWordsFile))
             {
@@ -22,19 +22,6 @@ namespace Bot3PG
             }
         }
 
-        static void AddBanWord(string word)
-        {
-            File.AppendAllText(BanWordsFolder + "/" + BanWordsFile, $"{word}{Environment.NewLine}");
-        }
-
-        static void CheckBadWords()
-        {
-            File.ReadAllLines(BanWordsFile);
-        }
-
-        public static string[] GetWords()
-        {
-            return File.ReadAllLines(BanWordsFolder + "/" + BanWordsFile).ToArray();
-        }
+        public static string[] GetWords() => File.ReadAllLines(BanWordsFolder + "/" + BanWordsFile).ToArray();
     }
 }
