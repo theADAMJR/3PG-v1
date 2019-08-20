@@ -6,6 +6,19 @@ namespace Bot3PG.Modules.General
 {
     public class CommandHelp : Dictionary<string, Command>
     {
+        public HashSet<CommandModule> Modules
+        {
+            get
+            {
+                var modules = new HashSet<CommandModule>();
+                foreach (var command in Values)
+                {
+                    modules.Add(command.Module);
+                }
+                return modules;
+            }
+        }
+
         public CommandHelp(IDictionary<string, Command> dictionary, CommandService commandService) : base(dictionary)
         {
             foreach (var command in commandService.Commands)

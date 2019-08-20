@@ -28,21 +28,27 @@ namespace Bot3PG.Modules.General
 
             try
             {
-                string moduleName = args;
-                if (args.ToLower() != "all")
+                string moduleName = "";
+                foreach (var module in Commands.Modules)
                 {
-                    moduleName = args.Substring(0, 1).ToUpper() + args.Substring(1, (args.Length - 1));
-                    moduleName = string.IsNullOrEmpty(args) ? "" : Enum.Parse(typeof(CommandModule), moduleName).ToString();
+                    if (args.ToLower() != module.Name.ToLower()) continue;
+                    moduleName = module.Name;
                 }
+
+                if (string.IsNullOrEmpty(moduleName))
+                {
+                    await SearchCommands(target, prefix, args);
+                    return;
+                };
 
                 var embed = new EmbedBuilder();
                 embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {moduleName} commands**");
 
+                bool displayAllCommands = args.ToLower() == "all";
                 string previousModule = "";
                 foreach (var command in Commands.Values)
                 {
-                    Console.WriteLine(command.Usage);
-                    if (previousModule != command.Module.Name && args.ToLower() == "all")
+                    if (previousModule != command.Module.Name && !displayAllCommands)
                     {
                         embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
                         await ReplyToUserAsync(target, embed);
@@ -51,14 +57,9 @@ namespace Bot3PG.Modules.General
                         embed.WithColor(command.Module.Color);
                         previousModule = command.Module.Name;
                     }
-                    else if (command.Module.Name.ToLower() != moduleName.ToLower() && args.ToLower() != "all") continue;
-                    embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}\n{command.Remarks}", true);
-                }
+                    else if (command.Module.Name.ToLower() != moduleName.ToLower() && !displayAllCommands) continue;
 
-                if (embed.Fields.Count < 1 && args.ToLower() != "all")
-                {
-                    await SearchCommands(target, prefix, args);
-                    return;
+                    embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}\n{command.Remarks}", true);
                 }
                 embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
                 await ReplyToUserAsync(target, embed);
@@ -91,79 +92,12 @@ namespace Bot3PG.Modules.General
                     results++;
                 }
             }
-            if (results == 0)
+            if (results >= 0)
             {
                 embed.AddField($"Search for '{search}'", $"No results found for **{search}**");
             }
             await ReplyToUserAsync(target, embed);
         }
-
-        //private async Task UserInfo(string prefix, SocketUser target)
-        //{
-        //    var embed = new EmbedBuilder();
-        //    embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-        //    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - 👥 User commands**");
-        //    foreach (var pair in commandHelp)
-        //    {
-        //        var command = pair.Value;
-        //        if (pair.Value.Module != CommandModule.General) continue;
-        //        embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}", true);
-        //    }
-        //    embed.WithColor(Color.DarkGreen);
-        //    await ReplyToUserAsync(target, embed);
-        //}
-        //private async Task XPInfo(string prefix, SocketUser target)
-        //{
-        //    var embed = new EmbedBuilder();
-        //    embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-        //    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - ⭐ XP commands**");
-        //    embed.AddField($"{prefix}xp (user)", "Display user XP", true);
-        //    embed.AddField($"{prefix}leaderboard [page #]", $"Display users with highest XP in {Context.Guild.Name}", true);
-        //    embed.WithColor(Color.DarkBlue);
-        //    await ReplyToUserAsync(target, embed);
-        //}
-        //private async Task MusicInfo(string prefix, SocketUser target)
-        //{
-        //    var embed = new EmbedBuilder();
-        //    embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-        //    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - 🎶 [ALPHA] Music commands**");
-        //    embed.AddField($"{prefix}join", "Get bot to join your voice channel", true);
-        //    embed.AddField($"{prefix}leave", "Get bot to leave your voice channel", true);
-        //    embed.AddField($"{prefix}play (query)", "Search YouTube for tracks to play", true);
-        //    embed.AddField($"{prefix}stop", "Stop player", true);
-        //    embed.AddField($"{prefix}queue", "Display track queue", true);
-        //    embed.AddField($"{prefix}skip", "Skip current track", true);
-        //    embed.AddField($"{prefix}volume (value)", "Set player volume", true);
-        //    embed.AddField($"{prefix}pause", "Pause player", true);
-        //    embed.AddField($"{prefix}resume", "Resume player if paused", true);
-        //    embed.WithColor(Color.Blue);
-        //    await ReplyToUserAsync(target, embed);
-        //}
-        //private async Task ModerationInfo(string prefix, SocketUser target)
-        //{
-        //    var embed = new EmbedBuilder();
-        //    embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-        //    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - 🛡️ Moderation commands**");
-        //    embed.AddField($"{prefix}warn (user, reason)", "Warn user [with reason]", true);
-        //    embed.AddField($"{prefix}kick (user, reason)", "Kick user [with reason]", true);
-        //    embed.AddField($"{prefix}mute (user, reason)", "Mute user [with reason]", true);
-        //    embed.AddField($"{prefix}unmute (user, reason)", "Unmute user [with reason]", true);
-        //    embed.AddField($"{prefix}ban (user, reason)", "Ban user [with reason]", true);
-        //    embed.AddField($"{prefix}unban (user, reason)", "Ban user [with reason]", true);
-        //    embed.WithColor(Color.Orange);
-        //    await ReplyToUserAsync(target, embed);
-        //}
-        //private async Task AdminInfo(string prefix, SocketUser target)
-        //{
-        //    var embed = new EmbedBuilder();
-        //    embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-        //    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - 👑 Admin commands**");
-        //    embed.AddField($"{prefix}say (message)", "Get bot to send message", true);
-        //    embed.AddField($"{prefix}image (URL)", "Get bot to send image", true);
-        //    embed.AddField($"{prefix}rulebox", "Get bot to send rule agreement box", true);
-        //    embed.WithColor(Color.Purple);
-        //    await ReplyToUserAsync(target, embed);
-        //}
 
         [Command("Ping")]
         [Summary("Display bot reponse speed")]

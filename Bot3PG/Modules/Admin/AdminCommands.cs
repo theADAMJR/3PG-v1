@@ -7,7 +7,6 @@ using Discord.Commands;
 using Discord.WebSocket;
 using System;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Bot3PG.CommandModules
@@ -44,6 +43,7 @@ namespace Bot3PG.CommandModules
                     break;
             }
         }
+
         [Command("Config"), Alias("Settings")]
         [Summary("Configure server preferences")]
         [RequireUserPermission(GuildPermission.Administrator)]
@@ -86,9 +86,10 @@ namespace Bot3PG.CommandModules
 
         private async Task MainConfig(Guild.Options config)
         {
+            var guild = await Guilds.GetAsync(Context.Guild);
             var command = $"{config.CommandPrefix}config ";
-            var embed = new EmbedBuilder();
 
+            var embed = new EmbedBuilder();
             string test = "";
             var guildProperties = typeof(Guild.Options).GetProperties();
             foreach (var property in guildProperties)
@@ -98,8 +99,8 @@ namespace Bot3PG.CommandModules
                 var attributes = property.GetCustomAttributes(true);
                 foreach (var attribute in attributes)
                 {
-                    var name = property.Name;
-                    var description = (attribute as DescriptionAttribute)?.Description ?? "No description set.";
+                    string name = attribute is PremiumAttribute && !guild.IsPremium ? $"~~{property.Name}~~" : $"`{property.Name}`";
+                    string description = (attribute as DescriptionAttribute)?.Description ?? "No description set.";
                     test += $"{name} {description}\n";
                 }
             }
@@ -113,6 +114,7 @@ namespace Bot3PG.CommandModules
             await ReplyAsync(test);
         }
 
+        [Obsolete]
         private async Task UpdateGuildConfigAsync(string columnName, object newValue)
         {
             var embed = new EmbedBuilder();
@@ -175,6 +177,7 @@ namespace Bot3PG.CommandModules
             return columnName;
         }
 
+        [Obsolete]
         private async Task GeneralConfig(Guild.Options config)
         {
             var embed = new EmbedBuilder();
@@ -185,6 +188,7 @@ namespace Bot3PG.CommandModules
             await ReplyAsync(embed);
         }
 
+        [Obsolete]
         private async Task XPConfig(Guild.Options config)
         {
             var embed = new EmbedBuilder();
@@ -199,6 +203,7 @@ namespace Bot3PG.CommandModules
             embed.WithColor(Color.DarkBlue);
             await ReplyAsync(embed);
         }
+        [Obsolete]
         private async Task MusicConfig(Guild.Options options)
         {
             var embed = new EmbedBuilder();
@@ -209,6 +214,7 @@ namespace Bot3PG.CommandModules
             embed.WithColor(Color.Blue);
             await ReplyAsync(embed);
         }
+        [Obsolete]
         private async Task ModerationConfig(Guild.Options options)
         {
             var embed = new EmbedBuilder();
@@ -224,6 +230,7 @@ namespace Bot3PG.CommandModules
             embed.WithColor(Color.Orange);
             await ReplyAsync(embed);
         }
+        [Obsolete]
         private async Task AdminConfig(Guild.Options options)
         {
             var embed = new EmbedBuilder();
