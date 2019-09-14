@@ -1,63 +1,63 @@
 ﻿using Bot3PG.DataStructs;
+using Bot3PG.Services;
+using Discord;
 using Discord.WebSocket;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Bot3PG.Core.Data
 {
     public static class Users
     {
-        private static readonly IMongoCollection<User> collection;
-        private const string userCollection = "user";
+        private static readonly IMongoCollection<User> userCollection;
+        private static readonly IMongoCollection<GuildUser> guildUserCollection;
+
+        private const string users = "user";
+        private const string guildUsers = "guildUser";
 
         private static readonly DatabaseManager db;
 
         static Users()
         {
             db = new Lazy<DatabaseManager>().Value;
-            collection = db.Database.GetCollection<User>(userCollection);
-            if (collection is null)
+
+            userCollection = db.Database.GetCollection<User>(users);
+            if (userCollection is null)
             {
-                db.Database.CreateCollection("user");
-                collection = db.Database.GetCollection<User>(userCollection);
+                db.Database.CreateCollection(users);
+                userCollection = db.Database.GetCollection<User>(users);
+            }
+            guildUserCollection = db.Database.GetCollection<GuildUser>(guildUsers);
+            if (guildUserCollection is null)
+            {
+                db.Database.CreateCollection(guildUsers);
+                guildUserCollection = db.Database.GetCollection<GuildUser>(guildUsers);
             }
         }
 
-        public static async void OnUserUpdated(GuildUser guildUser)
-        {
-            Console.WriteLine($"{guildUser.ID} updated!");
-            var user = await db.GetAsync(guildUser.ID, collection);
-            user[guildUser.ID] = guildUser;
-            await db.UpdateAsync(guildUser.ID, user, collection);
-        }
+        public static async Task Save(User user) => await db.UpdateAsync(user.ID, user, userCollection);
+        public static async Task Save(GuildUser guildUser) => await db.UpdateAsync(guildUser.GuildID, guildUser, guildUserCollection);
 
         public static async Task<User> GetAsync(SocketUser socketUser) => await GetOrCreateAsync(socketUser);
         public static async Task<GuildUser> GetAsync(SocketGuildUser socketGuildUser) => await GetOrCreateAsync(socketGuildUser);
 
         private static async Task<User> GetOrCreateAsync(SocketUser socketUser)
         {
-            Console.WriteLine("get " + socketUser.Username);
-            var user = await db.GetAsync(socketUser.Id, collection);
-            Console.WriteLine("2");
-
-            if (user is null)
-            {
-                Console.WriteLine("user is null");
-                return await CreateUserAsync(socketUser);
-            }
-            return user;
+            var user = await db.GetAsync(socketUser.Id, userCollection);
+            return user ?? await CreateUserAsync(socketUser);
         }
 
         private static async Task<GuildUser> GetOrCreateAsync(SocketGuildUser socketGuildUser)
         {
-            var user = await GetOrCreateAsync(socketGuildUser as SocketUser);
-            var guildUser = user?[socketGuildUser.Guild.Id];
+            await GetOrCreateAsync(socketGuildUser as SocketUser);
 
-            return (guildUser is null) ? await CreateGuildUserAsync(socketGuildUser) : guildUser;
+            var guildUser = await db.GetAsync(socketGuildUser.Guild.Id, guildUserCollection);
+            return guildUser ?? await CreateGuildUserAsync(socketGuildUser);
         }
 
         private static async Task<User> CreateUserAsync(SocketUser socketUser)
@@ -65,64 +65,32 @@ namespace Bot3PG.Core.Data
             if (socketUser.IsBot) return null;
 
             var newUser = new User(socketUser);
-
-            await db.InsertAsync(newUser, collection);
+            await db.InsertAsync(newUser, userCollection);
             return newUser;
         }
 
         private static async Task<GuildUser> CreateGuildUserAsync(SocketGuildUser socketGuildUser)
         {
             if (socketGuildUser.IsBot) return null;
-
-            var user = await db.GetAsync(socketGuildUser.Id, collection);
             var guildUser = new GuildUser(socketGuildUser);
-            user[socketGuildUser.Guild.Id] = guildUser;
-            await db.UpdateAsync(socketGuildUser.Id, user, collection);
-
-            return user[socketGuildUser.Guild.Id];
+            await db.InsertAsync(guildUser, guildUserCollection);
+            return guildUser;
         }
 
-        public static List<GuildUser> GetGuildUsers(SocketGuild socketGuild)
+        public static async Task<List<GuildUser>> GetGuildUsersAsync(SocketGuild socketGuild)
         {
-            var documents = collection.Find(Builders<User>.Filter.Empty).ToList();
-            var guildUsers = new List<GuildUser>();
-
-            foreach (var user in documents)
-            {
-                var matchingGuild = user[socketGuild.Id].ToJson();
-                if (matchingGuild is null) continue;
-
-                guildUsers.Add(JsonConvert.DeserializeObject(matchingGuild) as GuildUser);
-            }
+            var allGuildUsers = await db.GetAllAsync(guildUserCollection);
+            var guildUsers = allGuildUsers.Where(u => u.GuildID == socketGuild.Id).ToList();
             return guildUsers;
         }
 
-        public static async void ResetAsync(SocketGuildUser socketGuildUser)
+        public static async Task ResetAsync(SocketGuildUser socketGuildUser)
         {
-            DeleteGuildUser(socketGuildUser);
+            await DeleteGuildUser(socketGuildUser);
             await CreateGuildUserAsync(socketGuildUser);
         }
 
-        public static void DeleteGuildUser(SocketGuildUser socketGuildUser)
-        {
-            var filter = Builders<User>.Filter.Eq("_id", socketGuildUser.Id);
-            var userDocument = collection.Find(filter).First().ToJson();
-
-            collection.DeleteOne(userDocument);
-        }
-
-        public static List<GuildUser> GetLeaderboardUsers(SocketGuild socketGuild)
-        {
-            return GetGuildUsers(socketGuild);
-
-            /*var leaderboardUsers = new List<GuildUser>();
-            foreach (var user in guildUsers)
-            {
-                var socketGuildUser = socketGuild.GetUser((ulong)user["user_id"]);
-                var userAccount = Get(socketGuildUser);
-                leaderboardUsers.Add(userAccount);
-            }
-            return leaderboardUsers;*/
-        }
+        public static async Task DeleteGuildUser(SocketUser socketGuildUser) => await db.DeleteAsync(socketGuildUser.Id, guildUserCollection);
+        public static async Task DeleteGuildUser(SocketGuildUser socketGuildUser) => await db.DeleteAsync(socketGuildUser.Guild.Id, guildUserCollection);
     }
 }

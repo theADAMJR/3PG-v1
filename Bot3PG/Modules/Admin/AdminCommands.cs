@@ -1,12 +1,16 @@
 ﻿using Bot3PG.Core.Data;
 using Bot3PG.DataStructs;
+using Bot3PG.DataStructs.Attributes;
 using Bot3PG.Handlers;
 using Bot3PG.Modules;
+using Bot3PG.Utilities;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System;
+using System.Collections;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Bot3PG.CommandModules
@@ -15,66 +19,140 @@ namespace Bot3PG.CommandModules
     public sealed class Admin : CommandBase
     {
         [Command("Config"), Alias("Settings")]
-        [Summary("View server preferences")]
+        [Summary("View server preferences"), Release(Release.Unstable)]
+        [Remarks("**Modules:** Admin, All, General, Moderation, Music, XP")]
         [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task Config(string module = "")
+        public async Task Config(string module = "all", string submodule = "")
         {
-            var guild = await Guilds.GetAsync(Context.Guild);
-
-            switch (module.ToLower())
+            try
             {
-                case "general":
-                    await GeneralConfig(guild.Config);
-                    break;
-                case "xp":
-                    await XPConfig(guild.Config);
-                    break;
-                case "music":
-                    await MusicConfig(guild.Config);
-                    break;
-                case "moderation":
-                    await ModerationConfig(guild.Config);
-                    break;
-                case "admin":
-                    await AdminConfig(guild.Config);
-                    break;
-                default:
-                    await MainConfig(guild.Config);
-                    break;
+                var guild = await Guilds.GetAsync(Context.Guild);
+                var embed = new EmbedBuilder();
+
+                if (module == "all")
+                {
+                    await ReplyMainConfig(guild);
+                    return;
+                }
+
+                var flags = BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance;
+
+                var configModule = typeof(Guild).GetProperty(module, flags);
+                var configSubmodule = configModule.PropertyType.GetProperty(submodule, flags);
+
+                var requestedModule = string.IsNullOrEmpty(submodule) ? configModule : configSubmodule;
+                var requestedModuleProperties = requestedModule.PropertyType.GetProperties(flags);
+
+                var parentValue = string.IsNullOrEmpty(submodule) ? guild : configModule.GetValue(guild);
+                var propertyParentValue = requestedModule.GetValue(parentValue);
+
+                foreach (var property in requestedModuleProperties)
+                {
+                    dynamic propertyValue = property.GetValue(propertyParentValue);
+                    var propertyIsConfigurable = property.GetCustomAttribute(typeof(NotConfigurableAttribute)) is null;
+                    if (!propertyIsConfigurable) return;
+
+                    var propertySpecialVersion = property.GetCustomAttribute(typeof(ReleaseAttribute)) as ReleaseAttribute;
+                    var propertyIsPremium = property.GetCustomAttribute(typeof(PremiumAttribute)) != null;
+
+                    var descriptionAttribute = property.GetCustomAttribute(typeof(DescriptionAttribute)) as DescriptionAttribute;
+                    string description = descriptionAttribute?.Description ?? "No description set.";
+
+                    if (propertyValue is ConfigModule.SubModule subModule)
+                    {
+                        string name = $"{GetConfigValue(subModule)} ";
+                        name += propertyIsPremium && !guild.IsPremium ? $"**~~{property.Name}~~**" : $"**{property.Name}**";
+
+                        embed.AddField(name, description);
+                    }
+                    else if (propertyIsConfigurable)
+                    {
+                        string name = propertyIsPremium && !guild.IsPremium ? $"~~{property.Name}~~: {GetConfigValue(propertyValue)}" : $"{property.Name}: {GetConfigValue(propertyValue)}";
+                        embed.AddField(name, description);
+                    }
+                }
+                await ReplyAsync(embed);
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        private async Task ReplyMainConfig(Guild guild)
+        {
+            var embed = new EmbedBuilder();
+            var moduleProperties = guild.GetType().GetProperties();
+
+            foreach (var moduleProperty in moduleProperties)
+            {
+                var moduleValue = moduleProperty.GetValue(guild);
+                if (moduleValue is ConfigModule configModule)
+                {
+                    var name = moduleProperty.Name;
+                    var command = $"{guild.General.CommandPrefix}config {name.ToLower()}";
+                    var attributes = configModule.GetType().GetCustomAttributes(true);
+
+                    string description = "No description set";
+                    bool moduleIsPremium = false;
+                    foreach (var attribute in attributes)
+                    {
+                        moduleIsPremium = (attribute is PremiumAttribute) ? true : moduleIsPremium;
+                        name = moduleIsPremium && !guild.IsPremium ? $"~~{moduleProperty.Name}~~" : $"**{moduleProperty.Name}**";
+                        description = (attribute as DescriptionAttribute)?.Description ?? description;
+                    }
+                    embed.AddField($"{GetConfigValue(configModule)} {name}", $"`{command}` - {description}");
+                }
+            }
+            await ReplyAsync(embed);
         }
 
         [Command("Config"), Alias("Settings")]
         [Summary("Configure server preferences")]
         [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task Config(string action, string columnName, string newValue = "")
+        public async Task Config(string module, string property, string value)
         {
-            newValue = ValidateNewValue(newValue);
-            if (string.IsNullOrEmpty(columnName) || string.IsNullOrEmpty(newValue.ToString()))
-            {
-                string errorMessage = string.IsNullOrEmpty(columnName) ? "Config value must be specified." : "New value must be specified.";
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Guild Config", errorMessage));
-                return;
-            }
+            var guild = await Guilds.GetAsync(Context.Guild);               
+            value = ValidateNewValue(value);
 
-            switch (action.ToLower())
+            var flags = BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance;
+            var configModule = typeof(Guild).GetProperty(module, flags);
+            var configModuleProperty = configModule.PropertyType.GetProperty(property, flags);
+
+            var configModuleValue = configModule.GetValue(guild);
+            if (Convert.ChangeType(value, configModuleProperty.PropertyType) is null)
             {
-                case "set":
-                    await UpdateGuildConfigAsync(columnName, newValue);
-                    return;
-                //case "reset":
-                //    return await ResetGuildConfig(columnName, newValue);
-                default:
-                    await ReplyAsync(EmbedHandler.CreateErrorEmbed("Guild Config Modify", $"Invalid argument: '{columnName}'"));
-                    return;
+                throw new InvalidOperationException($"Value must be of type {configModuleProperty.PropertyType}");
             }
+            configModuleProperty.SetValue(configModuleValue, value);
+            await Guilds.Save(guild);
+        }
+
+        [Command("Config"), Alias("Settings")]
+        [Summary("Configure server preferences")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task Config(string module, string submodule, string property, string value)
+        {
+            var guild = await Guilds.GetAsync(Context.Guild);
+            value = ValidateNewValue(value);
+
+            var flags = BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance;
+            var configModule = typeof(Guild).GetProperty(module, flags);
+            var configSubmodule = configModule.PropertyType.GetProperty(submodule, flags);
+            var configSubmoduleProperty = configSubmodule.PropertyType.GetProperty(property, flags);
+
+            var configModuleValue = configModule.GetValue(guild);
+            var configSubmoduleValue = configModule.GetValue(configModuleValue);
+
+            configSubmoduleProperty.SetValue(configSubmoduleValue, value);
+            await Guilds.Save(guild);
         }
 
         private string ValidateNewValue(string newValue)
         {
             if (newValue.ToString().Contains("#"))
             {
-                Console.WriteLine(newValue);
+                newValue = newValue.Replace(" ", "");
                 newValue = newValue.Replace(">", "");
                 newValue = newValue.Replace("<", "");
                 newValue = newValue.Replace("#", "");
@@ -84,164 +162,71 @@ namespace Bot3PG.CommandModules
             return newValue;
         }
 
-        private async Task MainConfig(Guild.Options config)
+        private async Task ResetGuildAsync(string arguments, string module, string submodule, string argument)
         {
-            var guild = await Guilds.GetAsync(Context.Guild);
-            var command = $"{config.CommandPrefix}config ";
+            await Guilds.ResetAsync(Context.Guild);
+        }
 
-            var embed = new EmbedBuilder();
-            string test = "";
-            var guildProperties = typeof(Guild.Options).GetProperties();
-            foreach (var property in guildProperties)
+        private static string ValidatePropertyName(string propertyName)
+        {
+            propertyName = propertyName.ToLower();
+            propertyName = propertyName.Replace($"{'"'}", "");
+            return propertyName;
+        }
+
+        private object GetConfigValue(dynamic value)
+        {
+            if (value is null)
             {
-                // if not current module continue
+                return "`UNDEFINED`";
+            }
 
-                var attributes = property.GetCustomAttributes(true);
-                foreach (var attribute in attributes)
+            else if (value is string stringValue)
+            {
+                return string.IsNullOrEmpty(stringValue) ? "`UNDEFINED`" : "`" + value + "`";
+            }
+            else if (value is int intValue)
+            {
+                if (intValue == 0)
                 {
-                    string name = attribute is PremiumAttribute && !guild.IsPremium ? $"~~{property.Name}~~" : $"`{property.Name}`";
-                    string description = (attribute as DescriptionAttribute)?.Description ?? "No description set.";
-                    test += $"{name} {description}\n";
+                    return "`UNASSIGNED`";
                 }
-            }
-
-            //embed.WithTitle($"**⚙️ __{Context.Client.CurrentUser.Username} Config__**");
-            //embed.AddField($"{GetConfigValue(config.XPEnabled)} **General** `{command} general`", $"General user commands", inline: false);
-            //embed.AddField($"{GetConfigValue(config.XPEnabled)} **XP** `{command} xp`", $"XP module and functionality ", inline: false);
-            //embed.AddField($"{GetConfigValue(config.MusicEnabled)} **Music** `{command} music`", "Music module and functionality", inline: false);
-            //embed.AddField($"{GetConfigValue(config.MusicEnabled)} **Admin** `{command} admin`", "Admin only commands", inline: false);
-            //embed.AddField($"{GetConfigValue(config.ModerationEnabled)} **Moderation**` {command} moderation`", "Moderation commands for enforcing rules", inline: false);
-            await ReplyAsync(test);
-        }
-
-        [Obsolete]
-        private async Task UpdateGuildConfigAsync(string columnName, object newValue)
-        {
-            var embed = new EmbedBuilder();
-
-            var validColumnName = ValidateColumnName(columnName);
-            if (string.IsNullOrEmpty(columnName) || string.IsNullOrEmpty(newValue.ToString()))
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Update Guild Config", $"Please enter a valid config value"));
-                return;
-            }
-
-            if (Guilds.ReadOnlyColumns.Any(str => validColumnName.Contains(str)))
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Update Guild Config", $"Cannot change {validColumnName} as it is read-only!"));
-                return;
-            }
-            else if (Guilds.GetConfigColumn(validColumnName))
-            {
-                // TODO - set value validation checks
-                Guilds.UpdateGuildConfig(Context.Guild, validColumnName, newValue);
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Config", $"Set __{validColumnName}__ to {newValue}", Color.Green));
-                return;
-            }
-            else
-            {
-                var similarColumns = Guilds.SearchGuildConfigColumns(validColumnName);
-                if (similarColumns.Count < 1)
+                else if (intValue == -1)
                 {
-                    await EmbedHandler.CreateErrorEmbed("Update Guild Config", $"No results found similar to {columnName}");
-                    
+                    return "`DISABLED`";
                 }
-
-                string columnList = "";
-                for (int i = 0; i < similarColumns.Count; i++)
+                return "`" + intValue + "`";
+            }
+            else if (value is bool boolValue)
+            {
+                return boolValue ? new Emoji("✅") as IEmote : new Emoji("❌") as IEmote;
+            }
+            else if (value is ConfigModule configModule)
+            {
+                bool isPremium = configModule.GetType().GetCustomAttribute(typeof(PremiumAttribute)) != null;
+                if (configModule.Enabled)
                 {
-                    columnList += ($"\n**{i + 1})** {similarColumns[i]}");
+                    return new Emoji("✅");
                 }
-                columnList = columnList ?? "No results";
-                embed.AddField($"Config Value: '{columnName}' was not found. Similar results:", columnList);
-                await ReplyAsync(embed);
+                else if (isPremium)
+                {
+                    return new Emoji("❌");
+                }
+                return new Emoji("🤖");
             }
-        }
-
-        //private async Task ResetGuildConfig(string columnName, string newValue, string module = "")
-        //{
-        //    return await;
-        //}
-
-        private static string ValidateColumnName(string columnName)
-        {
-            columnName = columnName.ToLower();
-            if (columnName.Contains(' '))
+            else if (value is IList list)
             {
-                columnName = columnName.Replace(' ', '_');
+                var itemString = "";
+                for (var i = 0; i < list.Count; i++)
+                {
+                    itemString += $"\n*[{i + 1}]* {GetConfigValue(list[i])}";
+                }
+                return itemString;
             }
-            if (columnName.Contains('"'))
-            {
-                columnName = columnName.Replace("'", "");
-            }
-            return columnName;
+            return $"`{value}`";
         }
 
-        [Obsolete]
-        private async Task GeneralConfig(Guild.Options config)
-        {
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-            embed.WithTitle($"**⚙️Config - 👥 General**");
-            embed.AddField($"Command Prefix", GetConfigValue(config.CommandPrefix), inline: true);
-            embed.WithColor(ModuleColour(true));
-            await ReplyAsync(embed);
-        }
-
-        [Obsolete]
-        private async Task XPConfig(Guild.Options config)
-        {
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-            embed.WithTitle($"**⚙️Config - ⭐ XP module**");
-            embed.AddField($"XP Enabled", GetConfigValue(config.XPEnabled), inline: false);
-            embed.AddField($"XP Per Message", GetConfigValue(config.XPPerMessage), inline: true);
-            embed.AddField($"XP Message Length Threshold", GetConfigValue(config.XPMessageLengthThreshold), inline: true);
-            embed.AddField($"XP Cooldown", GetConfigValue(config.XPCooldown), inline: true);
-            embed.AddField($"Extended XP Cooldown", GetConfigValue(config.ExtendedXPCooldown), inline: true);
-            embed.AddField($"Max Leaderboard Page", GetConfigValue(config.MaxLeaderboardPage), inline: true);
-            embed.WithColor(Color.DarkBlue);
-            await ReplyAsync(embed);
-        }
-        [Obsolete]
-        private async Task MusicConfig(Guild.Options options)
-        {
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-            embed.WithTitle($"**⚙️Config - 🎶 [ALPHA] Music module**");
-            embed.AddField($"Music Enabled", GetConfigValue(options.MusicEnabled), inline: false);
-            embed.AddField($"Default Volume", GetConfigValue(options.DefaultVolume), inline: true);
-            embed.WithColor(Color.Blue);
-            await ReplyAsync(embed);
-        }
-        [Obsolete]
-        private async Task ModerationConfig(Guild.Options options)
-        {
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-            embed.WithTitle($"**⚙️Config - 🛡️ Moderation module**");
-            embed.AddField($"Auto Moderation Enabled", GetConfigValue(options.AutoModerationEnabled), inline: true);
-            embed.AddField($"Staff Logs Enabled", GetConfigValue(options.StaffLogsEnabled), inline: true);
-            embed.AddField($"Warnings For Ban", GetConfigValue(options.WarningsForBan), inline: true);
-            embed.AddField($"Warnings For Kick", GetConfigValue(options.WarningsForKick), inline: true);
-            embed.AddField($"Staff Logs Enabled", GetConfigValue(options.StaffLogsEnabled), inline: false);
-            embed.AddField($"Staff Logs Channel", GetConfigValue(options.StaffLogsChannel), inline: true);
-            embed.AddField($"Rulebox Enabled", GetConfigValue(options.RuleboxEnabled), inline: true);
-            embed.WithColor(Color.Orange);
-            await ReplyAsync(embed);
-        }
-        [Obsolete]
-        private async Task AdminConfig(Guild.Options options)
-        {
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-            embed.WithTitle($"**⚙️Config - 👑 Admin module**");
-            embed.AddField($"Announce Enabled", GetConfigValue(options.AnnounceEnabled), inline: true);
-            embed.AddField($"Announce Channel", GetConfigValue(options.AnnounceChannel), inline: true);
-            embed.WithColor(Color.Purple);
-             await ReplyAsync(embed);
-        }
-        private string GetConfigValue(string value) => (value is null) ? "`UNASSIGNED`" : "`" + value + "`";
+        /*private string GetConfigValue(string value) =>  (value is null) ? "`UNASSIGNED`" : "`" + value + "`";
         private string GetConfigValue(SocketTextChannel channel) => (channel is null) ? "`UNASSIGNED`" : channel.Mention;
         private string GetConfigValue(int value)
         {
@@ -256,6 +241,18 @@ namespace Bot3PG.CommandModules
             return "`" + value + "`";
         }
         private IEmote GetConfigValue(bool value) => value ? new Emoji("✅") as IEmote: new Emoji("❌") as IEmote;
+        private IEmote GetConfigValue(ConfigModule configModule, bool isPremium)
+        {
+            if (configModule.Enabled && !isPremium)
+            {
+                return new Emoji("✅");
+            }
+            else if (!isPremium)
+            {
+                return new Emoji("❌");
+            }
+            return new Emoji("🤖");
+        }*/
         private Color ModuleColour(bool moduleEnabled) => moduleEnabled ? Color.Green : Color.Red;
         private string ModuleText(bool moduleEnabled, string text) => "~~" + text + "~~";
 
@@ -267,6 +264,14 @@ namespace Bot3PG.CommandModules
         public async Task Say([Remainder]string msg)
         {
             await ReplyAsync(msg);
+        }
+
+        [Command("Test")]
+        public async Task Test(char prefix)
+        {
+            var guild = await Guilds.GetAsync(Context.Guild);
+            guild.General.CommandPrefix = prefix.ToString();
+
         }
 
         [Command("Image"), Alias("Img")]
@@ -297,7 +302,7 @@ namespace Bot3PG.CommandModules
             embed.WithTitle("Do you agree to the rules?");
             var rulebox = await ReplyAsync(embed);
             var guild = await Guilds.GetAsync(Context.Guild);
-            guild.Config.RuleboxMessage = rulebox;
+            guild.Admin.Rulebox.Message = rulebox;
 
             await AddRuleboxReactions(rulebox);
         }
@@ -372,5 +377,48 @@ namespace Bot3PG.CommandModules
                 await ReplyAsync("% Votes:" + (uniqueVoteEmotes[i].ReactionCount / options.Length) * 100);
             }
         }*/
+
+        [Command("Disable")]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [Summary("Temporarily disable the bot for a specified amount of time, if previously enabled"), Release(Release.Alpha)]
+        public async Task Disable(string duration)
+        {
+            var guild = await Guilds.GetAsync(Context.Guild);
+            if (guild.IsDisabled)
+            {
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Disable", $"{Context.Client.CurrentUser.Username} already disabled.", Color.DarkRed));
+                return;
+            }
+            var time = CommandUtilities.ParseDuration(duration);
+            var enableDateTime = DateTime.Now + time;
+
+            await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Disable", $"{Context.Client.CurrentUser.Username} disabled until {enableDateTime.ToTimestamp()}.", Color.DarkGrey));
+            await Guilds.Save(guild);
+        }
+
+        [Command("Enable")]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [Summary("Enable the bot, if previously disabled"), Release(Release.Alpha)]
+        public async Task Enable()
+        {
+            var guild = await Guilds.GetAsync(Context.Guild);
+            if (!guild.IsDisabled)
+            {
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Enable", $"{Context.Client.CurrentUser.Username} already enabled.", Color.DarkRed));
+                return;
+            }
+            guild.IsDisabled = false;
+
+            await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Enable", $"{Context.Client.CurrentUser.Username} enabled.", Color.DarkGrey));
+            await Guilds.Save(guild);
+        }
+
+        [Command("Test")]
+        [RequireOwner]
+        public async Task Test()
+        {
+            var user = await Users.GetAsync(Context.User as SocketGuildUser);
+            await ReplyAsync(user.ID.ToString());
+        }
     }
 }

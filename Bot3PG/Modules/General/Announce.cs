@@ -14,14 +14,15 @@ namespace Bot3PG.Modules.General
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
 
             var random = new Random();
-            var welcomeChannel = guild.Config.AnnounceChannel;
-            int randomIndex = random.Next(0, guild.Config.WelcomeMessages.Length);
+            var announceConfig = guild.General.Announce;
+
+            int randomIndex = random.Next(0, announceConfig.WelcomeMessages.Count);
 
             var embed = new EmbedBuilder();
-            embed.AddField($"**Welcome!**", guild.Config.WelcomeMessages[randomIndex]);
+            embed.AddField($"**Welcome!**", announceConfig.WelcomeMessages[randomIndex]);
             embed.WithColor(Color.DarkGreen);
 
-            await welcomeChannel.SendMessageAsync("", embed: embed.Build());
+            await announceConfig.Channel.SendMessageAsync("", embed: embed.Build());
         }
 
         public async Task AnnounceUserLeft(SocketGuildUser socketGuildUser)
@@ -30,16 +31,16 @@ namespace Bot3PG.Modules.General
             if (socketGuildUser as SocketUser == Global.Client.CurrentUser || user.Status.IsBanned) return;
 
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            var announceConfig = guild.General.Announce;
 
             var random = new Random();
-            var goodbyeChannel = guild.Config.AnnounceChannel;
-            int randomIndex = random.Next(0, guild.Config.GoodbyeMessages.Length);
+            int randomIndex = random.Next(0, announceConfig.GoodbyeMessages.Count);
 
             var embed = new EmbedBuilder();
-            embed.AddField($"**Goodbye!**", guild.Config.GoodbyeMessages[randomIndex]);
+            embed.AddField($"**Goodbye!**", announceConfig.GoodbyeMessages[randomIndex]);
             embed.WithColor(Color.DarkRed);
 
-            await goodbyeChannel.SendMessageAsync("", embed: embed.Build());
+            await announceConfig.Channel.SendMessageAsync("", embed: embed.Build());
         }
     }
 }

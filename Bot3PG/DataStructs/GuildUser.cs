@@ -6,178 +6,164 @@ using Discord.WebSocket;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Bot3PG.DataStructs
 {
-    public partial class GuildUser
+    public class GuildUser : GlobalEntity<ulong>
     {
-        public delegate void GuildUserDelegate(GuildUser guildUser);
-        public static event GuildUserDelegate GuildUserUpdated;
+        private static ulong _guildId;
+        [BsonId] public ulong GuildID { get => _guildId; set => _guildId = value; }
 
-        [BsonIgnore]
-        public ulong ID { get; set; }
-        public ulong GuildID { get; set; }
+        public static SocketGuildUser _SocketGuildUser => Global.Client.GetGuild(_guildId)?.GetUser(_ID);
 
-        private SocketGuildUser socketGuildUser
+        private async static Task<GuildUser> GetUser() => await Users.GetAsync(_SocketGuildUser);
+        private async static Task<Guild> GetGuild() => await Guilds.GetAsync(_SocketGuildUser.Guild);
+
+        public Leveling XP { get; set; } = new Leveling();
+        public Moderation Status { get; set; } = new Moderation();
+
+        public GuildUser(SocketGuildUser socketGuildUser)
         {
-            get
-            {
-                var socketGuild = Global.Client.GetGuild(ID);
-                return socketGuild.GetUser(ID);
-            }
-        }
-
-        public Leveling XP = new Leveling();
-        public Moderation Status = new Moderation();
-
-        public GuildUser(SocketGuildUser socketGuildUser) 
-        {
-            ID = socketGuildUser?.Id ?? 0;
-            GuildID = socketGuildUser?.Guild?.Id ?? 0;
-        }
-
-        private static GuildUser GetUser(SocketGuildUser socketGuildUser)
-        {
-            GuildUser user = null;
-            new Task(async () =>
-            {
-                user = await Users.GetAsync(socketGuildUser);
-            });
-            return user;
+            ID = socketGuildUser.Id;
+            GuildID = socketGuildUser.Guild.Id;
         }
 
         public async Task BanAsync(TimeSpan duration, string reason)
         {
-            Status[PunishmentType.Ban] = new Moderation.Punishment()
-            {
-                Start = DateTime.Now,
-                End = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration),
-                Reason = reason
-            };
+            var end = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);
+            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Ban, reason, DateTime.Now, end));
 
-            await socketGuildUser.Guild.AddBanAsync(ID);
-            await socketGuildUser.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been banned from {socketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            await _SocketGuildUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
+            await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been banned from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            await Users.Save(this);
         }
 
         public async Task UnbanAsync(string reason)
         {
             Status[PunishmentType.Ban].End = DateTime.Now;
 
-            await socketGuildUser.Guild.RemoveBanAsync(ID);
-            await socketGuildUser.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unbanned from {socketGuildUser.Guild.Name} for '{reason}'", Color.Green));
+            await _SocketGuildUser.Guild.RemoveBanAsync(ID, new RequestOptions() { AuditLogReason = reason });
+            await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unbanned from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Green));
+            await Users.Save(this);
         }
 
         public async Task MuteAsync(TimeSpan duration, string reason)
         {
-            Status[PunishmentType.Mute] = new Moderation.Punishment()
-            {
-                Start = DateTime.Now,
-                End = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration),
-                Reason = reason
-            };
-
-            await socketGuildUser.ModifyAsync(x => x.Mute = true);
-            await socketGuildUser.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been muted from {socketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            var end = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);
+            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Mute, reason, DateTime.Now, end));
+            await _SocketGuildUser.ModifyAsync(x => x.Mute = true, new RequestOptions() { AuditLogReason = reason });
+            await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been muted from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            await Users.Save(this);
         }
 
         public async Task UnmuteAsync(string reason)
         {
             Status[PunishmentType.Mute].End = DateTime.Now;
 
-            await socketGuildUser.ModifyAsync(x => x.Mute = false);
-            await socketGuildUser.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unmuted from {socketGuildUser.Guild.Name} for '{reason}'", Color.Green));
+            await _SocketGuildUser.ModifyAsync(x => x.Mute = false, new RequestOptions() { AuditLogReason = reason });
+            await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unmuted from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Green));
+            await Users.Save(this);
         }
 
         public async Task KickAsync(string reason)
         {
-            Status[PunishmentType.Kick] = new Moderation.Punishment()
-            {
-                Start = DateTime.Now,
-                Reason = reason
-            };
-
-            await socketGuildUser.KickAsync(reason);
-            await socketGuildUser.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been kicked from {socketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Kick, reason, DateTime.Now));
+            await _SocketGuildUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });
+            await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been kicked from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            await Users.Save(this);
         }
 
         public async Task WarnAsync(string reason)
         {
-            Status[PunishmentType.Warn] = new Moderation.Punishment()
-            {
-                Start = DateTime.Now,
-                Reason = reason
-            };
-
-            await socketGuildUser.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been warned from {socketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Warn, reason));
+            await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been warned from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Red));
+            await Users.Save(this);
         }
 
         public class Leveling
         {
+            [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
             public DateTime LastXPMsg { get; set; }
-
             public int EXP { get; set; }
 
-            public int EXPForNextLevel => (int)Math.Sqrt(Math.Pow(EXP, LevelNumber)) / 100;
-
+            public int EXPForNextLevel => (int)((Math.Pow((int)LevelNumber + 1, 2)) * 100) - EXP;
             public uint LevelNumber => (uint)Math.Sqrt(EXP / 100) + 1;
 
-            public bool InXPCooldown
+            public async Task<bool> GetInXPCooldown()
             {
-                get => true;
-                /*get
-                {
-                    var lastMessageTime = DateTime.Now.Subtract(_user.XP.LastXPMsg);
-                    return (lastMessageTime.TotalSeconds <= _guild.Config.XPCooldown || _user.Status.IsMuted) ? true : false;
-                }*/
+                var user = await GetUser();
+                var guild = await GetGuild();
+
+                var lastMessageTime = DateTime.Now.Subtract(user.XP.LastXPMsg);
+                return lastMessageTime.TotalSeconds <= guild.XP.Cooldown || user.Status.IsMuted;
             }
 
-            public void ExtendXPCooldown()
+            public async Task ExtendXPCooldown()
             {
-                //var nextAvailableMsg = DateTime.Now.Add(TimeSpan.FromSeconds(_guild.Config.ExtendedXPCooldown * (1 + User.Status.WarningsCount)));
-                //LastXPMsg = nextAvailableMsg;
+                var user = await GetUser();
+                var guild = await GetGuild();
+
+                var nextAvailableMsg = DateTime.Now.Add(TimeSpan.FromSeconds(guild.XP.ExtendedCooldown * (1 + user.Status.WarningsCount)));
+                LastXPMsg = nextAvailableMsg;
             }
         }
 
-        public partial class Moderation
+        public class Moderation
         {
-
-            private int lastPunishmentIndex(PunishmentType punishmentType) => Punishments[punishmentType].Count - 1;
+            private int LastPunishmentIndex(PunishmentType punishmentType) => Punishments.Where(p => p.Type == punishmentType).Count() - 1;
 
             public Punishment this[PunishmentType punishmentType]
             {
-                get => Punishments[punishmentType][lastPunishmentIndex(punishmentType)];
-                set => Punishments[punishmentType][lastPunishmentIndex(punishmentType)] = value;
+                get => Punishments.Count > 0 ? Punishments[LastPunishmentIndex(punishmentType)] : null;
+                set => Punishments[LastPunishmentIndex(punishmentType)] = value;
             }
 
             public bool IsMuted
             {
                 get
                 {
-                    var punishment = Punishments[PunishmentType.Mute][lastPunishmentIndex(PunishmentType.Mute)];
-                    return punishment.Start < punishment.End;
+                    var punishment = this[PunishmentType.Mute];
+                    return punishment != null && punishment.Start < punishment.End;
                 }
             }
             public bool IsBanned
             {
                 get
                 {
-                    var punishment = Punishments[PunishmentType.Mute][lastPunishmentIndex(PunishmentType.Ban)];
-                    return punishment.Start < punishment.End;
+                    var punishment = this[PunishmentType.Ban];
+                    return punishment != null && punishment.Start < punishment.End;
                 }
             }
 
+            // TODO - last message
+
             public bool AgreedToRules { get; set; }
 
-            public Dictionary<PunishmentType, List<Punishment>> Punishments { get; internal set; } = new Dictionary<PunishmentType, List<Punishment>>();
+            public List<Punishment> Punishments { get; internal set; } = new List<Punishment>();
 
-            public int WarningsCount => Punishments[PunishmentType.Warn].Count;
+            public List<Punishment> Bans => Punishments.Where(p => p.Type == PunishmentType.Ban).ToList();
+            public List<Punishment> Mutes => Punishments.Where(p => p.Type == PunishmentType.Mute).ToList();
+            public List<Punishment> Kicks => Punishments.Where(p => p.Type == PunishmentType.Kick).ToList();
+            public List<Punishment> Warns => Punishments.Where(p => p.Type == PunishmentType.Warn).ToList();
+
+            public int WarningsCount => Warns.Count;
 
             public class Punishment
             {
+                public PunishmentType Type { get; set; }
                 public DateTime Start { get; set; }
                 public DateTime End { get; set; }
                 public string Reason { get; set; }
+
+                public Punishment(PunishmentType type, string reason, DateTime start = default, DateTime end = default)
+                {
+                    Type = type;
+                    Start = start;
+                    End = end;
+                    Reason = reason;
+                }
             }
         }
     }

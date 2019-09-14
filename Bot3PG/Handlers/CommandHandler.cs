@@ -33,23 +33,22 @@ namespace Bot3PG.Handlers
             await commands.AddModulesAsync(
                 assembly: Assembly.GetEntryAssembly(),
                 services: services);
-            commandHelp = new CommandHelp(new Dictionary<string, Command>(), commands);
+            commandHelp = new CommandHelp();
         }
 
         public void HookEvents() => Global.Client.MessageReceived += HandleCommandAsync;
 
         private async Task HandleCommandAsync(SocketMessage socketMessage)
         {
-            int argPos = 0;
-            if (!(socketMessage is SocketUserMessage message) || message.Author.IsBot || message.Author.IsWebhook || message.Channel is IPrivateChannel)
-                return;
+            if (!(socketMessage is SocketUserMessage message) || message.Author.IsBot || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
 
             var guild = await Guilds.GetAsync((socketMessage.Author as SocketGuildUser).Guild);
-            var commandPrefix = guild.Config.CommandPrefix ?? "/";
+            var commandPrefix = guild.General.CommandPrefix ?? "/";
 
+            int argPos = 0;
             if (!message.HasStringPrefix(commandPrefix, ref argPos))
             {
-                LevelingSystem.ValidateMessageForXP(socketMessage as SocketUserMessage);
+                LevelingSystem.ValidateForXPAsync(socketMessage as SocketUserMessage);
                 return;
             }
 
@@ -94,8 +93,8 @@ namespace Bot3PG.Handlers
                     case CommandError.UnmetPrecondition:
                         await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", $"**Required permissions:** "));
                         break;
-                    default:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Error", $"{result.Result.ErrorReason}"));
+                    default: // if in debug mode
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Error", $"{result.Exception.Message} \n**Source**: {result.Exception.StackTrace}"));
                         break;
                 }
             }

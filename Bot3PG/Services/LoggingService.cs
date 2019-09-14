@@ -26,16 +26,11 @@ namespace Bot3PG.Services
                 await Append($"{exception.Message ?? "Unknown"}\n{exception.StackTrace ?? "Unknown"}\n", GetConsoleColor(severity));
         }
         
-        public static async Task LogCriticalAsync(string source, string message, Exception exc = null)
-            => await LogAsync(source, LogSeverity.Critical, message, exc);
+        public static async Task LogCriticalAsync(string source, string message, Exception exc = null) => await LogAsync(source, LogSeverity.Critical, message, exc);
         
-        public static async Task LogInformationAsync(string source, string message)
-            => await LogAsync(source, LogSeverity.Info, message);
+        public static async Task LogInformationAsync(string source, string message) => await LogAsync(source, LogSeverity.Info, message);
 
-        public static string GetTimestamp(DateTime value)
-        {
-            return value.ToString("HH:mm:ss");
-        }
+        public static string GetTimestamp(DateTime value) => value.ToString("HH:mm:ss");
 
         private static async Task Append(string message, ConsoleColor color)
         {
@@ -64,6 +59,12 @@ namespace Bot3PG.Services
                     return "BOTWN";
                 case "database":
                     return "MONGO";
+                case "core":
+                    return "BCORE";
+                case "command":
+                    return "COMND";
+                case "rest":
+                    return "DREST";
                 default:
                     return src;
             }

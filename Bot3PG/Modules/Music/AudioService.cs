@@ -296,7 +296,7 @@ namespace Bot3PG.Modules.Music
         {
             var socketGuild = Global.Client.GetGuild(guildId);
             var guild = await Guilds.GetAsync(socketGuild);
-            return guild.Config.CommandPrefix;
+            return guild.General.CommandPrefix;
         }
         #endregion
 

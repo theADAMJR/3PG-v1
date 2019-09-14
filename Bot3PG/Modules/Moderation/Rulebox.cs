@@ -13,8 +13,8 @@ namespace Bot3PG.Modules.Moderation
             var socketGuildUser = reaction.User.Value as SocketGuildUser;
             if (socketGuildUser is null || socketGuildUser.IsBot) return;
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            System.Console.WriteLine(guild.Config.RuleboxMessage.Id);
-            if (reaction.Message.Value != guild.Config.RuleboxMessage/* && reaction.Message.Value.Id != guild.Config.VoteboxMessageID*/) return;
+            System.Console.WriteLine(guild.Admin.Rulebox.Message.Id);
+            if (reaction.Message.Value != guild.Admin.Rulebox.Message/* && reaction.Message.Value.Id != guild.Config.VoteboxMessageID*/) return;
             /*if (reaction.Message.Value.Id == guild.Config.VoteboxMessageID)
             {
                 Console.WriteLine("OnReactionAdded - voteboxmsgid");
@@ -44,8 +44,7 @@ namespace Bot3PG.Modules.Moderation
             {
                 // TODO - move to user.AgreeAsync();
                 user.Status.AgreedToRules = true;
-                ;
-                await socketGuildUser.AddRoleAsync(guild.Config.AgreeRole);
+                await socketGuildUser.AddRoleAsync(guild.Admin.Rulebox.AgreeRole);
             }
             else if (reaction.Emote.Name == disagreeEmote)
             {
@@ -68,7 +67,7 @@ namespace Bot3PG.Modules.Moderation
 
             var agreeEmote = new Emoji("✅") as IEmote;
 
-            if (reaction.Message.Value == guild.Config.RuleboxMessage)
+            if (reaction.Message.Value == guild.Admin.Rulebox.Message)
             {
                 if (reaction.Emote == agreeEmote && !socketGuildUser.IsBot)
                 {
@@ -86,8 +85,10 @@ namespace Bot3PG.Modules.Moderation
             var agreeEmote = new Emoji("✅") as IEmote;
 
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            if (guild.Config.RuleboxMessage is null) return;
-            await guild.Config.RuleboxMessage.RemoveReactionAsync(agreeEmote, socketGuildUser);
+            if (guild.Admin.Rulebox.Message != null)
+            {
+                await guild.Admin.Rulebox.Message.RemoveReactionAsync(agreeEmote, socketGuildUser);
+            }
         }
     }
 }

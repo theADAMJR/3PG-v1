@@ -15,12 +15,8 @@ namespace Bot3PG
         public static Config.DatabaseConfig DatabaseConfig { get; private set; }
         public static CommandService CommandService { get; private set; }
 
-        private static DateTime _startTime;
-        public static TimeSpan Uptime
-        {
-            get => DateTime.Now - _startTime;
-            private set => Uptime = value;
-        }
+        private static readonly DateTime _startTime = DateTime.Now;
+        public static TimeSpan Uptime => DateTime.Now - _startTime;
 
         public Global(DiscordSocketClient discordSocketClient, LavaSocketClient lavaSocketClient, Config config, CommandService commandService)
         {
@@ -29,7 +25,6 @@ namespace Bot3PG
             Config = config;
             CommandService = commandService;
             DatabaseConfig = config.DB;
-            _startTime = DateTime.Now;
         }
     }
 }

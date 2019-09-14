@@ -6,78 +6,69 @@ using Bot3PG.Core.Data;
 using System.Threading.Tasks;
 using System.Collections;
 using Discord.Rest;
+using System.Linq;
 
 namespace Bot3PG.Modules.XP
 {
     public class LevelingSystem
     {
-        private static int r = 255;
-        private static int g = 0;
-        private static int b = 0;
-
-        public static async void ValidateMessageForXP(SocketUserMessage message)
+        public static async void ValidateForXPAsync(SocketUserMessage message)
         {
-            if (message is null) return;
+            if (message is null || !(message.Author is SocketGuildUser socketGuildUser)) return;
 
-            var socketGuildUser = message.Author as SocketGuildUser;
-            var user = new GuildUser(socketGuildUser);
+            var user = await Users.GetAsync(socketGuildUser);
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
 
-            if (user is null || guild is null || user.XP.InXPCooldown || message.Content.Length <= guild.Config.XPMessageLengthThreshold) return;
+            var userInCooldown = await user.XP.GetInXPCooldown();
+            if (user is null || guild is null || userInCooldown || message.Content.Length <= guild.XP.MessageLengthThreshold) return;
 
-            else
+            user.XP.LastXPMsg = DateTime.Now;
+
+            uint oldLevel = user.XP.LevelNumber;
+            user.XP.EXP += guild.XP.EXPPerMessage;
+            uint newLevel = user.XP.LevelNumber;
+
+            if (oldLevel != newLevel)
             {
-                user.XP.LastXPMsg = DateTime.Now;
+                var embed = new EmbedBuilder();
+                embed.WithColor(Color.Green);
+                embed.WithTitle("✨ **LEVEL UP!**");
+                embed.WithDescription(socketGuildUser.Mention + " just leveled up!");
+                embed.AddField("LEVEL", newLevel, true);
+                embed.AddField("XP", user.XP.EXP, true);
 
-                uint oldLevel = user.XP.LevelNumber;
-                user.XP.EXP += guild.Config.XPPerMessage;
-                uint newLevel = user.XP.LevelNumber;
-
-                if (oldLevel != newLevel)
+                bool newRoleGiven = await ValidateNewXPRoleAsync(socketGuildUser, guild, oldLevel, newLevel);
+                if (newRoleGiven)
                 {
-                    var embed = new EmbedBuilder();
-                    embed.WithColor(Color.Green);
-                    embed.WithTitle("✨ **LEVEL UP!**");
-                    embed.WithDescription(socketGuildUser.Mention + " just leveled up!");
-                    embed.AddField("LEVEL", newLevel, true);
-                    embed.AddField("XP", user.XP.EXP, true);
-
-                    var levelUpMessage = await message.Channel.SendMessageAsync("", embed: embed.Build());                                      
-
-                    /*for (int i = 0; i <= 255; i++)
-                    {
-                        await Task.Delay(1000);
-                        await CycleRGB(levelUpMessage, socketGuildUser, newLevel);
-                    }*/
+                    embed.AddField("PROMOTION",
+                        $"**Old:** {guild.XP.RoleRewards[oldLevel]?.Mention ?? "No role"}\n" +
+                        $"**New:** {guild.XP.RoleRewards[newLevel].Mention}");
                 }
+                await message.Channel.SendMessageAsync("", embed: embed.Build());
             }
+            await Users.Save(user);
         }
 
-        private static async Task CycleRGB(RestUserMessage levelUpMessage, SocketGuildUser socketGuildUser, uint newLevel)
+        public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser socketGuildUser, Guild guild, uint oldLevel, uint newLevel)
         {
-            var cycleFactor = 15;
-            if (r > 0 && b == 0)
+            if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist) return false;
+
+            if (!NewRoleRequired(socketGuildUser, guild, newLevel)) return false;
+
+            if (!guild.XP.RoleRewards.StackRoles)
             {
-                r -= cycleFactor;
-                g += cycleFactor;
+                var oldXPRole = guild.XP.RoleRewards[oldLevel];
+                await socketGuildUser.RemoveRoleAsync(oldXPRole);
             }
-            if (g > 0 && r == 0)
-            {
-                g -= cycleFactor;
-                b += cycleFactor;
-            }
-            if (b > 0 && g == 0)
-            {
-                r += cycleFactor;
-                b -= cycleFactor;
-            }
-            Console.WriteLine(new Color(r, g, b));
-            await levelUpMessage.ModifyAsync(m => m.Embed = new EmbedBuilder()
-            {
-                Color = new Color(r, g, b),
-                Title = ("✨ **LEVEL UP!**"),
-                Description = (socketGuildUser.Mention + " just leveled up!")
-            }.Build());
+            var newXPRole = guild.XP.RoleRewards[newLevel];
+            await socketGuildUser.AddRoleAsync(newXPRole);
+            return true;
+        }
+
+        public static bool NewRoleRequired(SocketGuildUser socketGuildUser, Guild guild, uint newLevel)
+        {
+            ulong? levelRoleId = guild.XP.RoleRewards[newLevel]?.Id;
+            return !socketGuildUser.Roles.Any(r => r.Id == levelRoleId);
         }
     }
 }

@@ -26,7 +26,7 @@ namespace Bot3PG.Handlers
         public static async Task<Embed> CreateErrorEmbed(string source, string error)
         {
             var embed = await Task.Run(() => new EmbedBuilder()
-                .WithTitle($"ERROR SOURCE - {source}")
+                .WithTitle($"{source}")
                 .WithDescription($"**Error**: \n{error}")
                 .WithColor(Color.DarkRed)
                 .WithCurrentTimestamp().Build());

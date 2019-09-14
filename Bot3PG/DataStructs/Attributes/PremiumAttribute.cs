@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Bot3PG.DataStructs
+namespace Bot3PG.DataStructs.Attributes
 {
     public class PremiumAttribute : Attribute
     {

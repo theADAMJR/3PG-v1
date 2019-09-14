@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Bot3PG.DataStructs
+namespace Bot3PG.DataStructs.Attributes
 {
-    [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
     public sealed class DescriptionAttribute : Attribute
     {
         public string Description { get; private set; }

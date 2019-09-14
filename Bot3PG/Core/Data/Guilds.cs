@@ -10,34 +10,29 @@ namespace Bot3PG.Core.Data
 {
     public static class Guilds
     {
-        private static readonly IMongoCollection<Guild> collection;
+        public static IMongoCollection<Guild> Collection { get; private set; }
         private const string guildCollection = "guild";
 
         private static readonly DatabaseManager db;
-
-        // TODO - remove
-        public static readonly List<string> ReadOnlyColumns = new List<string>()
-        {
-            "guild_id"
-        };
-
         static Guilds()
         {
-            db = new Lazy<DatabaseManager>().Value;
+            db = new DatabaseManager();
 
-            collection = db.Database.GetCollection<Guild>(guildCollection);
-            if (collection is null)
+            Collection = db.Database.GetCollection<Guild>(guildCollection);
+            if (Collection is null)
             {
                 db.Database.CreateCollection("user");
-                collection = db.Database.GetCollection<Guild>(guildCollection);
+                Collection = db.Database.GetCollection<Guild>(guildCollection);
             }
         }
+
+        public static async Task Save(Guild guild) => await db.UpdateAsync(guild.ID, guild, Collection);
 
         public static async Task<Guild> GetAsync(SocketGuild socketGuild) => await GetOrCreateAsync(socketGuild);
 
         private static async Task<Guild> GetOrCreateAsync(SocketGuild socketGuild)
         {
-            var guild = await db.GetAsync(socketGuild.Id, collection);
+            var guild = await db.GetAsync(socketGuild.Id, Collection);
 
             if (guild is null)
             {
@@ -48,9 +43,8 @@ namespace Bot3PG.Core.Data
 
         private static async Task<Guild> CreateGuildAsync(SocketGuild socketGuild)
         {
-            Console.WriteLine("creating guild");
             var newGuild = new Guild(socketGuild);
-            await db.InsertAsync(newGuild, collection);
+            await db.InsertAsync(newGuild, Collection);
             SetDefaults(socketGuild, newGuild);
             return newGuild;
         }
@@ -61,7 +55,7 @@ namespace Bot3PG.Core.Data
             await CreateGuildAsync(socketGuild);
         }
 
-        public static async Task DeleteAsync(SocketGuild socketGuild) => await db.DeleteAsync(socketGuild.Id, collection);
+        public static async Task DeleteAsync(SocketGuild socketGuild) => await db.DeleteAsync(socketGuild.Id, Collection);
 
         private static void SetDefaults(SocketGuild socketGuild, Guild newGuild)
         {
@@ -70,48 +64,18 @@ namespace Bot3PG.Core.Data
                 var lowerTextChannelName = textChannel.Name.ToLower();
                 if (lowerTextChannelName.Contains("logs"))
                 {
-                    newGuild.Config.StaffLogsChannel = textChannel;
+                    newGuild.Moderation.StaffLogs.Channel = textChannel;
                 }
                 if (lowerTextChannelName.Contains("general"))
                 {
-                    newGuild.Config.AnnounceChannel = textChannel;
+                    newGuild.General.Announce.Channel = textChannel;
                 }
                 else
                 {
                     var announceChannel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-                    newGuild.Config.AnnounceChannel = announceChannel;
+                    newGuild.General.Announce.Channel = announceChannel;
                 }
             }
-        }
-
-        public static bool GetConfigColumn(string columnName)
-        {
-            try
-            {
-                return true;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        public static List<string> SearchGuildConfigColumns(string columnName)
-        {
-            try
-            {
-                return new List<string>();
-            }
-            catch (Exception ex)
-            {
-                // TODO - add error source
-                throw ex;
-            }
-        }
-
-        public static void UpdateGuildConfig(SocketGuild socketGuild, string columnName, object newValue)
-        {
-
         }
     }
 }

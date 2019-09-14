@@ -1,98 +1,91 @@
-﻿using System.Diagnostics;
-using Bot3PG.Core.Data;
+﻿using Bot3PG.Core.Data;
 using Bot3PG.Handlers;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System;
-using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Threading.Tasks;
-using Victoria;
+using System.Linq;
 
 namespace Bot3PG.Modules.General
 {
     [Color(0, 0, 0)]
     public sealed class General : CommandBase
     {
-        public CommandHelp Commands => new CommandHelp(new Dictionary<string, Command>(), Global.CommandService);
+        public Lazy<CommandHelp> CommandHelp => new Lazy<CommandHelp>();// new Dictionary<string, Command>(), Global.CommandService);
+        private CommandHelp Commands => CommandHelp.Value;
 
         [Command("Help"), Alias("?")]
-        [Summary("Show command details or search for commands")]
-        [Remarks("**Modules:** Admin, All, General, Moderation, Music, XP")]
-        public async Task Help([Remainder]string args = "all")
+        [Summary("Show command details or search for commands"), Remarks("**Modules:** Admin, General, Moderation, Music, XP")]
+        public async Task Help([Remainder]string args = "")
         {
-            var target = Context.User;
-            var guild = await Guilds.GetAsync(Context.Guild);
-            var prefix = guild.Config.CommandPrefix;
-
             try
             {
-                string moduleName = "";
-                foreach (var module in Commands.Modules)
-                {
-                    if (args.ToLower() != module.Name.ToLower()) continue;
-                    moduleName = module.Name;
-                }
+                var target = Context.User;
+                var guild = await Guilds.GetAsync(Context.Guild);
+                var prefix = guild.General.CommandPrefix;
 
-                if (string.IsNullOrEmpty(moduleName))
+                string moduleName = Commands.Modules.FirstOrDefault(m => m.Name.ToLower() == args.ToLower())?.Name;
+                if (args != "" && moduleName is null)
                 {
                     await SearchCommands(target, prefix, args);
                     return;
-                };
+                }
 
                 var embed = new EmbedBuilder();
-                embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {moduleName} commands**");
 
-                bool displayAllCommands = args.ToLower() == "all";
-                string previousModule = "";
+                string previousModule = Commands.Modules.Select(m => m.Name).First();
                 foreach (var command in Commands.Values)
                 {
-                    if (previousModule != command.Module.Name && !displayAllCommands)
+                    if (!string.IsNullOrEmpty(args) && command.Module.Name.ToLower() != moduleName.ToLower()) continue;
+
+                    if (previousModule != command.Module.Name)
                     {
                         embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
                         await ReplyToUserAsync(target, embed);
 
                         embed = new EmbedBuilder();
                         embed.WithColor(command.Module.Color);
-                        previousModule = command.Module.Name;
                     }
-                    else if (command.Module.Name.ToLower() != moduleName.ToLower() && !displayAllCommands) continue;
-
-                    embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}\n{command.Remarks}", true);
+                    previousModule = command.Module.Name;
+                    embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}\n{command.Remarks}", inline: true);
                 }
+
                 embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
                 await ReplyToUserAsync(target, embed);
             }
-            catch
+            catch (Exception e)
             {
-                await SearchCommands(target, prefix, args);
+                await ReplyAsync(e.Message);
+                await ReplyAsync(e.StackTrace);
             }
         }
 
         private async Task SearchCommands(SocketUser target, string prefix, string search)
         {
             var embed = new EmbedBuilder();
-            int results = 0;
+            embed.WithTitle($"Showing top 5 results for '{search}`");
             foreach (var command in Commands)
             {
-                bool similarToAlias = false;
-                foreach (var alias in command.Value.Alias)
+                if (embed.Fields.Count == 5)
                 {
-                    similarToAlias = alias.Contains(search);
+                    await ReplyToUserAsync(target, embed);
+                    return;
                 }
+
+                bool similarToAlias = command.Value.Alias.Contains(search);
                 if (similarToAlias || command.Key.Contains(search))
                 {
-                    embed.WithTitle($"Search for '{search}`");
-                    embed.AddField($"\n**{prefix}{command.Key}**", 
+                    string release = command.Value.Release is null ? "" : $"*[{command.Value.Release}]*";
+                    embed.AddField($"\n{release}**{prefix}{command.Key}**", 
                         $"\n**Usage:** {prefix}{command.Value.Usage} " +
                         $"\n**Summary:** {command.Value.Summary}" +
                         $"\n**Info:** {command.Value.Remarks}" +
                         $"\n**Module:** {command.Value.Module.Name}");
-                    results++;
                 }
             }
-            if (results >= 0)
+            if (embed.Fields.Count >= 0)
             {
                 embed.AddField($"Search for '{search}'", $"No results found for **{search}**");
             }
@@ -110,7 +103,7 @@ namespace Bot3PG.Modules.General
         }
 
         [Command("Bot")]
-        [Summary("Display bot details")]
+        [Summary("Display bot statstics")]
         public async Task Bot()
         {
             string creationDate = $"{Context.Client.CurrentUser.CreatedAt.Day}/{Context.Client.CurrentUser.CreatedAt.Month}/{Context.Client.CurrentUser.CreatedAt.Year}";
@@ -168,8 +161,7 @@ namespace Bot3PG.Modules.General
         }
 
         [Command("Suggest")]
-        [Summary("Suggest a new feature")]
-        [Remarks("Seperate *Title*, *Module*, and *Description* with a comma")]
+        [Summary("Suggest a new feature"), Remarks("Seperate *Title*, *Module*, and *Description* with a comma")]
         public async Task Suggest([Remainder] string featureDetails = "No description")
         {
             var embed = new EmbedBuilder();

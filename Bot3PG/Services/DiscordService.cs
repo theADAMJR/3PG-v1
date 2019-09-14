@@ -49,7 +49,7 @@ namespace Bot3PG.Services
         {
             if (string.IsNullOrEmpty(Global.Config.Token))
             {
-                await LoggingService.LogCriticalAsync("Global Config", "Token is null - Check config");
+                await LoggingService.LogCriticalAsync("Bot", "Token is null - Check config");
                 Console.ReadKey();
             };
         }

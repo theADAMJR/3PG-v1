@@ -20,9 +20,10 @@ namespace Bot3PG.Modules.XP
             var target = mentionedUser as SocketGuildUser ?? Context.User as SocketGuildUser;
 
             var guild = await Guilds.GetAsync(Context.Guild);
-            var users = Users.GetLeaderboardUsers(Context.Guild);
+            var users = await Users.GetGuildUsersAsync(Context.Guild);
+            users = users.OrderByDescending(user => user.XP.EXP).ToList();
 
-            int rank = 1;// users.FindIndex(u => target.Id == u.ID) + 1;
+            int rank = users.FindIndex(user => user.ID == target.Id) + 1;
             var user = await Users.GetAsync(target);
 
             // TODO - add config for level boundaries
@@ -46,7 +47,8 @@ namespace Bot3PG.Modules.XP
             var embed = new EmbedBuilder();
             embed.WithThumbnailUrl(target.GetAvatarUrl());
             embed.AddField("User", target.Mention, true);
-            embed.AddField("XP", user.XP.EXP, true);
+            embed.AddField("EXP", user.XP.EXP, true);
+            embed.AddField("EXP for Next Level", user.XP.EXPForNextLevel, true);
             embed.AddField("Level", user.XP.LevelNumber, true);
             embed.AddField("Rank", rank, false);
             //embed.AddField("XP for Next Level", user.XP.EXP);
@@ -56,49 +58,51 @@ namespace Bot3PG.Modules.XP
             await ReplyAsync(embed);
         }
 
-        /*[Command("Leaderboard")]
+        [Command("Leaderboard")]
         [Summary("Display the user's with the highest EXP in a server")]
         [RequireUserPermission(GuildPermission.SendMessages)]
-        public async Task Leaderboard([Remainder] string args = "1")
+        public async Task Leaderboard(int page = 1)
         {
-            var guild = await Guilds.GetAsync(Context.Guild);
-            var usersPerPage = 10;
-
-            int page = Convert.ToInt32(args) == 0 ? 1 : Convert.ToInt32(args);
-            var type = page > 0 ? "xp" : args;
-
-            switch (type)
+            try
             {
-                case "date joined":
-                    System.Console.WriteLine("date joined");
+                var guild = await Guilds.GetAsync(Context.Guild);
+
+                if (page < 1 || page > guild.XP.MaxLeaderboardPage)
+                {
+                    await ReplyAsync("", embed: await EmbedHandler.CreateBasicEmbed($"🏆 {Context.Guild.Name} Leaderboard", $"Leaderboard page must between 1 and {guild.XP.MaxLeaderboardPage}", Color.Red));
                     return;
-                default:
-                    break;
-            }
+                }
 
-            if (page < 1 || page > guild.Config.MaxLeaderboardPage)
+                var usersPerPage = 10;
+                var pageStartIndex = (page * usersPerPage) - usersPerPage;
+                var leaderboardUsers = await Users.GetGuildUsersAsync(Context.Guild);
+                leaderboardUsers = leaderboardUsers.OrderByDescending(u => u.XP.EXP).ToList();
+                var pageEndIndex = page * usersPerPage;
+
+                var embed = new EmbedBuilder();
+                for (int i = pageStartIndex; i < pageEndIndex; i++)
+                {
+                    if (i >= leaderboardUsers.Count)
+                    {
+                        embed.AddField($"#{i + 1} -  XP", $"-", inline: false);
+                        continue;
+                    }
+                    var user = leaderboardUsers[i];
+                    var socketGuildUser = Context.Guild.GetUser(user.ID);
+                    embed.AddField($"#{i + 1} - {user.XP.EXP} XP", $"{socketGuildUser.Mention}", inline: false);
+                }
+                embed.WithTitle($"🏆 **{Context.Guild.Name} Leaderboard**");
+                embed.WithColor(Color.Teal);
+                embed.WithThumbnailUrl(Context.Guild.IconUrl);
+                embed.WithFooter($"Page {page} • Users with XP: {leaderboardUsers.Count}");
+
+                await ReplyAsync(embed);
+            }
+            catch (Exception e)
             {
-                await ReplyAsync("", embed: await EmbedHandler.CreateBasicEmbed($"🏆 {Context.Guild.Name} Leaderboard", $"Leaderboard page must between 1 and {guild.Config.MaxLeaderboardPage}", Color.Red));
-                return;
+                Console.WriteLine(e);
+                throw;
             }
-
-            var pageStartIndex = (page * usersPerPage) - usersPerPage;
-            var leaderboardUsers = Users.GetLeaderboardUsers(Context.Guild);
-            var pageEndIndex = page * usersPerPage;
-
-            var embed = new EmbedBuilder();
-            for (int i = pageStartIndex; i < pageEndIndex; i++)
-            {
-                if (i >= leaderboardUsers.Count) continue;
-                var socketGuildUser = Context.User as SocketGuildUser;//Context.Guild.GetUser(leaderboardUsers[i].ID);
-                embed.AddField($"#{i + 1} - {await Users.GetAsync(socketGuildUser).XP.EXP} XP", $"{socketGuildUser.Mention}", false);
-            }
-            embed.WithTitle($"🏆 **{Context.Guild.Name} Leaderboard**");
-            embed.WithColor(Color.Teal);
-            embed.WithThumbnailUrl(Context.Guild.IconUrl);
-            embed.WithFooter($"Page {page} • Users with XP: {leaderboardUsers.Count}");
-
-            await ReplyAsync(embed);
-        }*/
+        }
     }
 }

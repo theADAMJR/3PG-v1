@@ -71,8 +71,6 @@ namespace Bot3PG.Handlers
             socketClient.UserLeft += UserKicked;
             socketClient.UserBanned += staffLogs.LogBan;
             socketClient.UserUnbanned += staffLogs.OnUserUnbanned;
-
-            GuildUser.GuildUserUpdated += Users.OnUserUpdated;
         }
 
         #region General Events
@@ -87,8 +85,8 @@ namespace Bot3PG.Handlers
 
             var embed = new EmbedBuilder();
             embed.WithTitle($"Hi, I'm {socketClient.CurrentUser.Username}.");
-            embed.AddField("⚙️ Config", $"Type {newGuild.Config.CommandPrefix}config to customize me for your server's needs.", inline: true);
-            embed.AddField("📜 Commands", $"Type {newGuild.Config.CommandPrefix}help for a list of commands.", inline: true);
+            embed.AddField("⚙️ Config", $"Type {newGuild.General.CommandPrefix}config to customize me for your server's needs.", inline: true);
+            embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
             embed.AddField("❔ Support", $"Need help with {socketClient.CurrentUser.Username}? Join our discord for more support: {Global.Config.WelcomeLink}", inline: true);
 
             await channel.SendMessageAsync("", embed: embed.Build());
@@ -100,7 +98,7 @@ namespace Bot3PG.Handlers
             var socketGuildUser = cache.Value.Author as SocketGuildUser;
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
             // TODO - add specific module staff log events config
-            if (guild is null || !guild.Config.RuleboxEnabled) return;
+            if (guild is null || !guild.Admin.Rulebox.Enabled) return;
 
             await rulebox.AgreedToRules(cache, channel, reaction);
         }
@@ -109,7 +107,7 @@ namespace Bot3PG.Handlers
         {
             var socketGuild = (channel as SocketTextChannel).Guild;
             var guild = await Guilds.GetAsync(socketGuild);
-            if (guild is null || !guild.Config.RuleboxEnabled) return;
+            if (guild is null || !guild.Admin.Rulebox.Enabled) return;
 
             await rulebox.OnReactionRemoved(cache, channel, reaction);
         }
@@ -119,7 +117,7 @@ namespace Bot3PG.Handlers
         public async Task OnUserJoined(SocketGuildUser socketGuildUser)
         {
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            if (guild is null || !guild.Config.AnnounceEnabled) return;
+            if (guild is null || !guild.General.Announce.Enabled) return;
 
             await announce.AnnounceUserJoin(socketGuildUser);
         }
@@ -128,7 +126,7 @@ namespace Bot3PG.Handlers
         {
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
 
-            if (guild is null || !guild.Config.AnnounceEnabled) return;
+            if (guild is null || !guild.General.Announce.Enabled) return;
 
             await announce.AnnounceUserLeft(socketGuildUser);
         }
