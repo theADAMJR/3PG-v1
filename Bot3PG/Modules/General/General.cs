@@ -13,7 +13,7 @@ namespace Bot3PG.Modules.General
     [Color(0, 0, 0)]
     public sealed class General : CommandBase
     {
-        public Lazy<CommandHelp> CommandHelp => new Lazy<CommandHelp>();// new Dictionary<string, Command>(), Global.CommandService);
+        public Lazy<CommandHelp> CommandHelp => new Lazy<CommandHelp>();
         private CommandHelp Commands => CommandHelp.Value;
 
         [Command("Help"), Alias("?")]
@@ -53,6 +53,7 @@ namespace Bot3PG.Modules.General
                 }
 
                 embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
+                Console.WriteLine(embed.Fields.Count);
                 await ReplyToUserAsync(target, embed);
             }
             catch (Exception e)

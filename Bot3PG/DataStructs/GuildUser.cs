@@ -75,7 +75,7 @@ namespace Bot3PG.DataStructs
             await Users.Save(this);
         }
 
-        public async Task WarnAsync(string reason)
+        public async Task WarnAsync(string reason, bool withMessage = true)
         {
             Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Warn, reason));
             await _SocketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been warned from {_SocketGuildUser.Guild.Name} for '{reason}'", Color.Red));
@@ -137,7 +137,7 @@ namespace Bot3PG.DataStructs
                 }
             }
 
-            // TODO - last message
+            public string LastMessage { get; set; }
 
             public bool AgreedToRules { get; set; }
 

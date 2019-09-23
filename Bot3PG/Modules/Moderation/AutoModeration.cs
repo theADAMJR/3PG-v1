@@ -4,7 +4,6 @@ using Bot3PG.Handlers;
 using Discord;
 using Discord.WebSocket;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,36 +11,47 @@ namespace Bot3PG.Modules.Moderation
 {
     public class AutoModeration
     {
-        public async Task OnMessageRecieved(SocketMessage msg)
+        public static async Task OnMessageRecieved(SocketMessage message)
         {
             try
             {
-                if (!(msg.Author is SocketGuildUser guildAuthor) || guildAuthor.IsBot) return;
+                if (!(message.Author is SocketGuildUser guildAuthor) || guildAuthor.IsBot) return;
 
                 var user = await Users.GetAsync(guildAuthor);
                 var guild = await Guilds.GetAsync(guildAuthor.Guild);
 
-                if (!IsMessageValid(guild, guildAuthor.Nickname) || !IsMessageValid(guild, guildAuthor.Username) && guild.Moderation.Auto.NicknameFilter)
+                if (user.Status.LastMessage == message.Content)
                 {
-                    var dmChannel = await guildAuthor.GetOrCreateDMChannelAsync();
-                    await dmChannel.SendMessageAsync(embed: await EmbedHandler.CreateSimpleEmbed($"`{guildAuthor.Guild.Name}` Explicit Username/Nickname Detected",
-                        $"Explicit content has been detected in your username/nickname.\n" +
-                        $"Please change your username/nickname to continue using {guildAuthor.Guild.Name}", Color.Red)); // TODO - config
-                }
+                    var messages = await message.Channel.GetMessagesAsync(100).FirstOrDefault();
+                    var messageCount = messages.Where(m => m.Author == guildAuthor && m.Content == message.Content).Count();
 
-                if (!IsMessageValid(guild, msg.Content))
+                    if (messageCount >= guild.Moderation.Auto.SpamThreshold)
+                    {
+                        await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Slow down...", 
+                            $"{message.Author.Mention}, you are sending messages too fast!", Color.Orange));
+                    }
+                    else if (messageCount >= guild.Moderation.Auto.SpamThreshold + 5)
+                    {
+                        await AutoPunishUser(guildAuthor, "Spamming duplicate messages");
+                    }
+                }
+                user.Status.LastMessage = message.Content;
+
+                if (!IsContentValid(guild, message.Content))
                 {
                     await AutoPunishUser(guildAuthor, "Explicit message");
-                    await msg.DeleteAsync();
+                    await message.DeleteAsync();
                     await user.XP.ExtendXPCooldown();
                 }
+                await Users.Save(user);
             }
-            catch (Exception e)
+            catch (Exception error)
             {
-                await msg.Channel.SendMessageAsync(e.Message + e.StackTrace + e.Data);
+                error.Source = "Moderation";
+                throw error;
             }
         }
-        public static bool IsMessageValid(Guild guild, string content)
+        public static bool IsContentValid(Guild guild, string content)
         {
             if (content is null) return true;
 
@@ -50,26 +60,22 @@ namespace Bot3PG.Modules.Moderation
             var customBannedWords = guild.Moderation.Auto.CustomBanWords;
             var customBannedLinks = guild.Moderation.Auto.CustomBanLinks;
 
-            var banWords = guild.Moderation.Auto.UseDefaultBanWords ? defaultBannedWords.Concat(customBannedWords) : customBannedWords;
-            var banLinks = guild.Moderation.Auto.UseDefaultBanLinks ? defaultBannedLinks.Concat(customBannedLinks) : customBannedLinks;
+            var banWords = guild.Moderation.Auto.UseDefaultBanWords ? defaultBannedWords.Concat(customBannedWords).ToList() : customBannedWords;
+            var banLinks = guild.Moderation.Auto.UseDefaultBanLinks ? defaultBannedLinks.Concat(customBannedLinks).ToList() : customBannedLinks;
 
-            var lowerCaseMsg = content.ToLower();
+            string lowerCaseContent = content.ToLower();
+            return !(banWords.Any(w => lowerCaseContent.Contains(w)) || banLinks.Any(w => lowerCaseContent.Contains(w)));
+        }
 
-            foreach (var banWord in banWords)
+        public static async Task ValidateUsername(Guild guild, SocketGuildUser socketGuildUser)
+        {
+            if (!IsContentValid(guild, socketGuildUser.Nickname) || !IsContentValid(guild, socketGuildUser.Username))
             {
-                if (lowerCaseMsg.Contains(banWord.ToLower()))
-                {
-                    return false;
-                }
+                var dmChannel = await socketGuildUser.GetOrCreateDMChannelAsync();
+                await dmChannel.SendMessageAsync(embed: await EmbedHandler.CreateSimpleEmbed($"`{socketGuildUser.Guild.Name}` Explicit Username/Nickname Detected",
+                    $"Explicit content has been detected in your username/nickname.\n" +
+                    $"Please change your username/nickname to continue using {socketGuildUser.Guild.Name}", Color.Red)); // TODO - config
             }
-            foreach (var banLink in banLinks)
-            {
-                if (lowerCaseMsg.Contains(banLink.ToLower()))
-                {
-                    return false;
-                }
-            }
-            return true;
         }
 
         public static async Task AutoPunishUser(SocketGuildUser socketGuildUser, string reason)
@@ -88,10 +94,10 @@ namespace Bot3PG.Modules.Moderation
                 case int warnings when (warnings >= guild.Moderation.Auto.WarningsForKick && guild.Moderation.Auto.WarningsForKick > 0):
                     await user.KickAsync(reason);
                     break;
-                default:
-                    await user.WarnAsync(reason);
-                    break;
             }
+            bool userAlreadyNotified = user.Status.WarningsCount >= guild.Moderation.Auto.WarningsForKick
+                || user.Status.WarningsCount >= guild.Moderation.Auto.WarningsForBan;
+            await user.WarnAsync(reason, !userAlreadyNotified);
         }
     }
 }

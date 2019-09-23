@@ -54,18 +54,8 @@ namespace Bot3PG.Handlers
 
             var context = new SocketCommandContext(Global.Client, socketMessage as SocketUserMessage);
 
-            /* Check if the channel ID that the message was sent from is in our Config - Blacklisted Channels.
-            var blacklistedChannelCheck = from a in Config.bot.BlacklistedChannels
-                                          where a == context.Channel.Id
-                                          select a;
-            var blacklistedChannel = blacklistedChannelCheck.FirstOrDefault();
-
-            If the Channel ID is in the list of blacklisted channels. Ignore the command.
-            if (blacklistedChannel == context.Channel.Id)
-            {
-                return Task.CompletedTask;
-            } */
-            //else
+            var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(c => c.Id == message.Channel.Id);
+            if (channelIsBlacklisted) return;
 
             var result = commands.ExecuteAsync(context, argPos, services, MultiMatchHandling.Best);
 
@@ -93,7 +83,7 @@ namespace Bot3PG.Handlers
                     case CommandError.UnmetPrecondition:
                         await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", $"**Required permissions:** "));
                         break;
-                    default: // if in debug mode
+                    default: // TODO - if in debug mode
                         await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Error", $"{result.Exception.Message} \n**Source**: {result.Exception.StackTrace}"));
                         break;
                 }

@@ -9,7 +9,7 @@ namespace Bot3PG
         public const string configFolder = "Resources";
         public const string configFile = "config.json";
 
-        public static Config Config { get; set; }
+        public static Config Config { get; private set; }
 
         static GlobalConfig()
         {

@@ -61,14 +61,15 @@ namespace Bot3PG.Handlers
             socketClient.ReactionAdded += OnReactionAdded;
             socketClient.ReactionRemoved += OnReactionRemoved;
 
-            socketClient.MessageReceived += autoModeration.OnMessageRecieved;
+            socketClient.MessageReceived += AutoModeration.OnMessageRecieved;
+            socketClient.GuildMemberUpdated += OnUserUpdated;
             socketClient.MessageDeleted += staffLogs.LogMessageDeletion;
             //socketClient.MessagesBulkDeleted += OnMessagesBulkDeleted;
 
             socketClient.UserJoined += OnUserJoined;
             socketClient.UserLeft += OnUserLeft;
             socketClient.UserLeft += rulebox.RemoveUserReaction;
-            socketClient.UserLeft += UserKicked;
+            socketClient.UserLeft += OnUserKicked;
             socketClient.UserBanned += staffLogs.LogBan;
             socketClient.UserUnbanned += staffLogs.OnUserUnbanned;
         }
@@ -89,7 +90,7 @@ namespace Bot3PG.Handlers
             embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
             embed.AddField("❔ Support", $"Need help with {socketClient.CurrentUser.Username}? Join our discord for more support: {Global.Config.WelcomeLink}", inline: true);
 
-            await channel.SendMessageAsync("", embed: embed.Build());
+            await channel.SendMessageAsync(embed: embed.Build());
         }
 
         public async Task OnReactionAdded(Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction)
@@ -140,12 +141,20 @@ namespace Bot3PG.Handlers
 
         #region User Events
 
-        public async Task UserKicked(SocketGuildUser socketGuildUser)
+        public async Task OnUserKicked(SocketGuildUser socketGuildUser)
         {
             await staffLogs.LogKick(socketGuildUser);
         }
 
-        #endregion User Events
+        public async Task OnUserUpdated(SocketGuildUser socketGuildUser, SocketGuildUser instigator)
+        {
+            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter)
+            {
+                await AutoModeration.ValidateUsername(guild, socketGuildUser);
+            }
+        }
 
+        #endregion User Events
     }
 }

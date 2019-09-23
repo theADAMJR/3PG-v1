@@ -1,7 +1,9 @@
 ﻿using Bot3PG.DataStructs;
 using Bot3PG.Services;
+using Discord;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Operations;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -18,10 +20,22 @@ namespace Bot3PG.Core.Data
 
         private void InitializeDB()
         {
-            var connectionString = $"mongodb://localhost:27017";
-            MongoClient = new MongoClient(connectionString);
-            // TODO - add config values
+            var db = Global.DatabaseConfig;
+            var credential = MongoCredential.CreateCredential(db.AuthDatabase, db.User, db.Password);
+            //var credential = MongoCredential.CreateCredential("admin", "3PG", "topKek!420");
+            var server = new MongoServerAddress(db.Server, db.Port);
+
+            var settings = new MongoClientSettings
+            {
+                Credential = credential,
+                Server = server
+            };
+            MongoClient = new MongoClient(settings);
             Database = MongoClient.GetDatabase(Global.DatabaseConfig.Database);
+
+            bool connected = Database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait(1000);
+            var log = connected ? (LogSeverity.Info, "Connected to database") : (LogSeverity.Critical, "Cannot connect to database");
+            new Task(async () => await LoggingService.LogAsync("Database", log.Item1, log.Item2)).Start();
         }
 
         public async Task InsertAsync<T>(T item, IMongoCollection<T> collection) => await collection.InsertOneAsync(item);

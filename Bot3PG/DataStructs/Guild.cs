@@ -3,6 +3,7 @@ using Bot3PG.Modules;
 using Discord;
 using Discord.WebSocket;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -44,7 +45,6 @@ namespace Bot3PG.DataStructs
             public class RuleboxSubModule : SubModule
             {
                 private ulong channelID;
-                // TODO - make readonly
                 [Description("The channel containing the rulebox message")]
                 [BsonIgnore] public SocketTextChannel RuleboxChannel { get => DiscordGuild.GetTextChannel(channelID); set => channelID = value.Id; }
 
@@ -67,6 +67,14 @@ namespace Bot3PG.DataStructs
 
             [Description("The character that is typed before commands")]
             public string CommandPrefix { get; set; } = "/";
+
+            private ulong[] blacklistedChannelIds = new ulong[] {};
+            [Description("Text channels that the bot ignores messages")]
+            public SocketChannel[] BlacklistedChannels
+            {
+                get => blacklistedChannelIds.Select(id => DiscordGuild.GetTextChannel(id)).ToArray();
+                set => blacklistedChannelIds = value.Select(r => r.Id).ToArray();
+            }
 
             public class AnnounceSubModule : SubModule
             {
@@ -94,6 +102,9 @@ namespace Bot3PG.DataStructs
             {
                 [Description("Use a list of predefined explicit words for auto detection")]
                 public bool UseDefaultBanWords { get; set; } = true;
+
+                [Description("Maximum amount of messages can be sent in a minute by a user")]
+                public int SpamThreshold { get; set; } = 60;
 
                 [Description("Use a list of predefined explicit links for auto detection")]
                 public bool UseDefaultBanLinks { get; set; } = true;
@@ -154,6 +165,25 @@ namespace Bot3PG.DataStructs
             
             [Premium, Description("A cooldown given to users after being muted")]
             public int ExtendedCooldown { get; set; } = 300;
+
+            [Description("Delay when to allow messages with identical content to the last")]
+            public TimeSpan DuplicateMessageThreshold { get; set; } = TimeSpan.FromSeconds(5);
+
+            private List<ulong> blacklistedChannelIds = new List<ulong>();
+            [Description("Text channels where XP cannot be earned")]
+            [BsonIgnore] public List<SocketTextChannel> BlacklistedChannels
+            {
+                get => blacklistedChannelIds.Select(id => DiscordGuild.GetTextChannel(id)).ToList();
+                set => blacklistedChannelIds = value.Select(r => r.Id).ToList();
+            }
+
+            private List<ulong> exemptRoleIds = new List<ulong>();
+            [Premium, Description("Having any of these roles stops a user from earning EXP")]
+            [BsonIgnore] public List<SocketRole> ExemptRoles
+            {
+                get => exemptRoleIds.Select(id => DiscordGuild.Roles.FirstOrDefault(r => r.Id == id)).ToList();
+                set => exemptRoleIds = value.Select(r => r.Id).ToList();
+            }
 
             // xp exempt channels
             // xp exempt roles

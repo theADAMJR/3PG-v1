@@ -22,6 +22,11 @@ namespace Bot3PG.Modules.XP
             var userInCooldown = await user.XP.GetInXPCooldown();
             if (user is null || guild is null || userInCooldown || message.Content.Length <= guild.XP.MessageLengthThreshold) return;
 
+            bool inDuplicateMessageDelay = user.XP.LastXPMsg.Add(guild.XP.DuplicateMessageThreshold) > DateTime.Now;
+            if (user.Status.LastMessage == message.Content && inDuplicateMessageDelay) return;
+
+            user.Status.LastMessage = message.Content;
+
             user.XP.LastXPMsg = DateTime.Now;
 
             uint oldLevel = user.XP.LevelNumber;

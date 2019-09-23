@@ -266,14 +266,6 @@ namespace Bot3PG.CommandModules
             await ReplyAsync(msg);
         }
 
-        [Command("Test")]
-        public async Task Test(char prefix)
-        {
-            var guild = await Guilds.GetAsync(Context.Guild);
-            guild.General.CommandPrefix = prefix.ToString();
-
-        }
-
         [Command("Image"), Alias("Img")]
         [Summary("Get bot to send image URL")]
         [RequireUserPermission(GuildPermission.Administrator)]
@@ -411,14 +403,6 @@ namespace Bot3PG.CommandModules
 
             await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Enable", $"{Context.Client.CurrentUser.Username} enabled.", Color.DarkGrey));
             await Guilds.Save(guild);
-        }
-
-        [Command("Test")]
-        [RequireOwner]
-        public async Task Test()
-        {
-            var user = await Users.GetAsync(Context.User as SocketGuildUser);
-            await ReplyAsync(user.ID.ToString());
         }
     }
 }

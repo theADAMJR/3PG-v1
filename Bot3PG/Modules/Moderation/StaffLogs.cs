@@ -90,7 +90,7 @@ namespace Bot3PG.Modules.Moderation
             embed.WithTitle("Message Deleted");
             embed.AddField("User", msg.Value.Author.Mention, true);
             embed.AddField("Channel", $"{(channel as SocketTextChannel).Mention}", true);
-            embed.AddField("Auto Deletion", $"{!AutoModeration.IsMessageValid(guild, msg.Value.Content.ToString())}", true);
+            embed.AddField("Auto Deletion", $"{!AutoModeration.IsContentValid(guild, msg.Value.Content.ToString())}", true);
             embed.AddField("Message", $"{msg.Value.Content.ToString()}", true);
             embed.WithFooter($"Message ID: {msg.Value.Id}");
             embed.WithCurrentTimestamp();

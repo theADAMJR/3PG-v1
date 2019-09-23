@@ -21,9 +21,9 @@ namespace Bot3PG.Modules.XP
 
             var guild = await Guilds.GetAsync(Context.Guild);
             var users = await Users.GetGuildUsersAsync(Context.Guild);
-            users = users.OrderByDescending(user => user.XP.EXP).ToList();
+            users = users.OrderByDescending(u => u.XP.EXP).ToList();
 
-            int rank = users.FindIndex(user => user.ID == target.Id) + 1;
+            int rank = users.FindIndex(u => u.ID == target.Id) + 1;
             var user = await Users.GetAsync(target);
 
             // TODO - add config for level boundaries
