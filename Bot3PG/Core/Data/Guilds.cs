@@ -10,42 +10,48 @@ namespace Bot3PG.Core.Data
 {
     public static class Guilds
     {
-        public static IMongoCollection<Guild> Collection { get; private set; }
+        public static IMongoCollection<Guild> collection;
         private const string guildCollection = "guild";
 
         private static readonly DatabaseManager db;
+
         static Guilds()
         {
             db = new DatabaseManager();
 
-            Collection = db.Database.GetCollection<Guild>(guildCollection);
-            if (Collection is null)
+            var collections = db.Database.ListCollectionNames().ToList();
+            if (!collections.Any(c => c == guildCollection))
             {
-                db.Database.CreateCollection("user");
-                Collection = db.Database.GetCollection<Guild>(guildCollection);
+                db.Database.CreateCollection(guildCollection);
             }
+            collection = db.Database.GetCollection<Guild>(guildCollection);
         }
 
-        public static async Task Save(Guild guild) => await db.UpdateAsync(guild.ID, guild, Collection);
+        public static async Task Save(Guild guild) => await db.UpdateAsync(g => g.ID == guild.ID, guild, collection);
 
         public static async Task<Guild> GetAsync(SocketGuild socketGuild) => await GetOrCreateAsync(socketGuild);
 
         private static async Task<Guild> GetOrCreateAsync(SocketGuild socketGuild)
         {
-            var guild = await db.GetAsync(socketGuild.Id, Collection);
+            if (socketGuild is null) return null;
 
-            if (guild is null)
-            {
-                return await CreateGuildAsync(socketGuild);
-            }
-            return guild;
+            var guild = await db.GetAsync(g => g.ID == socketGuild.Id, collection);
+            return guild ?? await CreateGuildAsync(socketGuild);
         }
 
         private static async Task<Guild> CreateGuildAsync(SocketGuild socketGuild)
         {
             var newGuild = new Guild(socketGuild);
-            await db.InsertAsync(newGuild, Collection);
-            SetDefaults(socketGuild, newGuild);
+            
+            try
+            {
+                await db.InsertAsync(newGuild, collection);
+            }
+            catch
+            {
+                await db.UpdateAsync(g => g.ID == socketGuild.Id, newGuild, collection);
+            }
+            await SetDefaults(socketGuild, newGuild);
             return newGuild;
         }
 
@@ -55,27 +61,31 @@ namespace Bot3PG.Core.Data
             await CreateGuildAsync(socketGuild);
         }
 
-        public static async Task DeleteAsync(SocketGuild socketGuild) => await db.DeleteAsync(socketGuild.Id, Collection);
+        public static async Task DeleteAsync(SocketGuild socketGuild) => await db.DeleteAsync(g => g.ID == socketGuild.Id, collection);
 
-        private static void SetDefaults(SocketGuild socketGuild, Guild newGuild)
+        private static async Task SetDefaults(SocketGuild socketGuild, Guild guild)
         {
             foreach (var textChannel in socketGuild.TextChannels)
             {
-                var lowerTextChannelName = textChannel.Name.ToLower();
+                string lowerTextChannelName = textChannel.Name.ToLower();
                 if (lowerTextChannelName.Contains("logs"))
                 {
-                    newGuild.Moderation.StaffLogs.Channel = textChannel;
+                    guild.Moderation.StaffLogs.ChannelId = textChannel.Id;
                 }
                 if (lowerTextChannelName.Contains("general"))
                 {
-                    newGuild.General.Announce.Channel = textChannel;
+                    guild.General.Announce.Channel = textChannel;
                 }
                 else
                 {
                     var announceChannel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-                    newGuild.General.Announce.Channel = announceChannel;
+                    guild.General.Announce.Channel = announceChannel;
+
+                    var agreeRole = socketGuild.Roles.FirstOrDefault(r => r.Name == "Member");
+                    guild.Admin.Rulebox.RoleId = agreeRole.Id;
                 }
             }
+            await Save(guild);
         }
     }
 }

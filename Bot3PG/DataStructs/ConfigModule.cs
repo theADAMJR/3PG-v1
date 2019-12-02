@@ -1,18 +1,17 @@
-﻿using Discord;
-using MongoDB.Bson.Serialization.Attributes;
-using System;
+﻿using Bot3PG.DataStructs.Attributes;
 
 namespace Bot3PG.DataStructs
 {
     public class ConfigModule
     {
-        // TODO - make colour serializable
-        [BsonIgnore] public Color ModuleColor { get; set; } = Color.DarkPurple;
-        public bool Enabled { get; set; } = true;
+        [Config("Whether this module is enabled. Modules are enabled by default.")]
+        public virtual bool Enabled { get; set; } = true;
 
         public class SubModule : ConfigModule
         {
-            
+            private static bool _enabled = true;
+            [Config("Whether this module is enabled. Modules are enabled by default.")]
+            public override bool Enabled { get => base.Enabled && _enabled; set => _enabled = value; }
         }
     }
 }

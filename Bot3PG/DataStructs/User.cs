@@ -1,17 +1,24 @@
 ﻿using Discord.WebSocket;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
 
 namespace Bot3PG.DataStructs
 {
-#nullable enable
-    public class User : GlobalEntity<ulong>
+    [BsonIgnoreExtraElements]
+    public class User
     {
-        [BsonId] public new ulong ID { get => _ID; internal set => _ID = value; }
+        [BsonIgnore] private static ulong _id;
+        [BsonRepresentation(BsonType.String)]
+        [BsonId] public ulong ID { get; private set; }
 
         public string BannerURL { get; set; } = "";
 
-        public User(SocketUser socketUser) => ID = socketUser.Id;
+        public User(SocketUser socketUser)
+        {
+            _id = socketUser.Id;
+            ID = socketUser.Id;
+        }
     }
 }

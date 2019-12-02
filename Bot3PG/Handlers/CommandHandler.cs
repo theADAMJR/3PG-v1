@@ -24,8 +24,6 @@ namespace Bot3PG.Handlers
         {
             commands = services.GetRequiredService<CommandService>();
             this.services = services;
-
-            HookEvents();
         }
         
         public async Task InitializeAsync()
@@ -36,13 +34,15 @@ namespace Bot3PG.Handlers
             commandHelp = new CommandHelp();
         }
 
-        public void HookEvents() => Global.Client.MessageReceived += HandleCommandAsync;
 
-        private async Task HandleCommandAsync(SocketMessage socketMessage)
+        public async Task HandleCommandAsync(SocketMessage socketMessage)
         {
             if (!(socketMessage is SocketUserMessage message) || message.Author.IsBot || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
 
-            var guild = await Guilds.GetAsync((socketMessage.Author as SocketGuildUser).Guild);
+            var socketGuildUser = socketMessage.Author as SocketGuildUser;
+            if (socketGuildUser is null) return;
+
+            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
             var commandPrefix = guild.General.CommandPrefix ?? "/";
 
             int argPos = 0;
@@ -54,7 +54,7 @@ namespace Bot3PG.Handlers
 
             var context = new SocketCommandContext(Global.Client, socketMessage as SocketUserMessage);
 
-            var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(c => c.Id == message.Channel.Id);
+            var channelIsBlacklisted = guild.General.BlacklistedChannelIds.Any(id => id == message.Channel.Id);
             if (channelIsBlacklisted) return;
 
             var result = commands.ExecuteAsync(context, argPos, services, MultiMatchHandling.Best);

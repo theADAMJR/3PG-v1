@@ -15,15 +15,8 @@ using Victoria;
 
 namespace Bot3PG.Handlers
 {
-    // TODO - finish implementation
     public class EventsHandler
     {
-        private readonly Announce announce = new Announce();
-        private readonly AutoModeration autoModeration = new AutoModeration();
-        private readonly ConsoleCommands consoleCommands = new ConsoleCommands();
-        private readonly Rulebox rulebox = new Rulebox();
-        private readonly StaffLogs staffLogs = new StaffLogs();
-
         private DiscordSocketClient socketClient;
         private ServiceProvider services;
         private LavaSocketClient lavaSocketClient;
@@ -33,15 +26,27 @@ namespace Bot3PG.Handlers
             this.socketClient = socketClient;
             this.services = services;
             this.lavaSocketClient = lavaSocketClient;
+
             HookEvents();
         }
 
         public void HookEvents()
         {
-            lavaSocketClient.Log += LogAsync;
-            services.GetRequiredService<CommandService>().Log += LogAsync;
+            HookLogEvents();
+            HookClientEvents();
+            HookMessageEvents();
+            HookUserEvents();
+        }
 
-            socketClient.Log += LogAsync;
+        private void HookLogEvents()
+        {
+            lavaSocketClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
+            services.GetRequiredService<CommandService>().Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
+            socketClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
+        }
+
+        private void HookClientEvents()
+        {
             socketClient.Ready += async () =>
             {
                 try
@@ -49,112 +54,158 @@ namespace Bot3PG.Handlers
                     await lavaSocketClient.StartAsync(socketClient);
                     lavaSocketClient.OnTrackFinished += services.GetService<AudioService>().OnFinished;
                     await socketClient.SetGameAsync(Global.Config.GameStatus);
+
+                    await new DatabaseManager().UpdateCommands(new CommandHelp());
                 }
                 catch (Exception ex)
                 {
-                    await LoggingService.LogInformationAsync(ex.Source, ex.Message);
+                    await Debug.LogInformationAsync(ex.Source, ex.Message);
                 }
             };
 
-            socketClient.JoinedGuild += OnGuildJoined;
-
-            socketClient.ReactionAdded += OnReactionAdded;
-            socketClient.ReactionRemoved += OnReactionRemoved;
-
-            socketClient.MessageReceived += AutoModeration.OnMessageRecieved;
-            socketClient.GuildMemberUpdated += OnUserUpdated;
-            socketClient.MessageDeleted += staffLogs.LogMessageDeletion;
-            //socketClient.MessagesBulkDeleted += OnMessagesBulkDeleted;
-
-            socketClient.UserJoined += OnUserJoined;
-            socketClient.UserLeft += OnUserLeft;
-            socketClient.UserLeft += rulebox.RemoveUserReaction;
-            socketClient.UserLeft += OnUserKicked;
-            socketClient.UserBanned += staffLogs.LogBan;
-            socketClient.UserUnbanned += staffLogs.OnUserUnbanned;
-        }
-
-        #region General Events
-        private async Task LogAsync(LogMessage logMessage) => await LoggingService.LogAsync(logMessage.Source, logMessage.Severity, logMessage.Message);
-        #endregion General Events
-
-        #region Reaction Events
-        private async Task OnGuildJoined(SocketGuild socketGuild)
-        {
-            var newGuild = await Guilds.GetAsync(socketGuild);
-            var channel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Hi, I'm {socketClient.CurrentUser.Username}.");
-            embed.AddField("⚙️ Config", $"Type {newGuild.General.CommandPrefix}config to customize me for your server's needs.", inline: true);
-            embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
-            embed.AddField("❔ Support", $"Need help with {socketClient.CurrentUser.Username}? Join our discord for more support: {Global.Config.WelcomeLink}", inline: true);
-
-            await channel.SendMessageAsync(embed: embed.Build());
-        }
-
-        public async Task OnReactionAdded(Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction)
-        {
-            if (!cache.HasValue) return;
-            var socketGuildUser = cache.Value.Author as SocketGuildUser;
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            // TODO - add specific module staff log events config
-            if (guild is null || !guild.Admin.Rulebox.Enabled) return;
-
-            await rulebox.AgreedToRules(cache, channel, reaction);
-        }
-
-        public async Task OnReactionRemoved(Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction)
-        {
-            var socketGuild = (channel as SocketTextChannel).Guild;
-            var guild = await Guilds.GetAsync(socketGuild);
-            if (guild is null || !guild.Admin.Rulebox.Enabled) return;
-
-            await rulebox.OnReactionRemoved(cache, channel, reaction);
-        }
-        #endregion Reaction Events
-
-        #region Announce Events
-        public async Task OnUserJoined(SocketGuildUser socketGuildUser)
-        {
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            if (guild is null || !guild.General.Announce.Enabled) return;
-
-            await announce.AnnounceUserJoin(socketGuildUser);
-        }
-
-        public async Task OnUserLeft(SocketGuildUser socketGuildUser)
-        {
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-
-            if (guild is null || !guild.General.Announce.Enabled) return;
-
-            await announce.AnnounceUserLeft(socketGuildUser);
-        }
-
-        #endregion Announce Events
-
-        public async Task OnUserWarned()
-        {
-
-        }
-
-        #region User Events
-
-        public async Task OnUserKicked(SocketGuildUser socketGuildUser)
-        {
-            await staffLogs.LogKick(socketGuildUser);
-        }
-
-        public async Task OnUserUpdated(SocketGuildUser socketGuildUser, SocketGuildUser instigator)
-        {
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter)
+            socketClient.JoinedGuild += async (SocketGuild socketGuild) =>
             {
-                await AutoModeration.ValidateUsername(guild, socketGuildUser);
-            }
+                var newGuild = await Guilds.GetAsync(socketGuild);
+                var channel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
+
+                var embed = new EmbedBuilder();
+                embed.WithTitle($"Hi, I'm {socketClient.CurrentUser.Username}.");
+                embed.AddField("⚙️ Config", $"Customize me to your server's needs at {Global.Config.WebappLink}/servers/{socketGuild.Id}", inline: true);
+                embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
+                embed.AddField("❔ Support", $"Need help with {socketClient.CurrentUser.Username}? Join our Discord for more support: {Global.Config.WebappLink}/support", inline: true);
+
+                await channel.SendMessageAsync(embed: embed.Build());
+            };
         }
 
-        #endregion User Events
+        private void HookMessageEvents()
+        {
+            socketClient.ReactionAdded += async (Cacheable<IUserMessage, ulong> before, ISocketMessageChannel channel, SocketReaction reaction) =>
+            {
+                var socketGuildUser = reaction.User.Value as SocketGuildUser;
+                var guild = await Guilds.GetAsync(socketGuildUser?.Guild);
+                if (guild is null) return;
+
+                // TODO - add specific module staff log events config
+                if (guild.Admin.Rulebox.Enabled)
+                {
+                    await Rulebox.AgreedToRules(guild, socketGuildUser, reaction);
+                }
+            };
+
+            socketClient.ReactionRemoved += async (Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction) =>
+            {
+                var socketGuild = (channel as SocketTextChannel)?.Guild;
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                if (guild.Admin.Rulebox.Enabled)
+                {
+                    await Rulebox.OnReactionRemoved(cache, channel, reaction);
+                }
+            };
+
+            socketClient.MessageReceived += async (SocketMessage message) =>
+            {
+                try
+                {
+                    await AutoModeration.ValidateMessage(message);
+                    await services.GetRequiredService<CommandHandler>().HandleCommandAsync(message);
+
+                }
+                catch (Exception ex)
+                {
+                    await Debug.LogCriticalAsync("Core", ex.Message, ex);
+                }
+            };
+
+            socketClient.MessageUpdated += async (Cacheable<IMessage, ulong> before, SocketMessage message, ISocketMessageChannel channel) =>
+            {
+                var guild = await Guilds.GetAsync((message.Author as SocketGuildUser).Guild);
+                if (guild is null) return;
+
+                if (guild.Moderation.StaffLogs.Enabled)
+                {
+                    await AutoModeration.ValidateMessage(message);
+                }
+            };
+
+            socketClient.MessageDeleted += async (Cacheable<IMessage, ulong> message, ISocketMessageChannel channel) =>
+            {
+                var guild = await Guilds.GetAsync((message.Value.Author as SocketGuildUser).Guild);
+                if (guild is null) return;
+
+                if (guild.Moderation.StaffLogs.Enabled)
+                {
+                    await StaffLogs.LogMessageDeletion(message, channel);
+                }
+            };
+        }
+
+        private void HookUserEvents()
+        {
+            socketClient.UserJoined += async (SocketGuildUser socketGuildUser) =>
+            {
+                var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+                if (guild is null) return;
+
+                if (guild.General.Announce.Enabled)
+                {
+                    await Announce.AnnounceUserJoin(socketGuildUser);
+                }
+            };
+
+            socketClient.UserLeft += async (SocketGuildUser socketGuildUser) =>
+            {
+                var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+                if (guild is null) return;
+
+                if (guild.General.Announce.Enabled)
+                {
+                    await Announce.AnnounceUserLeft(socketGuildUser);
+                }
+                if (guild.Admin.Rulebox.Enabled)
+                {
+                    await Rulebox.RemoveUserReaction(socketGuildUser);
+                }
+                if (guild.Moderation.StaffLogs.Enabled)
+                {
+                    await StaffLogs.LogKick(socketGuildUser);
+                }
+            };
+
+            socketClient.GuildMemberUpdated += async (SocketGuildUser socketGuildUser, SocketGuildUser instigator) =>
+            {
+                var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+                if (guild is null) return;
+
+                // TODO -> NicknameFilter depends on module being enabled
+                if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter)
+                {
+                    await AutoModeration.ValidateUsername(guild, socketGuildUser);
+                }
+            };
+
+            socketClient.UserBanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
+            {
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                if (guild.Moderation.StaffLogs.Enabled)
+                {
+                    await StaffLogs.LogBan(socketUser, socketGuild);
+                }
+            };
+            socketClient.UserUnbanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
+            {
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                if (guild.Moderation.StaffLogs.Enabled)
+                {
+                    await StaffLogs.LogUserUnban(socketUser, socketGuild);
+                }
+            };
+        }
     }
 }

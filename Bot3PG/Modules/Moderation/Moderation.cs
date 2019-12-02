@@ -10,9 +10,11 @@ using System.Linq;
 using System.Collections.Generic;
 using Bot3PG.DataStructs;
 using Bot3PG.Utilities;
+using Bot3PG.Modules.General;
 
 namespace Bot3PG.Modules.Moderation
 {
+    [Color(75, 65, 150)]
     [RequireContext(ContextType.Guild)]
     public sealed class Moderation : CommandBase
     {
@@ -27,7 +29,7 @@ namespace Bot3PG.Modules.Moderation
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be kicked.", Color.Red));
                 return;
             }
-            await user.KickAsync(reason);
+            await user.KickAsync(reason, Context.User);
         }
 
         [Command("Ban")]
@@ -51,7 +53,7 @@ namespace Bot3PG.Modules.Moderation
 
                 if (targetHighest < senderHighest)
                 {
-                    await user.BanAsync(banDuration, reason);
+                    await user.BanAsync(banDuration, reason, Context.User);
                 }
                 else
                 {
@@ -66,11 +68,12 @@ namespace Bot3PG.Modules.Moderation
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
         public async Task UnbanUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
         {
-            var user = await Users.GetAsync(target);
             var restBan = await Context.Guild.GetBanAsync(target);
-            var unbanTarget = Context.Guild.GetUser(restBan.User.Id);
+            target = restBan != null ? Context.Guild.GetUser(restBan.User.Id) : target;
 
-            if (unbanTarget.GuildPermissions.Administrator)
+            var user = await Users.GetAsync(target);
+
+            if (target.GuildPermissions.Administrator)
             {
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be banned.", Color.Red));
                 return;
@@ -83,12 +86,12 @@ namespace Bot3PG.Modules.Moderation
             }
             else
             {
-                var targetHighest = unbanTarget.Hierarchy;
+                var targetHighest = target.Hierarchy;
                 var senderHighest = (Context.Message.Author as SocketGuildUser).Hierarchy;
                 
                 if (targetHighest < senderHighest)
                 {
-                    await user.UnbanAsync(reason);
+                    await user.UnbanAsync(reason, Context.User);
                 }
                 else
                 {
@@ -101,7 +104,7 @@ namespace Bot3PG.Modules.Moderation
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User account not found.", Color.Red));
                 return;
             }
-            await user.UnbanAsync(reason);
+            await user.UnbanAsync(reason, Context.User);
         }
 
         [Command("Mute")]
@@ -109,7 +112,7 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Mute a user's voice and chat [with reason] ")]
         public async Task MuteUser(SocketGuildUser target, string duration = "1d", [Remainder] string reason = "No reason provided.")
         {
-            var user = await Users.GetAsync(target);
+            var user = await Users.GetAsync(target) ?? new GuildUser(target);
             var muteDuration = CommandUtilities.ParseDuration(duration);
 
             if (target.GuildPermissions.Administrator)
@@ -118,9 +121,10 @@ namespace Bot3PG.Modules.Moderation
                 return;
             }
 
-            if (!target.IsMuted)
+            if (!user.Status.IsMuted)
             {
-                await user.MuteAsync(muteDuration, reason);
+                await user.MuteAsync(muteDuration, reason, Context.User);
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Muted {target.Mention} for {muteDuration}", Color.Green));
             }
             else
             {
@@ -134,10 +138,9 @@ namespace Bot3PG.Modules.Moderation
         public async Task UnmuteUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
         {
             var user = await Users.GetAsync(target);
-
-            if (target.IsMuted)
+            if (user.Status.IsMuted)
             {
-                await user.UnmuteAsync(reason);
+                await user.UnmuteAsync(reason, Context.User);
                 return;
             }
             await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User account not found.", Color.Red));
@@ -148,30 +151,30 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Warn a user [with reason] and add a warning to their account")]
         public async Task WarnUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
         {
+            if (target.IsBot)
+            {
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Bots cannot be warned.", Color.Red));
+                return;
+            }
+
             var user = await Users.GetAsync(target);
             if (target.GuildPermissions.Administrator)
             {
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be warned.", Color.Red));
                 return;
             }
-            await user.WarnAsync(reason);
+            await user.WarnAsync(reason, Context.User);
         }
 
         [Command("User")]
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
         [Summary("Display target user details")]
-        public async Task Account(SocketGuildUser target = null, [Remainder] string args2 = "")
+        public async Task Account(SocketGuildUser target = null, [Remainder] string action = "")
         {
-            var accountTarget = target ?? Context.User as SocketGuildUser;
+            target ??= Context.User as SocketGuildUser;
 
-            if (accountTarget.IsBot)
-            {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", "Bots don't have accounts!", Color.Red));
-                return;
-            }
-
-            var user = await Users.GetAsync(accountTarget);
-            if (args2 == "reset")
+            var user = await Users.GetAsync(target);
+            if (action == "reset")
             {
                 if (target is null)
                 {
@@ -180,22 +183,23 @@ namespace Bot3PG.Modules.Moderation
                 }
                 else
                 {
-                    Users.ResetAsync(target);
+                    await Users.ResetAsync(target);
                     await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", "User account reset", Color.Orange));
                     return;
                 }
             }
             
             var embed = new EmbedBuilder();
-            embed.ThumbnailUrl = accountTarget.GetAvatarUrl();
+            embed.ThumbnailUrl = target.GetAvatarUrl();
             embed.Color = Color.Orange;
+            embed.WithTitle($"**{target.Username}**");
             embed.AddField("Agreed To Rules", user.Status.AgreedToRules, inline: true);
             embed.AddField("Warnings", user.Status.WarningsCount, inline: true);
 
             embed.AddField("Is Banned", user.Status.IsBanned, inline: true);
             if (user.Status.IsBanned)
             {
-                var ban = user.Status[PunishmentType.Ban];
+                var ban = user.Status.Bans.Last();
                 embed.AddField("Ban Reason", ban.Reason, inline: true);
                 embed.AddField("Start of Ban", ban.Start, inline: true);
                 embed.AddField("End of Ban", ban.End, inline: true);
@@ -204,41 +208,14 @@ namespace Bot3PG.Modules.Moderation
             embed.AddField("Is Muted", user.Status.IsMuted, inline: true);
             if (user.Status.IsMuted)
             {
-                var mute = user.Status[PunishmentType.Mute];
+                var mute = user.Status.Mutes.Last();
                 embed.AddField("Mute Reason", mute.Reason, inline: true);
                 embed.AddField("Start of Mute", mute.Start, inline: true);
                 embed.AddField("End of Mute", mute.End, inline: true);
             }
 
-            var userInCooldown = await user.XP.GetInXPCooldown();
+            var userInCooldown = await user.XP.GetXPCooldown();
             embed.AddField("In XP Cooldown", userInCooldown, inline: true);
-            await ReplyAsync(embed);
-        }
-
-        [Command("Punishments")]
-        [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
-        [Summary("List punishments of a user"), Remarks("**Types:** Ban, Mute, Warn, Kick \n**Order:** Descending / Ascending")]
-        public async Task Bans(SocketGuildUser target = null, string type = "", string orderBy = "desc")
-        {
-            target ??= Context.User as SocketGuildUser;
-            var user = await Users.GetAsync(target);
-
-            Enum.TryParse(typeof(PunishmentType), type, ignoreCase: true, out var parsedPunishment);
-            var punishment = (PunishmentType?)parsedPunishment;
-
-            var embed = new EmbedBuilder();
-
-            var allPunishments = (orderBy == "desc" || orderBy == "descending") ? user.Status.Punishments.AsEnumerable().Reverse() : user.Status.Punishments;
-            var punishments = string.IsNullOrEmpty(type) ? allPunishments.ToList() : allPunishments.Where(p => p.Type == punishment).ToList();
-
-            foreach (var log in punishments)
-            {
-                var index = punishments.IndexOf(log);
-                embed.AddField($"*[{index + 1}]* **{log.Type}**",
-                    $"__Reason:__ {log.Reason}\n" +
-                    $"__Start:__ {log.Start.ToShortDateString()} {log.Start.ToShortTimeString()}\n" +
-                    $"__End:__ {log.End.ToShortDateString()} {log.End.ToShortTimeString()}", inline: false);
-            }
             await ReplyAsync(embed);
         }
     }

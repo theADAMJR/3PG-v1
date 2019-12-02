@@ -1,0 +1,13 @@
+{
+  "DB": {
+    "Server": "localhost",
+    "Port": "27017",
+    "AuthDatabase": "admin",
+    "Database": "3pg",
+    "User": "3PG",
+    "Password": "topKek!420"
+  },
+  "Token": "NTMzOTQ3MDAxNTc4OTc5MzI4.Dxyo0g.EeDtF71jOdbcKXPm7y9Ooy1ON9E",
+  "GameStatus": "Testing123",
+  "WebappLink": "https://3pg.xyz"
+}

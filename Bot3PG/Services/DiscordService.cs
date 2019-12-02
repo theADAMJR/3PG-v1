@@ -1,6 +1,7 @@
 ﻿using Bot3PG.Core.Data;
 using Bot3PG.Handlers;
 using Bot3PG.Modules;
+using Bot3PG.Modules.General;
 using Bot3PG.Modules.Music;
 using Discord;
 using Discord.Commands;
@@ -26,22 +27,21 @@ namespace Bot3PG.Services
 
             client = new DiscordSocketClient(new DiscordSocketConfig
             {
-                AlwaysDownloadUsers = true,
-                LogLevel = LogSeverity.Verbose,
+                //AlwaysDownloadUsers = true,
+                LogLevel = LogSeverity.Debug,
                 MessageCacheSize = 100 // increase/decrease cache as needed
             });
 
             new EventsHandler(services, client, lavaSocketClient);
             new Global(client, lavaSocketClient, GlobalConfig.Config, services.GetRequiredService<CommandService>());
+            new DatabaseManager();
 
             await client.LoginAsync(TokenType.Bot, Global.Config.Token);
             await client.StartAsync();
-
             await ValidateBotToken();
 
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
-            await ConsoleCommands.Input();
             await Task.Delay(-1);
         }
 
@@ -49,7 +49,7 @@ namespace Bot3PG.Services
         {
             if (string.IsNullOrEmpty(Global.Config.Token))
             {
-                await LoggingService.LogCriticalAsync("Bot", "Token is null - Check config");
+                await Debug.LogCriticalAsync("Bot", "Token is null - Check config");
                 Console.ReadKey();
             };
         }

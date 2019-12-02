@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace Bot3PG.Modules.General
 {
-    [Color(0, 0, 0)]
+    [Color(65, 50, 130)]
     public sealed class General : CommandBase
     {
         public Lazy<CommandHelp> CommandHelp => new Lazy<CommandHelp>();
@@ -18,77 +18,63 @@ namespace Bot3PG.Modules.General
 
         [Command("Help"), Alias("?")]
         [Summary("Show command details or search for commands"), Remarks("**Modules:** Admin, General, Moderation, Music, XP")]
-        public async Task Help([Remainder]string args = "")
+        public async Task Help([Remainder]string module = "")
         {
-            try
+            var target = Context.User;
+            var guild = await Guilds.GetAsync(Context.Guild);
+            var prefix = guild.General.CommandPrefix;
+
+            string moduleName = Commands.Modules.FirstOrDefault(m => m.Name.ToLower() == module.ToLower())?.Name;
+            if (module != "" && moduleName is null)
             {
-                var target = Context.User;
-                var guild = await Guilds.GetAsync(Context.Guild);
-                var prefix = guild.General.CommandPrefix;
-
-                string moduleName = Commands.Modules.FirstOrDefault(m => m.Name.ToLower() == args.ToLower())?.Name;
-                if (args != "" && moduleName is null)
-                {
-                    await SearchCommands(target, prefix, args);
-                    return;
-                }
-
-                var embed = new EmbedBuilder();
-
-                string previousModule = Commands.Modules.Select(m => m.Name).First();
-                foreach (var command in Commands.Values)
-                {
-                    if (!string.IsNullOrEmpty(args) && command.Module.Name.ToLower() != moduleName.ToLower()) continue;
-
-                    if (previousModule != command.Module.Name)
-                    {
-                        embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
-                        await ReplyToUserAsync(target, embed);
-
-                        embed = new EmbedBuilder();
-                        embed.WithColor(command.Module.Color);
-                    }
-                    previousModule = command.Module.Name;
-                    embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}\n{command.Remarks}", inline: true);
-                }
-
-                embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
-                Console.WriteLine(embed.Fields.Count);
-                await ReplyToUserAsync(target, embed);
+                await SearchCommands(target, prefix, module);
+                return;
             }
-            catch (Exception e)
+            var embed = new EmbedBuilder();
+
+            string previousModule = Commands.Modules.Select(m => m.Name).First();
+            foreach (var command in Commands.Values)
             {
-                await ReplyAsync(e.Message);
-                await ReplyAsync(e.StackTrace);
+                if (!string.IsNullOrEmpty(module) && command.Module.Name.ToLower() != moduleName.ToLower()) continue;
+
+                if (previousModule != command.Module.Name)
+                {
+                    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
+                    await ReplyToUserAsync(target, embed);
+
+                    embed = new EmbedBuilder();
+                    embed.WithColor(command.Module.Color);
+                }
+                previousModule = command.Module.Name;
+                embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}", inline: true);
             }
+
+            embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
+            await ReplyToUserAsync(target, embed);
+            await ReplyToUserAsync(target, await EmbedHandler.CreateBasicEmbed("View all commands", $"{Global.Config.WebappLink}/comments?prefix={guild.General.CommandPrefix}", Color.DarkPurple));
         }
 
         private async Task SearchCommands(SocketUser target, string prefix, string search)
         {
             var embed = new EmbedBuilder();
-            embed.WithTitle($"Showing top 5 results for '{search}`");
-            foreach (var command in Commands)
+            embed.WithTitle($"Showing Results for '{search}'");
+            var similarCommands = Commands.Where(c => c.Value.Alias.Contains(search) || c.Key.Contains(search)).Take(5).ToArray();
+            foreach (var command in similarCommands)
             {
-                if (embed.Fields.Count == 5)
-                {
-                    await ReplyToUserAsync(target, embed);
-                    return;
-                }
-
                 bool similarToAlias = command.Value.Alias.Contains(search);
                 if (similarToAlias || command.Key.Contains(search))
-                {
+                {                    
                     string release = command.Value.Release is null ? "" : $"*[{command.Value.Release}]*";
                     embed.AddField($"\n{release}**{prefix}{command.Key}**", 
                         $"\n**Usage:** {prefix}{command.Value.Usage} " +
                         $"\n**Summary:** {command.Value.Summary}" +
-                        $"\n**Info:** {command.Value.Remarks}" +
+                        $"{(command.Value.Remarks != null ? "\n" + command.Value.Remarks : "")}" +
                         $"\n**Module:** {command.Value.Module.Name}");
                 }
             }
-            if (embed.Fields.Count >= 0)
+            if (similarCommands.Length <= 0)
             {
-                embed.AddField($"Search for '{search}'", $"No results found for **{search}**");
+                embed.AddField("**Results**", "No results found");
             }
             await ReplyToUserAsync(target, embed);
         }
@@ -147,16 +133,16 @@ namespace Bot3PG.Modules.General
 
         [Command("Embed")]
         [Summary("Create a custom embed")]
-        public async Task Embed(string title = "Not set", string imgUrl = "", [Remainder] string description = "Not set")
+        public async Task Embed(string title = "Not set", string url = "", [Remainder] string description = "Not set")
         {
             var embed = new EmbedBuilder();
             embed.WithTitle(title);
             embed.WithDescription(description);
             embed.WithColor(Color.DarkGreen);
 
-            if (imgUrl.Contains("http") || imgUrl.Contains("data"))
+            if (url.Contains("http") || url.Contains("data"))
             {
-                embed.WithThumbnailUrl(imgUrl);
+                embed.WithThumbnailUrl(url);
             }
             await ReplyAsync(embed);
         }

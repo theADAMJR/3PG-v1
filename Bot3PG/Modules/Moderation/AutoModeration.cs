@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.Moderation
 {
-    public class AutoModeration
+    public static class AutoModeration
     {
-        public static async Task OnMessageRecieved(SocketMessage message)
+        public static async Task ValidateMessage(SocketMessage message)
         {
             try
             {
-                if (!(message.Author is SocketGuildUser guildAuthor) || guildAuthor.IsBot) return;
+                if (message is null || !(message.Author is SocketGuildUser guildAuthor) || guildAuthor.IsBot) return;
 
                 var user = await Users.GetAsync(guildAuthor);
                 var guild = await Guilds.GetAsync(guildAuthor.Guild);
@@ -89,15 +89,15 @@ namespace Bot3PG.Modules.Moderation
             switch (user.Status.WarningsCount)
             {
                 case int warnings when (warnings >= guild.Moderation.Auto.WarningsForBan && guild.Moderation.Auto.WarningsForBan > 0):
-                    await user.BanAsync(TimeSpan.FromDays(-1), reason);
+                    await user.BanAsync(TimeSpan.FromDays(-1), reason, Global.Client.CurrentUser);
                     break;
                 case int warnings when (warnings >= guild.Moderation.Auto.WarningsForKick && guild.Moderation.Auto.WarningsForKick > 0):
-                    await user.KickAsync(reason);
+                    await user.KickAsync(reason, Global.Client.CurrentUser);
                     break;
             }
             bool userAlreadyNotified = user.Status.WarningsCount >= guild.Moderation.Auto.WarningsForKick
                 || user.Status.WarningsCount >= guild.Moderation.Auto.WarningsForBan;
-            await user.WarnAsync(reason, !userAlreadyNotified);
+            await user.WarnAsync(reason, Global.Client.CurrentUser, !userAlreadyNotified);
         }
     }
 }

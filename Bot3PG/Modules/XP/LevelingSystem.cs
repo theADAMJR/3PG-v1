@@ -5,7 +5,6 @@ using Bot3PG.DataStructs;
 using Bot3PG.Core.Data;
 using System.Threading.Tasks;
 using System.Collections;
-using Discord.Rest;
 using System.Linq;
 
 namespace Bot3PG.Modules.XP
@@ -19,7 +18,7 @@ namespace Bot3PG.Modules.XP
             var user = await Users.GetAsync(socketGuildUser);
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
 
-            var userInCooldown = await user.XP.GetInXPCooldown();
+            var userInCooldown = await user.XP.GetXPCooldown();
             if (user is null || guild is null || userInCooldown || message.Content.Length <= guild.XP.MessageLengthThreshold) return;
 
             bool inDuplicateMessageDelay = user.XP.LastXPMsg.Add(guild.XP.DuplicateMessageThreshold) > DateTime.Now;
@@ -29,9 +28,9 @@ namespace Bot3PG.Modules.XP
 
             user.XP.LastXPMsg = DateTime.Now;
 
-            uint oldLevel = user.XP.LevelNumber;
+            int oldLevel = user.XP.Level;
             user.XP.EXP += guild.XP.EXPPerMessage;
-            uint newLevel = user.XP.LevelNumber;
+            int newLevel = user.XP.Level;
 
             if (oldLevel != newLevel)
             {
@@ -54,11 +53,9 @@ namespace Bot3PG.Modules.XP
             await Users.Save(user);
         }
 
-        public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser socketGuildUser, Guild guild, uint oldLevel, uint newLevel)
+        public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser socketGuildUser, Guild guild, int oldLevel, int newLevel)
         {
-            if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist) return false;
-
-            if (!NewRoleRequired(socketGuildUser, guild, newLevel)) return false;
+            if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist || !NewRoleRequired(socketGuildUser, guild, newLevel)) return false;
 
             if (!guild.XP.RoleRewards.StackRoles)
             {
@@ -70,7 +67,7 @@ namespace Bot3PG.Modules.XP
             return true;
         }
 
-        public static bool NewRoleRequired(SocketGuildUser socketGuildUser, Guild guild, uint newLevel)
+        public static bool NewRoleRequired(SocketGuildUser socketGuildUser, Guild guild, int newLevel)
         {
             ulong? levelRoleId = guild.XP.RoleRewards[newLevel]?.Id;
             return !socketGuildUser.Roles.Any(r => r.Id == levelRoleId);

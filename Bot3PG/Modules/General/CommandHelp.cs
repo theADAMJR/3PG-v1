@@ -1,12 +1,18 @@
-﻿using Discord;
+﻿using Bot3PG.Core.Data;
+using Discord;
 using Discord.Commands;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Linq;
 
+// TODO => move to Bot3PG.Modulesa
 namespace Bot3PG.Modules.General
 {
     public class CommandHelp : Dictionary<string, Command>
     {
+        [BsonRepresentation(BsonType.Array)]
         public HashSet<CommandModule> Modules => Values.Select(command => command.Module).Distinct().ToHashSet();
 
         public CommandHelp()
@@ -18,7 +24,7 @@ namespace Bot3PG.Modules.General
                 for (int i = 0; i < command.Parameters.Count; i++)
                 {
                     var argument = command.Parameters[i];
-                    usage += !argument.IsOptional ? $" [{argument}]" : $" {argument}";
+                    usage += argument.IsOptional ? $" [{argument}]" : $" {argument}";
                 }
                 var color = Color.Purple;
                 for (int i = 0; i < command.Module.Attributes.Count; i++)
@@ -28,21 +34,17 @@ namespace Bot3PG.Modules.General
                     color = new Color(colorAttribute.R, colorAttribute.B, colorAttribute.B);
                 }
 
-                var commandPermissions = new List<GuildPermission?>();
+                var preconditions = new List<GuildPermission?>();
                 Release? release = null;
-                for (int i = 0; i < command.Attributes.Count; i++)
+                for (int i = 0; i < command.Preconditions.Count; i++)
                 {
-                    if (command.Attributes[i] is RequireUserPermissionAttribute userPermissionAttribute)
+                    if (command.Preconditions[i] is RequireUserPermissionAttribute userPermissionAttribute)
                     {
-                        commandPermissions.Add(userPermissionAttribute.GuildPermission);
-                    }
-                    if (command.Attributes[i] is ReleaseAttribute releaseAttribute)
-                    {
-                        release = releaseAttribute.Release;
+                        preconditions.Add(userPermissionAttribute.GuildPermission);
                     }
                 }
 
-                this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, color), command.Aliases, commandPermissions, release);
+                this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, color), command.Aliases, preconditions, release);
             }
         }
     }

@@ -1,5 +1,8 @@
 ﻿using Discord;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Bot3PG.Modules.General
 {
@@ -9,18 +12,18 @@ namespace Bot3PG.Modules.General
         public string Summary { get; private set; }
         public string Remarks { get; private set; }
         public CommandModule Module { get; private set; }
-        public IReadOnlyList<string> Alias { get; private set; }
-        public List<GuildPermission?> RequiredPermissions { get; private set; }
+        public List<string> Alias { get; private set; }
+        public List<GuildPermission?> Preconditions { get; private set; }
         public Release? Release { get; private set; }
 
-        public Command(string usage, string summary, string remarks, CommandModule module, IReadOnlyList<string> alias, List<GuildPermission?> requiredPermissions, Release? release)
+        public Command(string usage, string summary, string remarks, CommandModule module, IReadOnlyList<string> alias, List<GuildPermission?> preconditions, Release? release)
         {
             Usage = usage;
             Summary = summary;
             Remarks = remarks;
             Module = module;
-            Alias = alias;
-            RequiredPermissions = requiredPermissions;
+            Alias = alias.ToList();
+            Preconditions = preconditions;
             Release = release;
         }
     }

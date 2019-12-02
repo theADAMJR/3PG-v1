@@ -4,6 +4,7 @@
     {
         Unstable, // TODO - remove
         Alpha,
-        Beta
+        Beta,
+        Stable
     }
 }

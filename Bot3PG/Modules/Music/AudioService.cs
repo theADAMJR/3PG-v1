@@ -46,7 +46,7 @@ namespace Bot3PG.Modules.Music
                 {
                     Summoner = user
                 });
-                await LoggingService.LogInformationAsync("Music", $"Now connected to {user.VoiceChannel.Name}.");// and bound to {textChannel.Name}.");
+                await Debug.LogInformationAsync("Music", $"Now connected to {user.VoiceChannel.Name}.");// and bound to {textChannel.Name}.");
                 return await EmbedHandler.CreateBasicEmbed("Music", $"Now connected to {user.VoiceChannel.Name}.", Color.Blue);// and bound to {textChannel.Name}. **Headphone warning**...", Color.Blue);
             }
             else
@@ -88,12 +88,12 @@ namespace Bot3PG.Modules.Music
                     if (player.CurrentTrack != null && player.IsPlaying || player.IsPaused)
                     {
                         player.Queue.Enqueue(track);
-                        await LoggingService.LogInformationAsync("Music", $"{track.Title} has been added to the music queue.");
+                        await Debug.LogInformationAsync("Music", $"{track.Title} has been added to the music queue.");
                         return await EmbedHandler.CreateBasicEmbed("Music", $"{track.Title} has been added to queue.", Color.Blue);
                     }
                     //Player was not playing anything, so lets play the requested track.
                     await player.PlayAsync(track);
-                    await LoggingService.LogInformationAsync("Music", $"Bot Now Playing: {track.Title}\nUrl: {track.Uri}");
+                    await Debug.LogInformationAsync("Music", $"Bot Now Playing: {track.Title}\nUrl: {track.Uri}");
                     return await EmbedHandler.CreateBasicEmbed("Music", $"Now Playing: {track.Title}\nUrl: {track.Uri}", Color.Blue);
                 }
                 //If after all the checks we did, something still goes wrong. Tell the user about it so they can report it back to us.
@@ -119,7 +119,7 @@ namespace Bot3PG.Modules.Music
                 
                 var channel = player.VoiceChannel;
                 await _lavaSocketClient.DisconnectAsync(channel);
-                await LoggingService.LogInformationAsync("Music", $"Bot has left {channel.Name}.");
+                await Debug.LogInformationAsync("Music", $"Bot has left {channel.Name}.");
                 return await EmbedHandler.CreateBasicEmbed("Music", $"I've left {channel.Name}. Thank you for playing music.", Color.Blue);
             }
             catch (InvalidOperationException ex)
@@ -185,7 +185,7 @@ namespace Bot3PG.Modules.Music
                     {
                         var currentTrack = player.CurrentTrack;
                         await player.SkipAsync();
-                        await LoggingService.LogInformationAsync("Music", $"Skipped: {currentTrack.Title}");
+                        await Debug.LogInformationAsync("Music", $"Skipped: {currentTrack.Title}");
                         return await EmbedHandler.CreateBasicEmbed("Music Skip", $"{currentTrack.Title} successfully skipped", Color.Blue);
                     }
                     catch (Exception ex)
@@ -216,7 +216,7 @@ namespace Bot3PG.Modules.Music
                 /* Not sure if this is required as I think player.StopAsync(); clears the queue anyway. */
                 foreach (var track in player.Queue.Items)
                     player.Queue.Dequeue();
-                await LoggingService.LogInformationAsync("Music", $"Bot has stopped playback.");
+                await Debug.LogInformationAsync("Music", $"Bot has stopped playback.");
                 return await EmbedHandler.CreateBasicEmbed("Music Stop", "I Have stopped playback & the playlist has been cleared.", Color.Blue);
             }
             catch (Exception ex)
@@ -243,7 +243,7 @@ namespace Bot3PG.Modules.Music
                     return await EmbedHandler.CreateBasicEmbed("Music", $"**Current Volume:** {player.CurrentVolume}", Color.Blue);
                 }
                 await player.SetVolumeAsync(volume);
-                await LoggingService.LogInformationAsync("Music", $"Bot Volume set to: {volume}");
+                await Debug.LogInformationAsync("Music", $"Bot Volume set to: {volume}");
                 return await EmbedHandler.CreateBasicEmbed("Music", $"Volume has been set to {volume}.", Color.Blue);
             }
             catch (InvalidOperationException ex)
@@ -281,13 +281,13 @@ namespace Bot3PG.Modules.Music
 
             if (nextTrack is null)
             {
-                await LoggingService.LogInformationAsync("Music", $"[{player.VoiceChannel.Guild.Name}] Bot has stopped playback.");
+                await Debug.LogInformationAsync("Music", $"[{player.VoiceChannel.Guild.Name}] Bot has stopped playback.");
                 await player.StopAsync();
             }
             else
             {
                 await player.PlayAsync(nextTrack);
-                await LoggingService.LogInformationAsync("Music", $"[{player.VoiceChannel.Guild.Name}] Bot Now Playing: {nextTrack.Title} - {nextTrack.Uri}");
+                await Debug.LogInformationAsync("Music", $"[{player.VoiceChannel.Guild.Name}] Bot Now Playing: {nextTrack.Title} - {nextTrack.Uri}");
                 await player.TextChannel.SendMessageAsync("", false, await EmbedHandler.CreateBasicEmbed("Now Playing", $"[{nextTrack.Title}]({nextTrack.Uri})", Color.Blue));
             }
         }

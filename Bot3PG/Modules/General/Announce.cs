@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.General
 {
-    public class Announce
+    public static class Announce
     {
-        public async Task AnnounceUserJoin(SocketGuildUser socketGuildUser)
+        public static async Task AnnounceUserJoin(SocketGuildUser socketGuildUser)
         {
             if (!socketGuildUser.IsBot) return;
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
@@ -25,7 +25,7 @@ namespace Bot3PG.Modules.General
             await announceConfig.Channel.SendMessageAsync("", embed: embed.Build());
         }
 
-        public async Task AnnounceUserLeft(SocketGuildUser socketGuildUser)
+        public static async Task AnnounceUserLeft(SocketGuildUser socketGuildUser)
         {
             var user = await Users.GetAsync(socketGuildUser);
             if (socketGuildUser as SocketUser == Global.Client.CurrentUser || user.Status.IsBanned) return;

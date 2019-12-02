@@ -6,20 +6,22 @@ using Bot3PG.Utilities;
 using Discord;
 using Discord.WebSocket;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.Moderation
 {
-    public class StaffLogs
+    public static class StaffLogs
     {
-        public async Task LogBan(SocketUser socketUser, SocketGuild socketGuild)
+        public static async Task LogBan(SocketUser socketUser, SocketGuild socketGuild)
         {
             var guild = await Guilds.GetAsync(socketGuild);
-            var logChannel = guild.Moderation.StaffLogs.Channel;
+            var logChannelId = guild.Moderation.StaffLogs.ChannelId;
+            var logChannel = socketGuild.GetTextChannel(logChannelId);
 
             var user = await Users.GetAsync(socketUser as SocketGuildUser);
-            var ban = user.Status[PunishmentType.Ban];
-            Users.ResetAsync(socketUser as SocketGuildUser); // TODO - config
+            var ban = user.Status.Bans.LastOrDefault();
+            await Users.ResetAsync(socketUser as SocketGuildUser); // TODO - config
 
             var embed = new EmbedBuilder();
             embed.WithTitle($"User Banned");
@@ -31,14 +33,16 @@ namespace Bot3PG.Modules.Moderation
             await logChannel.SendMessageAsync(embed: embed.Build());
         }
 
-        public async Task OnUserUnbanned(SocketUser socketUser, SocketGuild socketGuild)
+        public static async Task LogUserUnban(SocketUser socketUser, SocketGuild socketGuild)
         {
             var socketGuildUser = socketUser as SocketGuildUser;
             if (socketGuildUser is null) return;
 
             var user = await Users.GetAsync(socketGuildUser);
             var guild = await Guilds.GetAsync(socketGuild);
-            var logChannel = guild.Moderation.StaffLogs.Channel;
+            var logChannelId = guild.Moderation.StaffLogs.ChannelId;
+            var logChannel = socketGuild.GetTextChannel(logChannelId);
+
             if (logChannel is null)
             {
                 await socketGuild.DefaultChannel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Staff Logs - User Unbanned", "To use `Staff Logs` please set a **Staff Log Channel** with `/config`", Color.Red));
@@ -52,16 +56,17 @@ namespace Bot3PG.Modules.Moderation
             await logChannel.SendMessageAsync(embed: embed.Build());
         }
 
-        public async Task LogKick(SocketGuildUser socketGuildUser)
+        public static async Task LogKick(SocketGuildUser socketGuildUser)
         {
             var user = await Users.GetAsync(socketGuildUser as SocketGuildUser);
-            var kick = user?.Status[PunishmentType.Kick];
 
+            var kick = user?.Status.Kicks.LastOrDefault();
             if (kick is null) return;
 
+            var socketGuild = socketGuildUser.Guild;
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var logChannel = guild.Moderation.StaffLogs.Channel;
-
+            var logChannelId = guild.Moderation.StaffLogs.ChannelId;
+            var logChannel = socketGuild.GetTextChannel(logChannelId);
 
             var embed = new EmbedBuilder();
             embed.WithTitle($"User Kicked");
@@ -72,27 +77,29 @@ namespace Bot3PG.Modules.Moderation
             await logChannel.SendMessageAsync(embed: embed.Build());
         }
 
-        public async Task LogMessageDeletion(Cacheable<IMessage, ulong> msg, ISocketMessageChannel channel)
+        public static async Task LogMessageDeletion(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel)
         {
-            if (!msg.HasValue) return;
+            if (!message.HasValue) return;
 
-            var guildAuthor = msg.Value.Author as SocketGuildUser;
+            var guildAuthor = message.Value.Author as SocketGuildUser;
             if (guildAuthor is null || guildAuthor.IsBot) return;
 
             var socketGuild = guildAuthor.Guild;
             var guild = await Guilds.GetAsync(socketGuild);
-            var logChannel = guild.Moderation.StaffLogs.Channel;
+            var logChannelId = guild.Moderation.StaffLogs.ChannelId;
+            var logChannel = socketGuild.GetTextChannel(logChannelId);
+
             if (logChannel is null)
             {
                 await channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Staff Logs - Message Deleted", "To use `Staff Logs` please set a **Staff Log Channel** with `/config`", Color.Red));
             }
             var embed = new EmbedBuilder();
             embed.WithTitle("Message Deleted");
-            embed.AddField("User", msg.Value.Author.Mention, true);
+            embed.AddField("User", message.Value.Author.Mention, true);
             embed.AddField("Channel", $"{(channel as SocketTextChannel).Mention}", true);
-            embed.AddField("Auto Deletion", $"{!AutoModeration.IsContentValid(guild, msg.Value.Content.ToString())}", true);
-            embed.AddField("Message", $"{msg.Value.Content.ToString()}", true);
-            embed.WithFooter($"Message ID: {msg.Value.Id}");
+            embed.AddField("Auto Deletion", $"{!AutoModeration.IsContentValid(guild, message.Value.Content.ToString())}", true);
+            embed.AddField("Message", $"{message.Value.Content.ToString()}", true);
+            embed.WithFooter($"Message ID: {message.Value.Id}");
             embed.WithCurrentTimestamp();
             embed.WithColor(Color.DarkPurple);
 
