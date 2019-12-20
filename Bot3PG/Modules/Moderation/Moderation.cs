@@ -1,16 +1,15 @@
-﻿using Bot3PG.Handlers;
+﻿using Bot3PG.Data;
+using Bot3PG.Data.Structs;
+using Bot3PG.Handlers;
+using Bot3PG.Modules.General;
+using Bot3PG.Utils;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System.Threading.Tasks;
-using Bot3PG.Core.Data;
 using System;
-using Bot3PG.Moderation;
 using System.Linq;
 using System.Collections.Generic;
-using Bot3PG.DataStructs;
-using Bot3PG.Utilities;
-using Bot3PG.Modules.General;
 
 namespace Bot3PG.Modules.Moderation
 {
@@ -39,7 +38,7 @@ namespace Bot3PG.Modules.Moderation
         public async Task BanUser(SocketGuildUser target, string duration = "1d", [Remainder] string reason = "No reason provided.")
         {
             var user = await Users.GetAsync(target);
-            var banDuration = CommandUtilities.ParseDuration(duration);
+            var banDuration = CommandUtils.ParseDuration(duration);
 
             if (user.Status.IsBanned)
             {
@@ -66,45 +65,21 @@ namespace Bot3PG.Modules.Moderation
         [Command("Unban")]
         [Summary("Unban a user [with reason]")]
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
-        public async Task UnbanUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
+        public async Task UnbanUser(SocketUser target, [Remainder] string reason = "No reason provided.")
         {
             var restBan = await Context.Guild.GetBanAsync(target);
             target = restBan != null ? Context.Guild.GetUser(restBan.User.Id) : target;
 
-            var user = await Users.GetAsync(target);
-
-            if (target.GuildPermissions.Administrator)
-            {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be banned.", Color.Red));
-                return;
-            }
-
-            if (!user.Status.IsBanned)
+            if ((target as SocketGuildUser) != null)
             {
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User not currently banned.", Color.Red));
                 return;
             }
-            else
+            await Context.Guild.RemoveBanAsync(target);
+            if (!target.IsBot)
             {
-                var targetHighest = target.Hierarchy;
-                var senderHighest = (Context.Message.Author as SocketGuildUser).Hierarchy;
-                
-                if (targetHighest < senderHighest)
-                {
-                    await user.UnbanAsync(reason, Context.User);
-                }
-                else
-                {
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Higher rank user cannot be unbanned.", Color.Red));
-                    return;
-                }
+                await target.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
             }
-            if (user is null)
-            {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User account not found.", Color.Red));
-                return;
-            }
-            await user.UnbanAsync(reason, Context.User);
         }
 
         [Command("Mute")]
@@ -113,7 +88,7 @@ namespace Bot3PG.Modules.Moderation
         public async Task MuteUser(SocketGuildUser target, string duration = "1d", [Remainder] string reason = "No reason provided.")
         {
             var user = await Users.GetAsync(target) ?? new GuildUser(target);
-            var muteDuration = CommandUtilities.ParseDuration(duration);
+            var muteDuration = CommandUtils.ParseDuration(duration);
 
             if (target.GuildPermissions.Administrator)
             {
@@ -168,7 +143,7 @@ namespace Bot3PG.Modules.Moderation
 
         [Command("User")]
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
-        [Summary("Display target user details")]
+        [Summary("Display target user details"), Remarks("Actions: reset")]
         public async Task Account(SocketGuildUser target = null, [Remainder] string action = "")
         {
             target ??= Context.User as SocketGuildUser;
@@ -217,6 +192,31 @@ namespace Bot3PG.Modules.Moderation
             var userInCooldown = await user.XP.GetXPCooldown();
             embed.AddField("In XP Cooldown", userInCooldown, inline: true);
             await ReplyAsync(embed);
+        }
+
+        [Command("Clear"), Alias("Purge")]
+        [RequireUserPermission(GuildPermission.ManageMessages), RequireBotPermission(GuildPermission.ManageMessages)]
+        [Summary("Remove a specified amount of messages from a channel")]
+        public async Task ClearMessages(int amount = -1)
+        {
+            var messages = amount < 0 ? Context.Channel.GetMessagesAsync().FlattenAsync().Result : Context.Channel.GetMessagesAsync(amount).FlattenAsync().Result;
+            var channel =  Context.Channel as SocketTextChannel;
+
+            try { await channel.DeleteMessagesAsync(messages); }
+            catch 
+            { 
+                foreach (var message in messages)
+                {
+                    await Task.Delay(350);
+                    await message.DeleteAsync();
+                }
+            }
+            string deleted = amount < 0 ? "all" : amount.ToString();
+
+            var reply = await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Clear", $"Cleared {deleted} messages from {channel.Mention}", Color.Blue));
+
+            await Task.Delay(4000);
+            await reply.DeleteAsync();
         }
     }
 }

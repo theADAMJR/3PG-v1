@@ -1,7 +1,7 @@
 ﻿using Discord;
 using System;
 
-namespace Bot3PG.Modules.General
+namespace Bot3PG.Modules
 {
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     public sealed class ColorAttribute : Attribute

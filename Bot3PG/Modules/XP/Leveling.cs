@@ -1,15 +1,15 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using System;
-using Bot3PG.DataStructs;
-using Bot3PG.Core.Data;
+using Bot3PG.Data;
 using System.Threading.Tasks;
 using System.Collections;
 using System.Linq;
+using Bot3PG.Data.Structs;
 
 namespace Bot3PG.Modules.XP
 {
-    public class LevelingSystem
+    public class Leveling
     {
         public static async void ValidateForXPAsync(SocketUserMessage message)
         {
@@ -17,38 +17,58 @@ namespace Bot3PG.Modules.XP
 
             var user = await Users.GetAsync(socketGuildUser);
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            var xp = guild.XP;
 
-            var userInCooldown = await user.XP.GetXPCooldown();
-            if (user is null || guild is null || userInCooldown || message.Content.Length <= guild.XP.MessageLengthThreshold) return;
+            bool inCooldown = await user.XP.GetXPCooldown();
+            if (user is null || guild is null || inCooldown || message.Content.Length <= xp.MessageLengthThreshold) return;
 
-            bool inDuplicateMessageDelay = user.XP.LastXPMsg.Add(guild.XP.DuplicateMessageThreshold) > DateTime.Now;
-            if (user.Status.LastMessage == message.Content && inDuplicateMessageDelay) return;
+            bool inSpamCooldown = user.XP.LastXPMsg.AddSeconds(xp.DuplicateMessageThreshold) > DateTime.Now;
+            bool channelIsBlacklisted = guild.XP.ExemptChannels.Any(id => id == message.Channel.Id);
+            bool roleIsBlackListed = guild.XP.ExemptRoles.Any(id => socketGuildUser.Roles.Any(r => r.Id == id));
+
+            if (channelIsBlacklisted || roleIsBlackListed || user.Status.LastMessage == message.Content && inSpamCooldown) return;
 
             user.Status.LastMessage = message.Content;
-
             user.XP.LastXPMsg = DateTime.Now;
 
             int oldLevel = user.XP.Level;
             user.XP.EXP += guild.XP.EXPPerMessage;
             int newLevel = user.XP.Level;
+            user.Status.MessageCount++;
 
             if (oldLevel != newLevel)
             {
                 var embed = new EmbedBuilder();
                 embed.WithColor(Color.Green);
                 embed.WithTitle("✨ **LEVEL UP!**");
-                embed.WithDescription(socketGuildUser.Mention + " just leveled up!");
+                embed.WithDescription(xp.Messages.Method == MessageMethod.DM ? $"{socketGuildUser.Mention}, you leveled up!" : $"{socketGuildUser.Mention} just leveled up!");
                 embed.AddField("LEVEL", newLevel, true);
                 embed.AddField("XP", user.XP.EXP, true);
 
                 bool newRoleGiven = await ValidateNewXPRoleAsync(socketGuildUser, guild, oldLevel, newLevel);
-                if (newRoleGiven)
+                if (newRoleGiven && xp.Messages.Method != MessageMethod.DM)
                 {
                     embed.AddField("PROMOTION",
-                        $"**Old:** {guild.XP.RoleRewards[oldLevel]?.Mention ?? "No role"}\n" +
-                        $"**New:** {guild.XP.RoleRewards[newLevel].Mention}");
+                        $"**Old:** {xp.RoleRewards[oldLevel].Mention}\n" +
+                        $"**New:** {xp.RoleRewards[newLevel].Mention}");
+                }    
+                else if (newRoleGiven)
+                {
+                    embed.AddField("PROMOTION", "You've also received a new role!");
+                }       
+                switch (xp.Messages.Method)
+                {
+                    case MessageMethod.DM:
+                        await socketGuildUser.SendMessageAsync(embed: embed.Build());
+                        break;
+                    case MessageMethod.SpecificChannel:
+                        var channel = socketGuildUser.Guild.GetTextChannel(xp.Messages.XPChannel);
+                        await channel.SendMessageAsync(embed: embed.Build());
+                        break;                    
+                    default:
+                        await message.Channel.SendMessageAsync(embed: embed.Build());
+                        break;
                 }
-                await message.Channel.SendMessageAsync("", embed: embed.Build());
             }
             await Users.Save(user);
         }
@@ -63,6 +83,8 @@ namespace Bot3PG.Modules.XP
                 await socketGuildUser.RemoveRoleAsync(oldXPRole);
             }
             var newXPRole = guild.XP.RoleRewards[newLevel];
+            if (newXPRole is null) return false;
+            
             await socketGuildUser.AddRoleAsync(newXPRole);
             return true;
         }

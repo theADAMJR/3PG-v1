@@ -1,5 +1,5 @@
-﻿using Bot3PG.Core.Data;
-using Bot3PG.DataStructs;
+﻿using Bot3PG.Data;
+using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
 using Discord;
 using Discord.WebSocket;
@@ -11,70 +11,76 @@ namespace Bot3PG.Modules.Moderation
 {
     public static class Rulebox
     {
-        public static async Task AgreedToRules(Guild guild, SocketGuildUser socketGuildUser, SocketReaction reaction)
+        public static async Task CheckRuleAgreement(Guild guild, SocketGuildUser socketGuildUser, SocketReaction reaction)
         {
             try
             {
                 if (socketGuildUser is null || socketGuildUser.IsBot) return;
-                if (reaction.MessageId != guild.Admin.Rulebox.Id) return;
+                if (reaction.MessageId != guild.Admin.Rulebox.MessageId) return;
 
                 var user = await Users.GetAsync(socketGuildUser);
-                // TODO - add emoji config
-                string agreeEmote = "✅";
-                string disagreeEmote = "❌";
-
-                if (reaction.Emote.Name == agreeEmote)
+                if (reaction.Emote.Name == guild.Admin.Rulebox.AgreeEmote)
                 {
-                    var role = socketGuildUser.Guild.Roles.First(r => r.Id == guild.Admin.Rulebox.RoleId);
+                    var role = socketGuildUser.Guild.Roles.First(r => r.Id == guild.Admin.Rulebox.Role);
                     await socketGuildUser.AddRoleAsync(role);
                     user.Status.AgreedToRules = true;
                 }
-                else if (reaction.Emote.Name == disagreeEmote)
+                else if (reaction.Emote.Name == guild.Admin.Rulebox.DisagreeEmote)
                 {
                     user.Status.AgreedToRules = false;
 
                     var roles = socketGuildUser.Roles.ToList();
                     roles.RemoveAt(0);
 
-                    await socketGuildUser.RemoveRolesAsync(roles);
-                    await user.KickAsync($"Please agree to the rules to use `{socketGuildUser.Guild.Name}`.", Global.Client.CurrentUser);
+                    var bot = socketGuildUser.Guild.GetUser(Global.Client.CurrentUser.Id);
+                    if (socketGuildUser.Hierarchy <= bot.Hierarchy)
+                    {
+                        await socketGuildUser.RemoveRolesAsync(roles); 
+                        await user.KickAsync($"Please agree to the rules to use `{socketGuildUser.Guild.Name}`.", Global.Client.CurrentUser);
+                    }
                 }
                 await Users.Save(user);
             }
-            catch (Exception ex)
-            {
-                await reaction.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message));
-            }
+            catch (Exception ex) { await reaction.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message)); }
         }
 
         public static async Task OnReactionRemoved(Cacheable<IUserMessage, ulong> before, ISocketMessageChannel channel, SocketReaction reaction)
         {
-            var socketGuildUser = reaction.User.Value as SocketGuildUser;
-            var user = await Users.GetAsync(socketGuildUser);
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-
-            string agreeEmote = "✅";
-            if (!socketGuildUser.IsBot && reaction.MessageId == guild.Admin.Rulebox.Id && reaction.Emote.Name == agreeEmote)
+            try
             {
-                var roles = socketGuildUser.Roles.ToList();
-                roles.RemoveAt(0);
-                await socketGuildUser.RemoveRolesAsync(roles);
-                user.Status.AgreedToRules = false;
+                var socketGuildUser = reaction.User.Value as SocketGuildUser;
+                var user = await Users.GetAsync(socketGuildUser);
+                var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+
+                if (!socketGuildUser.IsBot && reaction.MessageId == guild.Admin.Rulebox.MessageId && reaction.Emote.Name == guild.Admin.Rulebox.AgreeEmote)
+                {
+                    var roles = socketGuildUser.Roles.ToList();
+                    roles.RemoveAt(0);
+                    await socketGuildUser.RemoveRolesAsync(roles);
+                    user.Status.AgreedToRules = false;
+                }
+                await Users.Save(user);                
             }
-            await Users.Save(user);
+            catch (Exception ex) { await channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message)); }
         }
 
         public static async Task RemoveUserReaction(SocketGuildUser socketGuildUser)
         {
-            var agreeEmote = new Emoji("✅") as IEmote;
-
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var rulebox = guild.Admin.Rulebox;
-            if (rulebox.Id != 0)
+            try
             {
-                var message = await socketGuildUser.Guild.GetTextChannel(rulebox.ChannelId).GetMessageAsync(guild.Admin.Rulebox.Id) as IUserMessage;
-                await message.RemoveReactionAsync(agreeEmote, message.Author);
+                var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+                var rulebox = guild.Admin.Rulebox;
+
+                var agreeEmote = new Emoji(rulebox.AgreeEmote) as IEmote;
+                if (rulebox.MessageId != 0)
+                {
+                    var message = await socketGuildUser.Guild.GetTextChannel(rulebox.Channel)?.GetMessageAsync(rulebox.MessageId) as IUserMessage;
+                    if (message is null) return;
+
+                    await message.RemoveReactionAsync(agreeEmote, message.Author);
+                }                
             }
+            catch (Exception ex) { await socketGuildUser.Guild.DefaultChannel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message)); }
         }
     }
 }

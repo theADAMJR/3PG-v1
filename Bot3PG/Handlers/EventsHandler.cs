@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Threading.Tasks;
-using Bot3PG.Core.Data;
-using Bot3PG.DataStructs;
+using System.Collections.Generic;
+using Bot3PG.Data;
+using Bot3PG.Data.Structs;
 using Bot3PG.Modules;
 using Bot3PG.Modules.General;
 using Bot3PG.Modules.Moderation;
@@ -86,10 +86,9 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser?.Guild);
                 if (guild is null) return;
 
-                // TODO - add specific module staff log events config
                 if (guild.Admin.Rulebox.Enabled)
                 {
-                    await Rulebox.AgreedToRules(guild, socketGuildUser, reaction);
+                    await Rulebox.CheckRuleAgreement(guild, socketGuildUser, reaction);
                 }
             };
 
@@ -107,35 +106,56 @@ namespace Bot3PG.Handlers
 
             socketClient.MessageReceived += async (SocketMessage message) =>
             {
-                try
-                {
-                    await AutoModeration.ValidateMessage(message);
-                    await services.GetRequiredService<CommandHandler>().HandleCommandAsync(message);
+                var textChannel = (message as SocketMessage)?.Channel as SocketTextChannel;
+                if (textChannel is null) return;
 
-                }
-                catch (Exception ex)
-                {
-                    await Debug.LogCriticalAsync("Core", ex.Message, ex);
-                }
+                var socketGuild = textChannel.Guild;
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                await AutoModeration.ValidateMessage(message);
+                await services.GetRequiredService<CommandHandler>().HandleCommandAsync(message);
             };
 
             socketClient.MessageUpdated += async (Cacheable<IMessage, ulong> before, SocketMessage message, ISocketMessageChannel channel) =>
             {
-                var guild = await Guilds.GetAsync((message.Author as SocketGuildUser).Guild);
+                var socketGuildUser = before.Value?.Author as SocketGuildUser;
+                if (socketGuildUser is null) return;
+
+                var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
                 if (guild.Moderation.StaffLogs.Enabled)
                 {
                     await AutoModeration.ValidateMessage(message);
+                }
+            };
+
+            socketClient.MessagesBulkDeleted += async (IReadOnlyCollection<Cacheable<IMessage, ulong>> messages, ISocketMessageChannel channel) =>
+            {
+                var socketGuild = (channel as SocketTextChannel)?.Guild;
+                if (socketGuild is null) return;
+                
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.MessageDeleted);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
+                {
+                    await StaffLogs.LogBulkMessageDeletion(messages, channel);
                 }
             };
 
             socketClient.MessageDeleted += async (Cacheable<IMessage, ulong> message, ISocketMessageChannel channel) =>
             {
-                var guild = await Guilds.GetAsync((message.Value.Author as SocketGuildUser).Guild);
+                var socketGuild = (message.Value?.Author as SocketGuildUser)?.Guild;
+                if (socketGuild is null) return;
+                
+                var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                if (guild.Moderation.StaffLogs.Enabled)
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.MessageDeleted);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
                 {
                     await StaffLogs.LogMessageDeletion(message, channel);
                 }
@@ -149,7 +169,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.General.Announce.Enabled)
+                if (guild.General.Announce.Enabled && guild.General.Announce.Welcomes)
                 {
                     await Announce.AnnounceUserJoin(socketGuildUser);
                 }
@@ -160,7 +180,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.General.Announce.Enabled)
+                if (guild.General.Announce.Enabled && guild.General.Announce.Goodbyes)
                 {
                     await Announce.AnnounceUserLeft(socketGuildUser);
                 }
@@ -168,7 +188,8 @@ namespace Bot3PG.Handlers
                 {
                     await Rulebox.RemoveUserReaction(socketGuildUser);
                 }
-                if (guild.Moderation.StaffLogs.Enabled)
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Kick);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
                 {
                     await StaffLogs.LogKick(socketGuildUser);
                 }
@@ -191,7 +212,8 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                if (guild.Moderation.StaffLogs.Enabled)
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Ban);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
                 {
                     await StaffLogs.LogBan(socketUser, socketGuild);
                 }
@@ -201,9 +223,47 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                if (guild.Moderation.StaffLogs.Enabled)
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Unban);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
                 {
                     await StaffLogs.LogUserUnban(socketUser, socketGuild);
+                }
+            };
+
+            GuildUser.Muted += async (GuildUser guildUser, Punishment punishment) =>
+            {
+                var socketGuild = socketClient.GetGuild(guildUser.GuildID);
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Mute);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
+                {
+                    await StaffLogs.LogMute(guildUser, punishment);
+                }
+            };
+            GuildUser.Unmuted += async (GuildUser guildUser, Punishment punishment) =>
+            {
+                var socketGuild = socketClient.GetGuild(guildUser.GuildID);
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Mute);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
+                {
+                    await StaffLogs.LogUnmute(guildUser, punishment);
+                }
+            };
+            GuildUser.Warned += async (GuildUser guildUser, Punishment punishment) =>
+            {
+                var socketGuild = socketClient.GetGuild(guildUser.GuildID);
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild is null) return;
+
+                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Mute);
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
+                {
+                    await StaffLogs.LogWarn(guildUser, punishment);
                 }
             };
         }

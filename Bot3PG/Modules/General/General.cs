@@ -1,4 +1,4 @@
-﻿using Bot3PG.Core.Data;
+﻿using Bot3PG.Data;
 using Bot3PG.Handlers;
 using Discord;
 using Discord.Commands;
@@ -7,6 +7,7 @@ using System;
 using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using System.Linq;
+using Bot3PG.Data.Structs;
 
 namespace Bot3PG.Modules.General
 {
@@ -32,26 +33,36 @@ namespace Bot3PG.Modules.General
             }
             var embed = new EmbedBuilder();
 
-            string previousModule = Commands.Modules.Select(m => m.Name).First();
-            foreach (var command in Commands.Values)
+            string previousModule = Commands.Modules.Select(m => m.Name).Reverse().First();
+            ConfigModule configModule = null;
+            foreach (var command in Commands.Values.Reverse())
             {
                 if (!string.IsNullOrEmpty(module) && command.Module.Name.ToLower() != moduleName.ToLower()) continue;
 
                 if (previousModule != command.Module.Name)
                 {
                     embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
-                    await ReplyToUserAsync(target, embed);
 
+                    if (configModule.Enabled) 
+                    {
+                        await ReplyToUserAsync(target, embed);
+                    }
                     embed = new EmbedBuilder();
                     embed.WithColor(command.Module.Color);
                 }
                 previousModule = command.Module.Name;
+                configModule = guild.GetType().GetProperty(previousModule).GetValue(guild) as ConfigModule;
+
                 embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}", inline: true);
             }
 
+            string prefixQuery = prefix != "/" ? $"?prefix={prefix}" : "";
             embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
-            await ReplyToUserAsync(target, embed);
-            await ReplyToUserAsync(target, await EmbedHandler.CreateBasicEmbed("View all commands", $"{Global.Config.WebappLink}/comments?prefix={guild.General.CommandPrefix}", Color.DarkPurple));
+            if (configModule.Enabled)
+            {
+                await ReplyToUserAsync(target, embed);
+            }
+            await ReplyToUserAsync(target, await EmbedHandler.CreateBasicEmbed("View all commands", $"{Global.Config.WebappLink}/commands{prefixQuery}", Color.DarkPurple));
         }
 
         private async Task SearchCommands(SocketUser target, string prefix, string search)
@@ -64,8 +75,7 @@ namespace Bot3PG.Modules.General
                 bool similarToAlias = command.Value.Alias.Contains(search);
                 if (similarToAlias || command.Key.Contains(search))
                 {                    
-                    string release = command.Value.Release is null ? "" : $"*[{command.Value.Release}]*";
-                    embed.AddField($"\n{release}**{prefix}{command.Key}**", 
+                    embed.AddField($"\n{prefix}{command.Key}**", 
                         $"\n**Usage:** {prefix}{command.Value.Usage} " +
                         $"\n**Summary:** {command.Value.Summary}" +
                         $"{(command.Value.Remarks != null ? "\n" + command.Value.Remarks : "")}" +
@@ -148,33 +158,23 @@ namespace Bot3PG.Modules.General
         }
 
         [Command("Suggest")]
-        [Summary("Suggest a new feature"), Remarks("Seperate *Title*, *Module*, and *Description* with a comma")]
-        public async Task Suggest([Remainder] string featureDetails = "No description")
+        [Summary("Suggest a new feature"), Remarks("Seperate *Title*, *Subtitle*, and *Description* with | (vertical bar)")]
+        public async Task Suggest([Remainder] string details)
         {
             var embed = new EmbedBuilder();
 
-            var details = featureDetails.Split(",");
-            if (details.Length < 3)
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Suggest Feature", "Title, Module, and Description must be separated with ','"));
-                return;
-            }
-            string featureTitle = details[0];
-            string featureModule = details[1];
-            string featureDescription = details[2];
-
-            for (int i = 3; i < details.Length; i++)
-            {
-                featureDescription += details[i];
-
-            }
-            embed.WithTitle(featureTitle);
-            embed.WithDescription(featureDescription);
-            embed.WithFooter($"Module: {featureModule}");
+            var feature = details.Split("|");
+            string title = feature[0];
+            string subtitle = feature[1];
+            string description = feature[2];
+            
+            embed.WithTitle(title);
+            embed.AddField(subtitle, description);
             embed.WithColor(Color.DarkBlue);
+            embed.WithFooter($"By {Context.User.Mention}");
             embed.WithCurrentTimestamp();
 
-            IEmote upvoteEmote = new Emoji("👍");
+            var upvoteEmote = new Emoji("👍");
             var suggestMessage = await ReplyAsync(embed);
             await suggestMessage.AddReactionAsync(upvoteEmote);
         }

@@ -1,7 +1,5 @@
-﻿using Bot3PG.Core.Data;
-using Bot3PG.DataStructs.Attributes;
-using Bot3PG.Handlers;
-using Bot3PG.Moderation;
+﻿using Bot3PG.Handlers;
+using Bot3PG.Modules.Moderation;
 using Discord;
 using Discord.WebSocket;
 using MongoDB.Bson;
@@ -11,11 +9,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Bot3PG.DataStructs
+namespace Bot3PG.Data.Structs
 {
     [BsonIgnoreExtraElements]
     public class GuildUser
     {
+        public static Action<GuildUser, Punishment> Muted;
+        public static Action<GuildUser, Punishment> Unmuted;
+        public static Action<GuildUser, Punishment> Warned;
+
         private static ulong _id;
         [BsonRepresentation(BsonType.String)]
         [BsonRequired] public ulong ID { get; private set; }
@@ -32,11 +34,7 @@ namespace Bot3PG.DataStructs
         public Leveling XP { get; private set; } = new Leveling();
         public Moderation Status { get; private set; } = new Moderation();
 
-        public void Reinitialize(SocketGuildUser socketGuildUser)
-        {
-            _id = socketGuildUser.Id;
-            _guildId = socketGuildUser.Guild.Id;
-        }
+        public void Reinitialize(SocketGuildUser socketGuildUser) { _id = socketGuildUser.Id; _guildId = socketGuildUser.Guild.Id; }
 
         public GuildUser(SocketGuildUser socketGuildUser)
         {
@@ -47,26 +45,19 @@ namespace Bot3PG.DataStructs
 
         public async Task BanAsync(TimeSpan duration, string reason, SocketUser instigator)
         {
-            var end = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);
-            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Ban, reason, instigator, DateTime.Now, end));
+            var end = (duration.TotalDays >= TimeSpan.MaxValue.TotalDays) ? DateTime.MaxValue : DateTime.Now.Add(duration);
+            Status.Punishments.Add(new Punishment(PunishmentType.Ban, reason, instigator, DateTime.Now, end));
 
             await DiscordUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
             if (DiscordUser.IsBot)
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been banned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
-            await Users.Save(this);
-        }
 
-        public async Task UnbanAsync(string reason, SocketUser instigator)
-        {
-            Status.Bans.LastOrDefault().End = DateTime.Now;
-            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Unban, reason, instigator, DateTime.Now));
-
-            await DiscordUser.Guild.RemoveBanAsync(ID, new RequestOptions() { AuditLogReason = reason });
-            if (!DiscordUser.IsBot)
+            var guild = await GetGuild();
+            if (guild.Moderation.ResetBannedUsers)
             {
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unbanned from {DiscordUser.Guild.Name} for '{reason}'", Color.Green));
+                await Users.ResetAsync(DiscordUser);
             }
             await Users.Save(this);
         }
@@ -74,7 +65,8 @@ namespace Bot3PG.DataStructs
         public async Task MuteAsync(TimeSpan duration, string reason, SocketUser instigator)
         {
             var end = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);
-            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Mute, reason, instigator, DateTime.Now, end));
+            var punishment = new Punishment(PunishmentType.Mute, reason, instigator, DateTime.Now, end);
+            Status.Punishments.Add(punishment);
 
             var socketGuild = DiscordUser.Guild;
             var guild = await Guilds.GetAsync(socketGuild);
@@ -88,6 +80,12 @@ namespace Bot3PG.DataStructs
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been muted from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
+            if (mutedRole != null) 
+            {
+                await DiscordUser.AddRoleAsync(mutedRole);
+            }
+            if (Muted != null) Muted(this, punishment);
+
             await Users.Save(this);
         }
 
@@ -98,33 +96,38 @@ namespace Bot3PG.DataStructs
             var guild = await Guilds.GetAsync(DiscordUser.Guild);
             var mutedRole = DiscordUser.Guild.Roles.FirstOrDefault(r => r.Name == guild.Moderation.MutedRoleName);
 
-            await DiscordUser.RemoveRoleAsync(mutedRole);
             if (!DiscordUser.IsBot)
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unmuted from {DiscordUser.Guild.Name} for '{reason}'", Color.Green));
             }
+            await DiscordUser.RemoveRoleAsync(mutedRole);
+            if (Muted != null) Unmuted(this, null);
+
             await Users.Save(this);
         }
 
         public async Task KickAsync(string reason, SocketUser instigator)
         {
-            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Kick, reason, instigator, DateTime.Now, DateTime.Now));
-            await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });
+            Status.Punishments.Add(new Punishment(PunishmentType.Kick, reason, instigator, DateTime.Now, DateTime.Now));
 
             if (!DiscordUser.IsBot)
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been kicked from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
+            await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });
             await Users.Save(this);
         }
 
         public async Task WarnAsync(string reason, SocketUser instigator, bool alertUser = true)
         {
-            Status.Punishments.Add(new Moderation.Punishment(PunishmentType.Warn, reason, instigator, DateTime.Now, DateTime.Now));
+            var punishment = new Punishment(PunishmentType.Warn, reason, instigator, DateTime.Now, DateTime.Now);
+            Status.Punishments.Add(punishment);
             if (alertUser && !DiscordUser.IsBot)
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
+            if (Muted != null) Warned(this, punishment);
+
             await Users.Save(this);
         }
 
@@ -141,6 +144,7 @@ namespace Bot3PG.DataStructs
             {
                 var user = await GetUser();
                 var guild = await GetGuild();
+                if (user is null || guild is null) return false;
 
                 var lastMessageTime = DateTime.Now.Subtract(user.XP.LastXPMsg);
                 return lastMessageTime.TotalSeconds <= guild.XP.Cooldown || user.Status.IsMuted;
@@ -162,6 +166,7 @@ namespace Bot3PG.DataStructs
             public bool IsBanned => Bans.LastOrDefault() != null && DateTime.Now < Bans.LastOrDefault().End;
 
             public string LastMessage { get; set; }
+            public int MessageCount { get; set; }
 
             public bool AgreedToRules { get; set; }
 
@@ -173,30 +178,6 @@ namespace Bot3PG.DataStructs
             public List<Punishment> Warns => Punishments.Where(p => p.Type == PunishmentType.Warn)?.ToList();
 
             public int WarningsCount => Warns.Count;
-
-            public class Punishment
-            {
-                public PunishmentType Type { get; private set; }
-
-                [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-                public DateTime Start { get; set; }
-
-                [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-                public DateTime End { get; set; }
-
-                public string Reason { get; private set; }
-
-                public ulong InstigatorID { get; private set; }
-
-                public Punishment(PunishmentType type, string reason, SocketUser instigator, DateTime start = default, DateTime end = default)
-                {
-                    Type = type;
-                    Start = start;
-                    End = end;
-                    Reason = reason;
-                    InstigatorID = instigator.Id;
-                }
-            }
         }
     }
 }

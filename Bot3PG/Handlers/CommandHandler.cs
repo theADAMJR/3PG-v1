@@ -1,16 +1,17 @@
-﻿using Bot3PG.Modules;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 using System.Reflection;
-using Bot3PG.Core.Data;
+using Bot3PG.Data;
 using Bot3PG.Modules.XP;
 using Bot3PG.Modules.General;
-using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Generic;
+using Bot3PG.Modules;
+using Bot3PG.Data.Structs;
 
 namespace Bot3PG.Handlers
 {
@@ -42,19 +43,25 @@ namespace Bot3PG.Handlers
             var socketGuildUser = socketMessage.Author as SocketGuildUser;
             if (socketGuildUser is null) return;
 
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var commandPrefix = guild.General.CommandPrefix ?? "/";
+            var guild = new Guild(socketGuildUser.Guild);
+            try { guild = await Guilds.GetAsync(socketGuildUser.Guild); }
+            catch
+            {
+                await socketMessage.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Database", "Server configuration corrupted. Please type /reset to reset it."));
+                return;
+            }
+            var commandPrefix = guild?.General?.CommandPrefix ?? "/";
 
             int argPos = 0;
             if (!message.HasStringPrefix(commandPrefix, ref argPos))
             {
-                LevelingSystem.ValidateForXPAsync(socketMessage as SocketUserMessage);
+                Leveling.ValidateForXPAsync(socketMessage as SocketUserMessage);
                 return;
             }
 
             var context = new SocketCommandContext(Global.Client, socketMessage as SocketUserMessage);
 
-            var channelIsBlacklisted = guild.General.BlacklistedChannelIds.Any(id => id == message.Channel.Id);
+            var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(id => id == message.Channel.Id);
             if (channelIsBlacklisted) return;
 
             var result = commands.ExecuteAsync(context, argPos, services, MultiMatchHandling.Best);
@@ -81,7 +88,8 @@ namespace Bot3PG.Handlers
                         await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("⚠💀 Extreme Error!", $"{result.Result.ErrorReason}"));
                         break;
                     case CommandError.UnmetPrecondition:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", $"**Required permissions:** "));
+                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", 
+                            $"**Required permissions:** {RequiredPermissions(message)}"));
                         break;
                     default: // TODO - if in debug mode
                         await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Error", $"{result.Exception.Message} \n**Source**: {result.Exception.StackTrace}"));
@@ -92,12 +100,23 @@ namespace Bot3PG.Handlers
 
         private string CorrectCommandUsage(SocketUserMessage message, string prefix)
         {
+            var similarCommand = commandHelp.FirstOrDefault(c => message.Content.ToLower().Contains(c.Key)).Key;
+            return similarCommand != null ? $"`{prefix}{commandHelp[similarCommand].Usage}`" : null;
+        }
+
+        private string RequiredPermissions(SocketUserMessage message)
+        {
             foreach (var command in commandHelp)
             {
                 if (message.Content.ToLower().Contains(command.Key))
                 {
-                    return "`" + prefix + commandHelp[command.Key].Usage + "`";
-                }
+                    var preconditions = new List<string>();
+                    foreach (var precondition in commandHelp[command.Key].Preconditions)
+                    {
+                        preconditions.Add(precondition.ToString());
+                    }
+                    return $"`{preconditions[0]}`";
+                } 
             }
             return null;
         }

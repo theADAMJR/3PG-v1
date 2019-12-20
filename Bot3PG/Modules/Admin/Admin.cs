@@ -1,4 +1,6 @@
-﻿using Bot3PG.Core.Data;
+﻿using Bot3PG.Data;
+using Bot3PG.Data.Structs;
+using Bot3PG.Handlers;
 using Bot3PG.Modules;
 using Bot3PG.Modules.General;
 using Discord;
@@ -16,10 +18,7 @@ namespace Bot3PG.CommandModules
         [Summary("Get the bot to say message")]
         [RequireUserPermission(GuildPermission.Administrator, ErrorMessage = ": You must have permissions: Administrator or Manage Guild to use this command")]
         [RequireBotPermission(GuildPermission.Administrator)]
-        public async Task Say([Remainder]string message)
-        {
-            await ReplyAsync(message);
-        }
+        public async Task Say([Remainder]string message) => await ReplyAsync(message);
 
         [Command("Image"), Alias("Img")]
         [Summary("Get bot to send image URL")]
@@ -45,25 +44,37 @@ namespace Bot3PG.CommandModules
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task Rulebox()
         {
+            var guild = await Guilds.GetAsync(Context.Guild);
+
             var embed = new EmbedBuilder();
-            embed.WithTitle("Do you agree to the rules?");
+            embed.WithTitle(guild.Admin.Rulebox.Message);
 
             var rulebox = await ReplyAsync(embed);
-            await AddRuleboxReactions(rulebox);
 
-            var guild = await Guilds.GetAsync(Context.Guild);
-            guild.Admin.Rulebox.Id = rulebox.Id;
-            guild.Admin.Rulebox.ChannelId = rulebox.Channel.Id;
+            guild.Admin.Rulebox.MessageId = rulebox.Id;
+            guild.Admin.Rulebox.Channel = rulebox.Channel.Id;
+
+            await AddRuleboxReactions(guild, rulebox);
             await Guilds.Save(guild);
         }
 
-        private async Task AddRuleboxReactions(IUserMessage rulebox)
+        private async Task AddRuleboxReactions(Guild guild, IUserMessage rulebox)
         {
-            var agreeEmote = new Emoji("✅") as IEmote;
-            var disagreeEmote = new Emoji("❌") as IEmote;
+            var agreeEmote = new Emoji(guild.Admin.Rulebox.AgreeEmote) as IEmote;
+            var disagreeEmote = new Emoji(guild.Admin.Rulebox.DisagreeEmote) as IEmote;
+            
             await rulebox.AddReactionAsync(agreeEmote);
             await rulebox.AddReactionAsync(disagreeEmote);
             await rulebox.PinAsync();
+        }
+
+        [Command("Reset")]
+        [Summary("Reset server settings to their default values")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task Reset()
+        {
+            await Guilds.ResetAsync(Context.Guild);
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Reset", "Succesfully reset server config", Color.Green));
         }
     }
 }

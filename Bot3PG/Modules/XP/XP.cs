@@ -1,12 +1,12 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
+﻿using Bot3PG.Data;
+using Bot3PG.Handlers;
+using Bot3PG.Modules.General;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Bot3PG.Handlers;
-using Bot3PG.Core.Data;
 using System;
-using Bot3PG.Modules.General;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.XP
 {
@@ -27,22 +27,17 @@ namespace Bot3PG.Modules.XP
             int rank = users.FindIndex(u => u.ID == target.Id) + 1;
             var user = await Users.GetAsync(target);
 
-            // TODO - add config for level boundaries
-            var cardColor = Color.DarkGrey;
-            switch (user.XP.Level)
+            var cardColour = Color.DarkGrey;
+            var roles = guild.XP.RoleRewards.LevelRoles.OrderBy(r => r.Key);
+
+            foreach (var role in roles)
             {
-                case int level when (level >= 25 && level < 50):
-                    cardColor = Color.Red;
-                    break;
-                case int level when (level >= 50 && level < 75):
-                    cardColor = Color.LightGrey;
-                    break;
-                case int level when (level >= 75 && level < 100):
-                    cardColor = Color.Gold;
-                    break;
-                case int level when (level >= 100):
-                    cardColor = Color.Blue;
-                    break;
+                int.TryParse(role.Key, out int boundary);
+                if (user.XP.Level >= boundary)
+                {
+                    cardColour = Context.Guild.GetRole(role.Value)?.Color ?? Color.Default;
+                    continue;
+                }
             }
 
             var embed = new EmbedBuilder();
@@ -52,7 +47,7 @@ namespace Bot3PG.Modules.XP
             embed.AddField("EXP for Next Level", user.XP.EXPForNextLevel, true);
             embed.AddField("Level", user.XP.Level, true);
             embed.AddField("Rank", rank, false);
-            embed.WithColor(cardColor);
+            embed.WithColor(cardColour);
 
             await ReplyAsync(embed);
         }
@@ -66,7 +61,7 @@ namespace Bot3PG.Modules.XP
 
             if (page < 1 || page > guild.XP.MaxLeaderboardPage)
             {
-                await ReplyAsync("", embed: await EmbedHandler.CreateBasicEmbed($"🏆 {Context.Guild.Name} Leaderboard", $"Leaderboard page must between 1 and {guild.XP.MaxLeaderboardPage}", Color.Red));
+                await ReplyAsync(embed: await EmbedHandler.CreateBasicEmbed($"🏆 {Context.Guild.Name} Leaderboard", $"Leaderboard page must between 1 and {guild.XP.MaxLeaderboardPage}", Color.Red));
                 return;
             }
 
@@ -77,7 +72,7 @@ namespace Bot3PG.Modules.XP
             var pageEndIndex = page * usersPerPage;
 
             var embed = new EmbedBuilder();
-            string leaderboard = "";
+            string leaderboard = "\u200B\n";
             for (int i = pageStartIndex; i < pageEndIndex; i++)
             {
                 if (i >= leaderboardUsers.Count)
@@ -87,12 +82,13 @@ namespace Bot3PG.Modules.XP
                 }
                 var user = leaderboardUsers[i];
                 var socketGuildUser = Context.Guild.GetUser(user.ID);
-                leaderboard += $"**#{i + 1}** - {user.XP.EXP} XP - {socketGuildUser.Mention}\n";
+                leaderboard += $"**#{i + 1}** - {user.XP.EXP} XP - {socketGuildUser?.Mention ?? "N/A"}\n";
             }
             embed.WithColor(Color.Teal);
             embed.AddField($"🏆 **{ Context.Guild.Name} Leaderboard **", leaderboard, inline: false);
+            embed.AddField("View Leaderboard", $"{Global.Config.WebappLink}/servers/{Context.Guild.Id}/leaderboard");
             embed.WithThumbnailUrl(Context.Guild.IconUrl);
-            embed.WithFooter($"Page {page} • Users with XP: {leaderboardUsers.Count}");
+            embed.WithFooter($"Page {page}/{guild.XP.MaxLeaderboardPage} • Users with XP: {leaderboardUsers.Count}");
 
             await ReplyAsync(embed);
         }

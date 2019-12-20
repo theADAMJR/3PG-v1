@@ -27,8 +27,8 @@ namespace Bot3PG.Handlers
         {
             var embed = await Task.Run(() => new EmbedBuilder()
                 .WithTitle($"{source}")
-                .WithDescription($"**Error**: \n{error}")
                 .WithColor(Color.DarkRed)
+                .WithDescription(error)
                 .WithCurrentTimestamp().Build());
             return embed;
         }

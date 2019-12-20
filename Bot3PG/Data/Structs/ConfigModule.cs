@@ -1,6 +1,4 @@
-﻿using Bot3PG.DataStructs.Attributes;
-
-namespace Bot3PG.DataStructs
+﻿namespace Bot3PG.Data.Structs
 {
     public class ConfigModule
     {

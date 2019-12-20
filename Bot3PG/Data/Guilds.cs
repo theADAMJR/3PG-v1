@@ -1,16 +1,14 @@
-﻿using Bot3PG.DataStructs;
+﻿using Bot3PG.Data.Structs;
 using Discord.WebSocket;
 using MongoDB.Driver;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Bot3PG.Core.Data
+namespace Bot3PG.Data
 {
     public static class Guilds
     {
-        public static IMongoCollection<Guild> collection;
+        public static readonly IMongoCollection<Guild> collection;
         private const string guildCollection = "guild";
 
         private static readonly DatabaseManager db;
@@ -43,15 +41,10 @@ namespace Bot3PG.Core.Data
         {
             var newGuild = new Guild(socketGuild);
             
-            try
-            {
-                await db.InsertAsync(newGuild, collection);
-            }
-            catch
-            {
-                await db.UpdateAsync(g => g.ID == socketGuild.Id, newGuild, collection);
-            }
+            try { await db.InsertAsync(newGuild, collection); }
+            catch { await db.UpdateAsync(g => g.ID == socketGuild.Id, newGuild, collection); }
             await SetDefaults(socketGuild, newGuild);
+
             return newGuild;
         }
 
@@ -70,19 +63,22 @@ namespace Bot3PG.Core.Data
                 string lowerTextChannelName = textChannel.Name.ToLower();
                 if (lowerTextChannelName.Contains("logs"))
                 {
-                    guild.Moderation.StaffLogs.ChannelId = textChannel.Id;
+                    guild.Moderation.StaffLogs.Channel = textChannel.Id;
                 }
                 if (lowerTextChannelName.Contains("general"))
                 {
-                    guild.General.Announce.Channel = textChannel;
+                    guild.General.Announce.Channel = textChannel.Id;
                 }
                 else
                 {
                     var announceChannel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-                    guild.General.Announce.Channel = announceChannel;
+                    guild.General.Announce.Channel = announceChannel.Id;
 
                     var agreeRole = socketGuild.Roles.FirstOrDefault(r => r.Name == "Member");
-                    guild.Admin.Rulebox.RoleId = agreeRole.Id;
+                    if (agreeRole != null)
+                    {
+                        guild.Admin.Rulebox.Role = agreeRole.Id;
+                    }
                 }
             }
             await Save(guild);

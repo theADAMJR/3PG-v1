@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Linq;
+using Discord.WebSocket;
 
-namespace Bot3PG.Utilities
+namespace Bot3PG.Utils
 {
-    public static class CommandUtilities
+    public static class CommandUtils
     {
         public static TimeSpan ParseDuration(string duration)
         {
-            if (string.IsNullOrEmpty(duration) || duration == "-1")
-            {
-                return TimeSpan.MaxValue;
-            }
+            if (string.IsNullOrEmpty(duration) || duration == "-1" || duration.ToLower() == "forever") return TimeSpan.MaxValue;
+
             var allLetters = duration.Where(c => char.IsLetter(c));
             string letters = string.Concat(allLetters);
 
@@ -36,7 +35,18 @@ namespace Bot3PG.Utilities
                 case string word when (word == "s" || word == "sec"):
                     return TimeSpan.FromSeconds(time);
             }
-            throw new CommandException("Could not parse duration. Make sure you typed the duration correctly.");
+            throw new ArgumentException("Could not parse duration. Make sure you typed the duration correctly.");
+        }
+
+        public static string SetGuildVariables(string text, SocketGuildUser socketGuildUser)
+        {
+            text = text.Replace("[NICKNAME]", socketGuildUser.Nickname);
+            text = text.Replace("[OWNER]", $"{socketGuildUser.Guild.Owner}");
+            text = text.Replace("[USER]", socketGuildUser.Mention);
+            text = text.Replace("[USER_COUNT]", $"{socketGuildUser.Guild.Users.Count}");
+            text = text.Replace("[USERNAME]", socketGuildUser.Username);
+            text = text.Replace("[SERVER]", socketGuildUser.Guild.Name);
+            return text;
         }
     }
 }

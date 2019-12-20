@@ -2,7 +2,7 @@
 using System.Linq;
 using System.IO;
 
-namespace Bot3PG
+namespace Bot3PG.Data
 {
     public class BannedWords
     {
@@ -15,13 +15,12 @@ namespace Bot3PG
             {
                 Directory.CreateDirectory(BanWordsFolder);
             }
-
             if (!File.Exists(BanWordsFolder + "/" + BanWordsFile))
             {
                 File.Create(BanWordsFolder + "/" + BanWordsFile);
             }
         }
 
-        public static string[] GetWords() => File.ReadAllLines(BanWordsFolder + "/" + BanWordsFile).ToArray();
+        public static string[] Words => File.ReadAllLines(BanWordsFolder + "/" + BanWordsFile).ToArray();
     }
 }

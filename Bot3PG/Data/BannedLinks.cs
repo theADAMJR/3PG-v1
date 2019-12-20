@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using System.IO;
 
-namespace Bot3PG
+namespace Bot3PG.Data
 {
     public class BannedLinks
     {
@@ -11,27 +11,15 @@ namespace Bot3PG
         protected BannedLinks()
         {
             if (!Directory.Exists(BanLinksFolder))
+            {
                 Directory.CreateDirectory(BanLinksFolder);
-
+            }
             if (!File.Exists(BanLinksFolder + "/" + BanLinksFile))
             {
                 File.Create(BanLinksFolder + "/" + BanLinksFile);
             }
         }
 
-        static void AddLink(string word)
-        {
-            File.WriteAllText(BanLinksFile, word);
-        }
-
-        static void CheckLinks()
-        {
-            File.ReadAllLines(BanLinksFile);
-        }
-
-        public static string[] GetLinks()
-        {
-            return File.ReadAllLines(BanLinksFolder + "/" + BanLinksFile).ToArray();
-        }
+        public static string[] Links => File.ReadAllLines(BanLinksFolder + "/" + BanLinksFile).ToArray();
     }
 }

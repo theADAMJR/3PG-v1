@@ -1,4 +1,4 @@
-﻿using Bot3PG.DataStructs;
+﻿using Bot3PG.Data.Structs;
 using Discord.WebSocket;
 using MongoDB.Driver;
 using System;
@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Bot3PG.Core.Data
+namespace Bot3PG.Data
 {
     public static class Users
     {

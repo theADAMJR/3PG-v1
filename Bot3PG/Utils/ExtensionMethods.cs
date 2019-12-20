@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 
-namespace Bot3PG.Utilities
+namespace Bot3PG.Utils
 {
     public static class ExtensionMethods
     {

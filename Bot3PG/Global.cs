@@ -1,4 +1,4 @@
-﻿using Bot3PG.DataStructs;
+﻿using Bot3PG.Data.Structs;
 using Bot3PG.Modules.General;
 using Discord.Commands;
 using Discord.WebSocket;

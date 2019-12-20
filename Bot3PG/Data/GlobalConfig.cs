@@ -1,8 +1,8 @@
-﻿using Bot3PG.DataStructs;
+﻿using Bot3PG.Data.Structs;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace Bot3PG
+namespace Bot3PG.Data
 {
     public static class GlobalConfig
     {

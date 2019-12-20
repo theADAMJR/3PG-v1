@@ -4,9 +4,8 @@ using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
 
-namespace Bot3PG.DataStructs
+namespace Bot3PG.Data.Structs
 {
-    [BsonIgnoreExtraElements]
     public class User
     {
         [BsonIgnore] private static ulong _id;

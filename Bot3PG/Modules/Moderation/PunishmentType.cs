@@ -1,4 +1,4 @@
-﻿namespace Bot3PG.Moderation
+﻿namespace Bot3PG.Modules.Moderation
 {
-    public enum PunishmentType { Warn, Kick, Mute, Ban, Unmute, Unban }
+    public enum PunishmentType { Warn, Kick, Mute, Ban }
 }

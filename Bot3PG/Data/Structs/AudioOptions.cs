@@ -1,6 +1,6 @@
 ﻿using Discord;
 
-namespace Bot3PG.DataStructs
+namespace Bot3PG.Data.Structs
 {
     public struct AudioOptions
     {

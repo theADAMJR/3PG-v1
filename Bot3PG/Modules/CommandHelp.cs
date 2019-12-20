@@ -1,4 +1,4 @@
-﻿using Bot3PG.Core.Data;
+﻿using Bot3PG.Data;
 using Discord;
 using Discord.Commands;
 using MongoDB.Bson;
@@ -7,8 +7,7 @@ using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Linq;
 
-// TODO => move to Bot3PG.Modulesa
-namespace Bot3PG.Modules.General
+namespace Bot3PG.Modules
 {
     public class CommandHelp : Dictionary<string, Command>
     {
@@ -35,7 +34,6 @@ namespace Bot3PG.Modules.General
                 }
 
                 var preconditions = new List<GuildPermission?>();
-                Release? release = null;
                 for (int i = 0; i < command.Preconditions.Count; i++)
                 {
                     if (command.Preconditions[i] is RequireUserPermissionAttribute userPermissionAttribute)
@@ -44,7 +42,7 @@ namespace Bot3PG.Modules.General
                     }
                 }
 
-                this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, color), command.Aliases, preconditions, release);
+                this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, color), command.Aliases, preconditions);
             }
         }
     }

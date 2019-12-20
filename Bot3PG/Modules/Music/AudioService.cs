@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Bot3PG.DataStructs;
+using Bot3PG.Data;
+using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
+using Bot3PG.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -10,8 +12,6 @@ using System.Threading.Tasks;
 using Victoria;
 using Victoria.Entities;
 using Victoria.Queue;
-using Bot3PG.Core.Data;
-using Bot3PG.Services;
 
 namespace Bot3PG.Modules.Music
 {
@@ -21,88 +21,60 @@ namespace Bot3PG.Modules.Music
         private readonly LavaSocketClient _lavaSocketClient;
         private readonly LavaRestClient _lavaRestClient;
 
-        public AudioService(LavaSocketClient lavaSocketClient, LavaRestClient lavaRestClient)
-        {
-            _lavaSocketClient = lavaSocketClient;
-            _lavaRestClient = lavaRestClient;
-        }
-        #region Music Region
+        public AudioService(LavaSocketClient lavaSocketClient, LavaRestClient lavaRestClient) { _lavaSocketClient = lavaSocketClient; _lavaRestClient = lavaRestClient; }
 
-        private readonly Lazy<ConcurrentDictionary<ulong, AudioOptions>> _lazyOptions
-            = new Lazy<ConcurrentDictionary<ulong, AudioOptions>>();
+        private readonly Lazy<ConcurrentDictionary<ulong, AudioOptions>> _lazyOptions = new Lazy<ConcurrentDictionary<ulong, AudioOptions>>();
 
-        private ConcurrentDictionary<ulong, AudioOptions> Options
-            => _lazyOptions.Value;
+        private ConcurrentDictionary<ulong, AudioOptions> Options => _lazyOptions.Value;
         
         public async Task<Embed> JoinOrPlayAsync(SocketGuildUser user, ITextChannel textChannel, ulong guildId, string query = null, string platform = "youtube")
         {
-            if (user.VoiceChannel is null)
-                return await EmbedHandler.CreateErrorEmbed("Music, Join/Play", "You Must First Join a Voice Channel.");
+            if (user.VoiceChannel is null) return await EmbedHandler.CreateBasicEmbed("Music", "Please join a channel", Color.Red);
             
             if (query is null)
             {
-                await _lavaSocketClient.ConnectAsync(user.VoiceChannel);//, textChannel /*This Param is Optional, Only used If we want to bind the Bot to a TextChannel For commands.*/);
-                Options.TryAdd(user.Guild.Id, new AudioOptions
-                {
-                    Summoner = user
-                });
-                await Debug.LogInformationAsync("Music", $"Now connected to {user.VoiceChannel.Name}.");// and bound to {textChannel.Name}.");
-                return await EmbedHandler.CreateBasicEmbed("Music", $"Now connected to {user.VoiceChannel.Name}.", Color.Blue);// and bound to {textChannel.Name}. **Headphone warning**...", Color.Blue);
+                await _lavaSocketClient.ConnectAsync(user.VoiceChannel);
+                Options.TryAdd(user.Guild.Id, new AudioOptions { Summoner = user });
+                await Debug.LogInformationAsync("Music", $"Now connected to {user.VoiceChannel.Name}.");
+                return await EmbedHandler.CreateBasicEmbed("Music", $"Now connected to {user.VoiceChannel.Name}.", Color.Blue);
             }
-            else
+            try
             {
-                try
+                var player = _lavaSocketClient.GetPlayer(guildId);
+                if (player is null)
                 {
-                    var player = _lavaSocketClient.GetPlayer(guildId);
-                    if (player is null)
-                    {
-                        Options.TryAdd(user.Guild.Id, new AudioOptions
-                        {
-                            Summoner = user
-                        });
-                        await this.player.VoiceChannel.ConnectAsync();
-                        player = _lavaSocketClient.GetPlayer(guildId);
-                    }
-
-                    SearchResult search;
-                    switch (platform)
-                    {
-                        case "soundcloud":
-                            search = await _lavaRestClient.SearchSoundcloudAsync(query);
-                            break;
-                        default:
-                            search = await _lavaRestClient.SearchYouTubeAsync(query);
-                            break;
-                    }
-
-                    if (search.LoadType == LoadType.NoMatches)
-                        return await EmbedHandler.CreateErrorEmbed("Music", $"OOF! I wasn't able to find anything for {query}.");
-
-                    var track = search.Tracks.FirstOrDefault();
-
-                    if (track.Length > TimeSpan.FromHours(2))
-                    {
-                        return await EmbedHandler.CreateBasicEmbed("Music", $"Track duration must be under 2 hours.", Color.Red);
-                    }
-
-                    if (player.CurrentTrack != null && player.IsPlaying || player.IsPaused)
-                    {
-                        player.Queue.Enqueue(track);
-                        await Debug.LogInformationAsync("Music", $"{track.Title} has been added to the music queue.");
-                        return await EmbedHandler.CreateBasicEmbed("Music", $"{track.Title} has been added to queue.", Color.Blue);
-                    }
-                    //Player was not playing anything, so lets play the requested track.
-                    await player.PlayAsync(track);
-                    await Debug.LogInformationAsync("Music", $"Bot Now Playing: {track.Title}\nUrl: {track.Uri}");
-                    return await EmbedHandler.CreateBasicEmbed("Music", $"Now Playing: {track.Title}\nUrl: {track.Uri}", Color.Blue);
+                    Options.TryAdd(user.Guild.Id, new AudioOptions { Summoner = user });
+                    await this.player.VoiceChannel.ConnectAsync();
+                    player = _lavaSocketClient.GetPlayer(guildId);
                 }
-                //If after all the checks we did, something still goes wrong. Tell the user about it so they can report it back to us.
-                catch (Exception ex)
+
+                SearchResult search;
+                switch (platform)
                 {
-                    return await EmbedHandler.CreateErrorEmbed("Music, Join/Play", ex.ToString());
+                    case "soundcloud":
+                        search = await _lavaRestClient.SearchSoundcloudAsync(query);
+                        break;
+                    default:
+                        search = await _lavaRestClient.SearchYouTubeAsync(query);
+                        break;
                 }
+
+                if (search.LoadType == LoadType.NoMatches) return await EmbedHandler.CreateErrorEmbed("Music", $"OOF! I wasn't able to find anything for {query}.");
+
+                var track = search.Tracks.FirstOrDefault();
+                if (track.Length > TimeSpan.FromHours(2)) return await EmbedHandler.CreateBasicEmbed("Music", $"Track duration must be under 2 hours.", Color.Red);
+
+                if (player.CurrentTrack != null && player.IsPlaying || player.IsPaused)
+                {
+                    player.Queue.Enqueue(track);
+                    await Debug.LogInformationAsync("Music", $"{track.Title} has been added to the music queue.");
+                    return await EmbedHandler.CreateBasicEmbed("Music", $"{track.Title} has been added to queue.", Color.Blue);
+                }
+                await player.PlayAsync(track);
+                await Debug.LogInformationAsync("Music", $"Now playing: {track.Title}\nUrl: {track.Uri}");
+                return await EmbedHandler.CreateBasicEmbed("Music", $"Now playing: {track.Title}\nUrl: {track.Uri}", Color.Blue);
             }
-
+            catch (Exception ex) { return await EmbedHandler.CreateErrorEmbed("Music", ex.ToString()); }
         }
         
         public async Task<Embed> LeaveAsync(ulong guildId)
@@ -112,9 +84,10 @@ namespace Bot3PG.Modules.Music
                 var player = _lavaSocketClient.GetPlayer(guildId);
 
                 if (player is null)
-                    return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
+                    return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you in a channel? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
                 
                 if (player.IsPlaying)
+
                     await player.StopAsync();
                 
                 var channel = player.VoiceChannel;
@@ -136,14 +109,13 @@ namespace Bot3PG.Modules.Music
 
                 var player = _lavaSocketClient.GetPlayer(guildId);
                 if (player is null)
-                    return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
+                    return await EmbedHandler.CreateErrorEmbed("Music, List", 
+                    $"Could not aquire player.\nAre you in a channel? Type `{GetCommandPrefix(guildId)}help music` for commands.");
 
                 if (player.IsPlaying)
                 {
-                    if (player.Queue.Count < 1 && player.CurrentTrack != null)
-                    {
+                    if (player.Queue.Count < 1 && player.CurrentTrack != null) 
                         return await EmbedHandler.CreateBasicEmbed($"Now Playing: {player.CurrentTrack.Title}", "Nothing else is queued.", Color.Blue);
-                    }
                     else
                     {
                         var trackNum = 2;
@@ -155,15 +127,9 @@ namespace Bot3PG.Modules.Music
                         return await EmbedHandler.CreateBasicEmbed("Music Playlist", $"Now Playing: [{player.CurrentTrack.Title}]({player.CurrentTrack.Uri})\n{descriptionBuilder.ToString()}", Color.Blue);
                     }
                 }
-                else
-                {
-                    return await EmbedHandler.CreateErrorEmbed("Music, List", "Player doesn't seem to be playing anything right now. If this is an error, Please contact admins.");
-                }
+                return await EmbedHandler.CreateErrorEmbed("Music, List", "Player doesn't seem to be playing anything right now. If this is an error, Please contact admins.");
             }
-            catch (Exception ex)
-            {
-                return await EmbedHandler.CreateErrorEmbed("Music, List", ex.Message);
-            }
+            catch (Exception ex) { return await EmbedHandler.CreateErrorEmbed("Music, List", ex.Message); }
 
         }
 
@@ -172,33 +138,20 @@ namespace Bot3PG.Modules.Music
             try
             {
                 var player = _lavaSocketClient.GetPlayer(guildId);
-                if (player is null)
-                    return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
-                if (player.Queue.Count < 1)
-                {
-                    return await EmbedHandler.CreateErrorEmbed("Music, SkipTrack", $"Unable To skip a track as there are either one or no songs currently playing." +
-                        $"\n\nDid you mean {GetCommandPrefix(guildId)}stop?");
-                }
-                else
-                {
-                    try
-                    {
-                        var currentTrack = player.CurrentTrack;
-                        await player.SkipAsync();
-                        await Debug.LogInformationAsync("Music", $"Skipped: {currentTrack.Title}");
-                        return await EmbedHandler.CreateBasicEmbed("Music Skip", $"{currentTrack.Title} successfully skipped", Color.Blue);
-                    }
-                    catch (Exception ex)
-                    {
-                        return await EmbedHandler.CreateErrorEmbed("Music, Skip", ex.ToString());
-                    }
+                if (player is null) return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
+                if (player.Queue.Count < 1) return await EmbedHandler.CreateErrorEmbed("Music, SkipTrack", $"Unable To skip a track as there are either one or no songs currently playing." +
+                    $"\n\nDid you mean {GetCommandPrefix(guildId)}stop?");
 
+                try
+                {
+                    var currentTrack = player.CurrentTrack;
+                    await player.SkipAsync();
+                    await Debug.LogInformationAsync("Music", $"Skipped: {currentTrack.Title}");
+                    return await EmbedHandler.CreateBasicEmbed("Music Skip", $"{currentTrack.Title} successfully skipped", Color.Blue);
                 }
+                catch (Exception ex) { return await EmbedHandler.CreateErrorEmbed("Music, Skip", ex.ToString()); }
             }
-            catch (Exception ex)
-            {
-                return await EmbedHandler.CreateErrorEmbed("Music, Skip", ex.ToString());
-            }
+            catch (Exception ex) { return await EmbedHandler.CreateErrorEmbed("Music, Skip", ex.ToString()); }
         }
 
         public async Task<Embed> StopAsync(ulong guildId)
@@ -207,49 +160,35 @@ namespace Bot3PG.Modules.Music
             {
                 var player = _lavaSocketClient.GetPlayer(guildId);
 
-                if (player is null)
-                    return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
-                /* Check if the player exists, if it does, check if it is playing.
-                     If it is playing, we can stop.*/
+                if (player is null) return await EmbedHandler.CreateErrorEmbed("Music, List", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
                 if (player.IsPlaying)
+                {
                     await player.StopAsync();
-                /* Not sure if this is required as I think player.StopAsync(); clears the queue anyway. */
+                }
                 foreach (var track in player.Queue.Items)
+                {
                     player.Queue.Dequeue();
+                }
                 await Debug.LogInformationAsync("Music", $"Bot has stopped playback.");
                 return await EmbedHandler.CreateBasicEmbed("Music Stop", "I Have stopped playback & the playlist has been cleared.", Color.Blue);
             }
-            catch (Exception ex)
-            {
-                return await EmbedHandler.CreateErrorEmbed("Music, Stop", ex.ToString());
-            }
+            catch (Exception ex) { return await EmbedHandler.CreateErrorEmbed("Music, Stop", ex.ToString()); }
         }
 
         public async Task<Embed> VolumeAsync(ulong guildId, int volume)
         {
-            if (volume < 0 || volume > 150)
-            {
-                return await EmbedHandler.CreateErrorEmbed("Music, Volume", "Volume must be between 0 and 150.");
-            }
+            if (volume < 0 || volume > 150) return await EmbedHandler.CreateErrorEmbed("Music, Volume", "Volume must be between 0 and 150.");
             try
             {
                 var player = _lavaSocketClient.GetPlayer(guildId);
-                if (player is null)
-                {
-                    return await EmbedHandler.CreateErrorEmbed("Music, Volume", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
-                }
-                if (volume == 0)
-                {
-                    return await EmbedHandler.CreateBasicEmbed("Music", $"**Current Volume:** {player.CurrentVolume}", Color.Blue);
-                }
+                if (player is null) return await EmbedHandler.CreateErrorEmbed("Music, Volume", $"Could not aquire player.\nAre you using the bot right now? check {GetCommandPrefix(guildId)}help for info on how to use the bot.");
+                if (volume == 0) return await EmbedHandler.CreateBasicEmbed("Music", $"**Current Volume:** {player.CurrentVolume}", Color.Blue);
+
                 await player.SetVolumeAsync(volume);
                 await Debug.LogInformationAsync("Music", $"Bot Volume set to: {volume}");
                 return await EmbedHandler.CreateBasicEmbed("Music", $"Volume has been set to {volume}.", Color.Blue);
             }
-            catch (InvalidOperationException ex)
-            {
-                return await EmbedHandler.CreateErrorEmbed("Music, Volume", ex.ToString());
-            }
+            catch (InvalidOperationException ex) { return await EmbedHandler.CreateErrorEmbed("Music, Volume", ex.ToString()); }
         }
 
         public async Task<Embed> PauseOrResume(ulong guildId)
@@ -257,25 +196,22 @@ namespace Bot3PG.Modules.Music
             try
             {
                 var player = _lavaSocketClient.GetPlayer(guildId);
+
                 if (!player.IsPaused)
                 {
                     await player.PauseAsync();
                     return await EmbedHandler.CreateBasicEmbed("Music", $"**Paused:** {player.CurrentTrack.Title}", Color.Blue);
                 }
-
                 await player.ResumeAsync();
                 return await EmbedHandler.CreateBasicEmbed("Music", $"Resumed:** Now Playing {player.CurrentTrack.Title}.", Color.Blue);
             }
-            catch (InvalidOperationException ex)
-            {
-                return await EmbedHandler.CreateErrorEmbed("Music, Pause/Resume", ex.Message);
-            }
+            catch (InvalidOperationException ex) { return await EmbedHandler.CreateErrorEmbed("Music, Pause/Resume", ex.Message); }
         }
 
         public async Task OnFinished(LavaPlayer player, LavaTrack track, TrackEndReason reason)
         {
-            if (reason is TrackEndReason.LoadFailed || reason is TrackEndReason.Cleanup)
-                return;
+            if (reason is TrackEndReason.LoadFailed || reason is TrackEndReason.Cleanup) return;
+
             player.Queue.TryDequeue(out IQueueObject queueObject);
             var nextTrack = queueObject as LavaTrack;
 
@@ -298,9 +234,6 @@ namespace Bot3PG.Modules.Music
             var guild = await Guilds.GetAsync(socketGuild);
             return guild.General.CommandPrefix;
         }
-        #endregion
-
-        #region Other
 
         public async Task<Embed> DisplayStatsAsync()
         {
@@ -312,7 +245,5 @@ namespace Bot3PG.Modules.Music
                 .AddField("Uptime", node.Uptime, true));
             return embed.Build();
         }
-
-        #endregion
     }
 }

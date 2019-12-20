@@ -1,4 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
+using Bot3PG.Data;
+using Bot3PG.Data.Structs;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -7,6 +10,14 @@ namespace Bot3PG.Modules
 {
     public class CommandBase : ModuleBase<SocketCommandContext>
     {
+        protected async override void BeforeExecute(CommandInfo command)
+        {
+            var guild = await Guilds.GetAsync(Context.Guild);
+            var module = guild.GetType().GetProperty(command.Module.Name).GetValue(guild) as ConfigModule;
+            
+            // if (module is null || !module.Enabled) throw new CommandException(command, Context, new Exception());
+        }
+        
         public async Task<IUserMessage> ReplyAsync(EmbedBuilder embed)
         {
             if (!embed.Color.HasValue)
@@ -16,7 +27,7 @@ namespace Bot3PG.Modules
             return await base.ReplyAsync("", embed: embed.Build());
         }
         public async Task<IUserMessage> ReplyAsync(Task<Embed> embed) => await ReplyAsync(await embed);
-        public async Task<IUserMessage> ReplyAsync(Embed embed) => await base.ReplyAsync("", embed: embed);
+        public async Task<IUserMessage> ReplyAsync(Embed embed) => await base.ReplyAsync(embed: embed);
         public async Task<IUserMessage> ReplyAsync(string message) => await base.ReplyAsync(message);
 
         public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, EmbedBuilder embed)
