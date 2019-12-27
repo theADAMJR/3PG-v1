@@ -33,6 +33,8 @@ namespace Bot3PG.Modules
                     color = new Color(colorAttribute.R, colorAttribute.B, colorAttribute.B);
                 }
 
+                if (command.Preconditions.Any(p => p is RequireOwnerAttribute)) continue;
+
                 var preconditions = new List<GuildPermission?>();
                 for (int i = 0; i < command.Preconditions.Count; i++)
                 {

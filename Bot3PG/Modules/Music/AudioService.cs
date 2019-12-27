@@ -39,7 +39,7 @@ namespace Bot3PG.Modules.Music
             }
         }
         
-        private static string GetDuration(LavaTrack track) => track.Length.ToString(track.Length > TimeSpan.FromHours(1) ? @"hh\:mm\:ss" : @"mm\:ss");
-        public static string Hyperlink(LavaTrack track) => $"[{track.Title}]({track.Uri}) `{GetDuration(track)}`";
+        public static string GetTrackDuration(LavaTrack track) => track.Length.ToString(track.Length > TimeSpan.FromHours(1) ? @"hh\:mm\:ss" : @"mm\:ss");
+        public static string Hyperlink(LavaTrack track) => $"[{track.Title}]({track.Uri}) `{GetTrackDuration(track)}`";
     }
 }
