@@ -51,7 +51,8 @@ namespace Bot3PG.Data
 
             foreach (var property in typeof(Guild).GetProperties())
             {
-                if (property.PropertyType.BaseType != typeof(ConfigModule)) continue;
+                bool isModule = property.PropertyType.BaseType == typeof(ConfigModule) || property.PropertyType.BaseType.BaseType == typeof(ConfigModule);
+                if (!isModule) continue;
 
                 string module = property.Name;
                 guildMirror[module] = new BsonDocument();
@@ -111,7 +112,9 @@ namespace Bot3PG.Data
             try
             {
                 commandMirror["Commands"] = commandHelp.ToBsonDocument();
-                // commandMirror["Modules"] = new BsonArray(commandHelp.Modules.ToArray());
+
+                //var configModules = typeof(Guild).GetProperties().Where(p => p.PropertyType.BaseType == typeof(ConfigModule));
+                commandMirror["Modules"] = new BsonArray(new string[] {"Admin", "General", "Moderation", "Music", "XP"});//(configModules.Select(p => p.Name));
             }
             catch (Exception err) { await Debug.LogAsync("database", LogSeverity.Error, err); }
 

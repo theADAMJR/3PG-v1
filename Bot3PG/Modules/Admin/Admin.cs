@@ -12,18 +12,16 @@ namespace Bot3PG.CommandModules
 {
     [Color(80, 55, 80)]
     [RequireContext(ContextType.Guild)]
+    [RequireUserPermission(GuildPermission.Administrator)]
+    [RequireBotPermission(GuildPermission.Administrator)]
     public sealed class Admin : CommandBase
     {
         [Command("Say")]
         [Summary("Get the bot to say message")]
-        [RequireUserPermission(GuildPermission.Administrator, ErrorMessage = ": You must have permissions: Administrator or Manage Guild to use this command")]
-        [RequireBotPermission(GuildPermission.Administrator)]
         public async Task Say([Remainder]string message) => await ReplyAsync(message);
 
         [Command("Image"), Alias("Img")]
         [Summary("Get bot to send image URL")]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        [RequireBotPermission(GuildPermission.Administrator)]
         public async Task Image([Remainder]string url)
         {
             if (url is null)
@@ -44,18 +42,16 @@ namespace Bot3PG.CommandModules
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task Rulebox()
         {
-            var guild = await Guilds.GetAsync(Context.Guild);
-
             var embed = new EmbedBuilder();
-            embed.WithTitle(guild.Admin.Rulebox.Message);
+            embed.WithTitle(CurrentGuild.Admin.Rulebox.Message);
 
             var rulebox = await ReplyAsync(embed);
 
-            guild.Admin.Rulebox.MessageId = rulebox.Id;
-            guild.Admin.Rulebox.Channel = rulebox.Channel.Id;
+            CurrentGuild.Admin.Rulebox.MessageId = rulebox.Id;
+            CurrentGuild.Admin.Rulebox.Channel = rulebox.Channel.Id;
 
-            await AddRuleboxReactions(guild, rulebox);
-            await Guilds.Save(guild);
+            await AddRuleboxReactions(CurrentGuild, rulebox);
+            await Guilds.Save(CurrentGuild);
         }
 
         private async Task AddRuleboxReactions(Guild guild, IUserMessage rulebox)
@@ -68,13 +64,53 @@ namespace Bot3PG.CommandModules
             await rulebox.PinAsync();
         }
 
+        [Command("Announce")]
+        [Summary("Send a direct message to all users in a server")]
+        public async Task Announce([Remainder] string message)
+        {
+            var socketGuildUsers = Context.Guild.Users;
+            int count = 0;
+            foreach (var socketGuildUser in socketGuildUsers)
+            {
+                try
+                {
+                    if (socketGuildUser.IsBot) continue;
+                    
+                    await socketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed($"`{Context.Guild.Name}` - Announcement", message, Color.DarkTeal));                    
+                    count++;
+                }
+                catch {}
+            }
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Announce", $"Message sent to {count} users", Color.Green));
+        }
+
         [Command("Reset")]
         [Summary("Reset server settings to their default values")]
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task Reset()
         {
             await Guilds.ResetAsync(Context.Guild);
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Reset", "Succesfully reset server config", Color.Green));
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Reset", "Succesfully Reset Server Settings 🔃", Color.Green));
+        }
+
+        [Command("Update")]
+        [Summary("Update all server documents to the latest version")]
+        [RequireOwner]
+        public async Task Update()
+        {
+            int count = 0;
+            var socketGuilds = Context.Client.Guilds;
+            foreach (var socketGuild in socketGuilds)
+            {
+                try
+                {
+                    var guild = await Guilds.GetAsync(socketGuild);
+                    await Guilds.Save(guild);
+                    count++;           
+                }
+                catch {}
+            }
+            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Update", $":robot: Updated {count} servers to the latest version!", Color.Purple));
         }
     }
 }

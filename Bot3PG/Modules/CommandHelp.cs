@@ -41,6 +41,13 @@ namespace Bot3PG.Modules
                         preconditions.Add(userPermissionAttribute.GuildPermission);
                     }
                 }
+                for (int i = 0; i < command.Module.Preconditions.Count; i++)
+                {
+                    if (command.Module.Preconditions[i] is RequireUserPermissionAttribute userPermissionAttribute)
+                    {
+                        preconditions.Add(userPermissionAttribute.GuildPermission);
+                    }
+                }
 
                 this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, color), command.Aliases, preconditions);
             }

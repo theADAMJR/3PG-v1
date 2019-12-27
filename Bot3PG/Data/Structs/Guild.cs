@@ -17,29 +17,29 @@ namespace Bot3PG.Data.Structs
 
         public bool IsPremium { get; private set; }
         
-        [Config("Features for admins")]
+        [Config("Features only for admins 🔒")]
         public AdminModule Admin { get; private set; } = new AdminModule();
 
-        [Config("General features")]
+        [Config("General features for general purposes")]
         public GeneralModule General { get; private set; } = new GeneralModule();
 
-        [Config("Manage your server")]
+        [Config("Manage your server, or let 3PG do the job 🤖")]
         public ModerationModule Moderation { get; private set; } = new ModerationModule();
 
-        [Config("Music features")]
+        [Config("Sit back and play any track 🎵")]
         public MusicModule Music { get; private set; } = new MusicModule();
 
-        [Config("Earn EXP and reward user's activity")]
+        [Config("Earn EXP and reward user's activity ✨")]
         public XPModule XP { get; private set; } = new XPModule();
 
-        [Config("Configure your server's dashboard")]
+        [Config("Configure your server's dashboard ⚙")]
         public SettingsModule Settings { get; private set; } = new SettingsModule();
 
         [BsonIgnore] public static SocketGuild DiscordGuild => Global.Client.GetGuild(_id);
 
         public Guild(SocketGuild socketGuild) { _id = socketGuild.Id; ID = socketGuild.Id; }
 
-        public class AdminModule : ConfigModule
+        public class AdminModule : CommandConfigModule
         {
             [Config("Make members have to agree to the rules to use your server")]
             public RuleboxSubModule Rulebox { get; private set; } = new RuleboxSubModule();
@@ -55,10 +55,10 @@ namespace Bot3PG.Data.Structs
                 [Config("The ID of the role given to members that agree to the rules"), SpecialType(typeof(SocketRole))]
                 [BsonRepresentation(BsonType.String)] public ulong Role { get; set; }
 
-                [Config("Reaction emote to agree to the rules")]
+                [Config("Reaction emote to agree to the rules"), SpecialType(typeof(Emote))]
                 public string AgreeEmote { get; set; } = "✅";
 
-                [Config("Reaction emote to disagree to the rules")]
+                [Config("Reaction emote to disagree to the rules"), SpecialType(typeof(Emote))]
                 public string DisagreeEmote { get; set; } = "❌";
                 
                 [Config("Pin the rulebox automatically on creation")]
@@ -69,7 +69,7 @@ namespace Bot3PG.Data.Structs
             }
         }
 
-        public class GeneralModule : ConfigModule
+        public class GeneralModule : CommandConfigModule
         {
             [Config("Send messages to users when they join or leave.", 
             extraInfo: "Variables: \n[NICKNAME] - user nickname \n[OWNER] - mention the server owner \n[USER] - mention the user \n"
@@ -83,8 +83,24 @@ namespace Bot3PG.Data.Structs
             [BsonRepresentation(BsonType.String)]
             public ulong[] BlacklistedChannels { get; set; } = new ulong[] {};
 
+            [Config("Upvote emote for suggestions"), SpecialType(typeof(Emote))]
+            public string UpvoteEmote { get; set; } = "👍";
+
+            [Config("Downvote emote for suggestions"), SpecialType(typeof(Emote))]
+            public string DownvoteEmote { get; set; } = "👎";
+
+            [Config("Whether to remove command calls after execution")]
+            public bool RemoveCommandMessages { get; set; }
+            
+            [Config("Role to give new members when they join"), List(typeof(SocketRole))]
+            [BsonRepresentation(BsonType.String)]
+            public ulong[] NewMemberRoles { get; private set; } = {};
+
             public class AnnounceSubModule : SubModule
-            {                
+            {
+                [Config("Whether to directly send welcome messages to new users")]
+                public bool DMNewUsers { get; set; } = false;
+
                 [Config("Send welcome messages when a user has joined")]
                 public bool Welcomes { get; set; } = true;
 
@@ -104,7 +120,7 @@ namespace Bot3PG.Data.Structs
             }
         }
 
-        public class ModerationModule : ConfigModule
+        public class ModerationModule : CommandConfigModule
         {
             [Config("Allow 3PG to punish offenders!")]
             public AutoModerationSubModule Auto { get; private set; } = new AutoModerationSubModule();
@@ -166,20 +182,32 @@ namespace Bot3PG.Data.Structs
             }
         }
 
-        public class MusicModule : ConfigModule
+        public class MusicModule : CommandConfigModule
         {
-            [Config("Default volume for music")]
-            public int DefaultVolume { get; set; } = 100;
+            [Config("Default volume for music, set when 3PG first plays tracks"), Range(0, 200)]
+            public int DefaultVolume { get; private set; } = 100;
+
+            // [Config("Whether the bot joins the channel on play")]
+            // public bool JoinOnPlay { get; private set; } = true;
+
+            [Config("The maximum allowed duration in hours for a track"), Range(0.25f, 24)]
+            public float MaxTrackHours { get; private set; } = 2;
+
+            [Config("Whether users have to vote for tracks to be skipped")]
+            public bool VoteToSkip { get; private set; }
+
+            [Config("Whether all voice channel members have to vote to skip, otherwise at least 50% of members are required")]
+            public bool AllVotesToSkip { get; private set; }
         }
 
-        public class XPModule : ConfigModule
+        public class XPModule : CommandConfigModule
         {
             public enum MessageType { AnyChannel, DM, SpecificChannel }
 
             [Config("Reward roles as XP rewards")]
             public RoleRewardsSubModule RoleRewards { get; private set; } = new RoleRewardsSubModule();
             
-            [Config("Let players know when they level up")]
+            [Config("Let users know when they level up")]
             public MessagesSubmodule Messages { get; private set; } = new MessagesSubmodule();
 
             [Config("The amount of EXP each message receives")]
@@ -212,7 +240,11 @@ namespace Bot3PG.Data.Structs
             {
                 public SocketRole this[int levelNumber]
                 {
-                    get => LevelRoles.Select(id => DiscordGuild.GetRole(id.Value)).FirstOrDefault();
+                    get
+                    {
+                        LevelRoles.TryGetValue(levelNumber.ToString(), out ulong id);
+                        return DiscordGuild.GetRole(id);
+                    }
                     set => LevelRoles[$"{levelNumber}"] = value.Id;
                 }
 
@@ -239,19 +271,22 @@ namespace Bot3PG.Data.Structs
 
         public class SettingsModule : ConfigModule
         {
-            [Config("Set the minimum permissions for using members using webapp features")]
+            [Config("Minimum permissions for using members using webapp features")]
             public PermissionsSubModule Permissions { get; private set; } = new PermissionsSubModule();
 
             public class PermissionsSubModule : SubModule
             {
-                [Config("Set minimum permission for editing server modules"), Dropdown(typeof(GuildPermission))]
+                [Config("Minimum permission for editing server modules"), Dropdown(typeof(GuildPermission))]
                 public GuildPermission EditModules { get; set; } = GuildPermission.ManageGuild;
 
                 [Config("Required permission for viewing punishments"), Dropdown(typeof(GuildPermission))]
                 public GuildPermission ViewPunishments { get; set; } = GuildPermission.ViewAuditLog;
 
-                [Config("Set whether anyone can view your server's leaderboard, or only server members can view it")]
+                [Config("Whether anyone can view this server's leaderboard, or only server members can view it")]
                 public bool IsLeaderboardPublic { get; set; } = true;
+
+                [Config("Whether this server appears on the global leaderboard")]
+                public bool AppearOnGlobalLeaderboard { get; set; } = false;
             }
         }
     }

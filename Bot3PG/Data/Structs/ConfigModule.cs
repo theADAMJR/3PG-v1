@@ -1,4 +1,7 @@
-﻿namespace Bot3PG.Data.Structs
+﻿using Discord;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace Bot3PG.Data.Structs
 {
     public class ConfigModule
     {

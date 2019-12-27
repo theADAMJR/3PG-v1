@@ -10,8 +10,7 @@ namespace Bot3PG.Handlers
             var embed = await Task.Run(() => (new EmbedBuilder()
                 .WithTitle(title)
                 .WithDescription(description)
-                .WithColor(color)
-                .WithCurrentTimestamp().Build()));
+                .WithColor(color).Build()));
             return embed;
         }
         public static async Task<Embed> CreateSimpleEmbed(string title, string description, Color color)

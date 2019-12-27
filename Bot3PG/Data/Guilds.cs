@@ -8,7 +8,7 @@ namespace Bot3PG.Data
 {
     public static class Guilds
     {
-        public static readonly IMongoCollection<Guild> collection;
+        public static readonly IMongoCollection<Guild> Collection;
         private const string guildCollection = "guild";
 
         private static readonly DatabaseManager db;
@@ -22,10 +22,10 @@ namespace Bot3PG.Data
             {
                 db.Database.CreateCollection(guildCollection);
             }
-            collection = db.Database.GetCollection<Guild>(guildCollection);
+            Collection = db.Database.GetCollection<Guild>(guildCollection);
         }
 
-        public static async Task Save(Guild guild) => await db.UpdateAsync(g => g.ID == guild.ID, guild, collection);
+        public static async Task Save(Guild guild) => await db.UpdateAsync(g => g.ID == guild.ID, guild, Collection);
 
         public static async Task<Guild> GetAsync(SocketGuild socketGuild) => await GetOrCreateAsync(socketGuild);
 
@@ -33,7 +33,7 @@ namespace Bot3PG.Data
         {
             if (socketGuild is null) return null;
 
-            var guild = await db.GetAsync(g => g.ID == socketGuild.Id, collection);
+            var guild = await db.GetAsync(g => g.ID == socketGuild.Id, Collection);
             return guild ?? await CreateGuildAsync(socketGuild);
         }
 
@@ -41,8 +41,8 @@ namespace Bot3PG.Data
         {
             var newGuild = new Guild(socketGuild);
             
-            try { await db.InsertAsync(newGuild, collection); }
-            catch { await db.UpdateAsync(g => g.ID == socketGuild.Id, newGuild, collection); }
+            try { await db.InsertAsync(newGuild, Collection); }
+            catch { await db.UpdateAsync(g => g.ID == socketGuild.Id, newGuild, Collection); }
             await SetDefaults(socketGuild, newGuild);
 
             return newGuild;
@@ -54,7 +54,7 @@ namespace Bot3PG.Data
             await CreateGuildAsync(socketGuild);
         }
 
-        public static async Task DeleteAsync(SocketGuild socketGuild) => await db.DeleteAsync(g => g.ID == socketGuild.Id, collection);
+        public static async Task DeleteAsync(SocketGuild socketGuild) => await db.DeleteAsync(g => g.ID == socketGuild.Id, Collection);
 
         private static async Task SetDefaults(SocketGuild socketGuild, Guild guild)
         {

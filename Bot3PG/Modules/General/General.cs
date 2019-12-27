@@ -22,8 +22,7 @@ namespace Bot3PG.Modules.General
         public async Task Help([Remainder]string module = "")
         {
             var target = Context.User;
-            var guild = await Guilds.GetAsync(Context.Guild);
-            var prefix = guild.General.CommandPrefix;
+            var prefix = CurrentGuild.General.CommandPrefix;
 
             string moduleName = Commands.Modules.FirstOrDefault(m => m.Name.ToLower() == module.ToLower())?.Name;
             if (module != "" && moduleName is null)
@@ -43,7 +42,7 @@ namespace Bot3PG.Modules.General
                 {
                     embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
 
-                    if (configModule.Enabled) 
+                    if (configModule?.Enabled ?? false) 
                     {
                         await ReplyToUserAsync(target, embed);
                     }
@@ -51,7 +50,7 @@ namespace Bot3PG.Modules.General
                     embed.WithColor(command.Module.Color);
                 }
                 previousModule = command.Module.Name;
-                configModule = guild.GetType().GetProperty(previousModule).GetValue(guild) as ConfigModule;
+                configModule = CurrentGuild.GetType().GetProperty(previousModule).GetValue(CurrentGuild) as ConfigModule;
 
                 embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}", inline: true);
             }
@@ -75,7 +74,7 @@ namespace Bot3PG.Modules.General
                 bool similarToAlias = command.Value.Alias.Contains(search);
                 if (similarToAlias || command.Key.Contains(search))
                 {                    
-                    embed.AddField($"\n{prefix}{command.Key}**", 
+                    embed.AddField($"\n**{prefix}{command.Key}**", 
                         $"\n**Usage:** {prefix}{command.Value.Usage} " +
                         $"\n**Summary:** {command.Value.Summary}" +
                         $"{(command.Value.Remarks != null ? "\n" + command.Value.Remarks : "")}" +
@@ -161,22 +160,42 @@ namespace Bot3PG.Modules.General
         [Summary("Suggest a new feature"), Remarks("Seperate *Title*, *Subtitle*, and *Description* with | (vertical bar)")]
         public async Task Suggest([Remainder] string details)
         {
-            var embed = new EmbedBuilder();
-
-            var feature = details.Split("|");
-            string title = feature[0];
-            string subtitle = feature[1];
-            string description = feature[2];
+            var features = details.Split("|");
+            if (features.Length < 3)
+            {
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Suggest", "Please seperate *Title*, *Subtitle*, and *Description* with | (vertical bar).", Color.Red));
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(details.Replace("|", "")))
+            {
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Suggest", "Please add content to the suggestion.", Color.Red));
+                return;
+            }
+            string title = features[0];
+            string subtitle = features[1];
+            string description = features[2];
             
+            var embed = new EmbedBuilder();
             embed.WithTitle(title);
             embed.AddField(subtitle, description);
             embed.WithColor(Color.DarkBlue);
-            embed.WithFooter($"By {Context.User.Mention}");
+            embed.WithFooter($"By {Context.User.Username}");
             embed.WithCurrentTimestamp();
 
-            var upvoteEmote = new Emoji("👍");
             var suggestMessage = await ReplyAsync(embed);
-            await suggestMessage.AddReactionAsync(upvoteEmote);
+
+            Emoji[] emotes = { new Emoji(CurrentGuild.General.UpvoteEmote), new Emoji(CurrentGuild.General.DownvoteEmote)};
+            emotes = emotes.Where(e => e != null).ToArray();
+            await suggestMessage.AddReactionsAsync(emotes);
+        }
+
+        [Command("Flip"), Alias("Coin", "Coinflip", "CF")]
+        [Summary("Flip a coin, with a psuedo-random result - heads or tails?")]
+        public async Task Flip()
+        {
+            var random = new Random();
+            bool heads = random.Next(0, 2) == 1;
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed("Coin Flip", $"The coin landed on... `{(heads ? "heads" : "tails")}`", Color.LightOrange));
         }
     }
 }

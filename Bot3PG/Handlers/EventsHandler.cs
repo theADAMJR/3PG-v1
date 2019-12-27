@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Modules;
@@ -17,15 +18,15 @@ namespace Bot3PG.Handlers
 {
     public class EventsHandler
     {
-        private DiscordSocketClient socketClient;
+        private DiscordSocketClient bot;
         private ServiceProvider services;
-        private LavaSocketClient lavaSocketClient;
+        private LavaSocketClient lavaClient;
 
         public EventsHandler(ServiceProvider services, DiscordSocketClient socketClient, LavaSocketClient lavaSocketClient)
         {
-            this.socketClient = socketClient;
+            this.bot = socketClient;
             this.services = services;
-            this.lavaSocketClient = lavaSocketClient;
+            this.lavaClient = lavaSocketClient;
 
             HookEvents();
         }
@@ -40,20 +41,20 @@ namespace Bot3PG.Handlers
 
         private void HookLogEvents()
         {
-            lavaSocketClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
+            lavaClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
             services.GetRequiredService<CommandService>().Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
-            socketClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
+            bot.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
         }
 
         private void HookClientEvents()
         {
-            socketClient.Ready += async () =>
+            bot.Ready += async () =>
             {
                 try
                 {
-                    await lavaSocketClient.StartAsync(socketClient);
-                    lavaSocketClient.OnTrackFinished += services.GetService<AudioService>().OnFinished;
-                    await socketClient.SetGameAsync(Global.Config.GameStatus);
+                    await lavaClient.StartAsync(bot);
+                    lavaClient.OnTrackFinished += services.GetService<AudioService>().OnFinished;
+                    await bot.SetGameAsync(Global.Config.GameStatus);
 
                     await new DatabaseManager().UpdateCommands(new CommandHelp());
                 }
@@ -63,16 +64,16 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.JoinedGuild += async (SocketGuild socketGuild) =>
+            bot.JoinedGuild += async (SocketGuild socketGuild) =>
             {
                 var newGuild = await Guilds.GetAsync(socketGuild);
                 var channel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
 
                 var embed = new EmbedBuilder();
-                embed.WithTitle($"Hi, I'm {socketClient.CurrentUser.Username}.");
+                embed.WithTitle($"Hi, I'm {bot.CurrentUser.Username}.");
                 embed.AddField("⚙️ Config", $"Customize me to your server's needs at {Global.Config.WebappLink}/servers/{socketGuild.Id}", inline: true);
                 embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
-                embed.AddField("❔ Support", $"Need help with {socketClient.CurrentUser.Username}? Join our Discord for more support: {Global.Config.WebappLink}/support", inline: true);
+                embed.AddField("❔ Support", $"Need help with {bot.CurrentUser.Username}? Join our Discord for more support: {Global.Config.WebappLink}/support", inline: true);
 
                 await channel.SendMessageAsync(embed: embed.Build());
             };
@@ -80,7 +81,7 @@ namespace Bot3PG.Handlers
 
         private void HookMessageEvents()
         {
-            socketClient.ReactionAdded += async (Cacheable<IUserMessage, ulong> before, ISocketMessageChannel channel, SocketReaction reaction) =>
+            bot.ReactionAdded += async (Cacheable<IUserMessage, ulong> before, ISocketMessageChannel channel, SocketReaction reaction) =>
             {
                 var socketGuildUser = reaction.User.Value as SocketGuildUser;
                 var guild = await Guilds.GetAsync(socketGuildUser?.Guild);
@@ -92,7 +93,7 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.ReactionRemoved += async (Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction) =>
+            bot.ReactionRemoved += async (Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction) =>
             {
                 var socketGuild = (channel as SocketTextChannel)?.Guild;
                 var guild = await Guilds.GetAsync(socketGuild);
@@ -104,7 +105,7 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.MessageReceived += async (SocketMessage message) =>
+            bot.MessageReceived += async (SocketMessage message) =>
             {
                 var textChannel = (message as SocketMessage)?.Channel as SocketTextChannel;
                 if (textChannel is null) return;
@@ -117,7 +118,7 @@ namespace Bot3PG.Handlers
                 await services.GetRequiredService<CommandHandler>().HandleCommandAsync(message);
             };
 
-            socketClient.MessageUpdated += async (Cacheable<IMessage, ulong> before, SocketMessage message, ISocketMessageChannel channel) =>
+            bot.MessageUpdated += async (Cacheable<IMessage, ulong> before, SocketMessage message, ISocketMessageChannel channel) =>
             {
                 var socketGuildUser = before.Value?.Author as SocketGuildUser;
                 if (socketGuildUser is null) return;
@@ -131,7 +132,7 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.MessagesBulkDeleted += async (IReadOnlyCollection<Cacheable<IMessage, ulong>> messages, ISocketMessageChannel channel) =>
+            bot.MessagesBulkDeleted += async (IReadOnlyCollection<Cacheable<IMessage, ulong>> messages, ISocketMessageChannel channel) =>
             {
                 var socketGuild = (channel as SocketTextChannel)?.Guild;
                 if (socketGuild is null) return;
@@ -146,7 +147,7 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.MessageDeleted += async (Cacheable<IMessage, ulong> message, ISocketMessageChannel channel) =>
+            bot.MessageDeleted += async (Cacheable<IMessage, ulong> message, ISocketMessageChannel channel) =>
             {
                 var socketGuild = (message.Value?.Author as SocketGuildUser)?.Guild;
                 if (socketGuild is null) return;
@@ -164,7 +165,7 @@ namespace Bot3PG.Handlers
 
         private void HookUserEvents()
         {
-            socketClient.UserJoined += async (SocketGuildUser socketGuildUser) =>
+            bot.UserJoined += async (SocketGuildUser socketGuildUser) =>
             {
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
@@ -173,9 +174,21 @@ namespace Bot3PG.Handlers
                 {
                     await Announce.AnnounceUserJoin(socketGuildUser);
                 }
+                if (guild.General.Enabled && guild.General.NewMemberRoles.Length > 0)
+                {
+                    var socketGuild = socketGuildUser.Guild;
+                    var roles = guild.General.NewMemberRoles.Where(id => socketGuild.GetRole(id) != null);
+                    var foundRoles = roles.Select(id => socketGuild.GetRole(id));
+                    
+                    foreach (var role in foundRoles)
+                    {
+                        try { await socketGuildUser.AddRolesAsync(foundRoles); }
+                        catch {}
+                    }
+                }
             };
 
-            socketClient.UserLeft += async (SocketGuildUser socketGuildUser) =>
+            bot.UserLeft += async (SocketGuildUser socketGuildUser) =>
             {
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
@@ -195,7 +208,7 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.GuildMemberUpdated += async (SocketGuildUser socketGuildUser, SocketGuildUser instigator) =>
+            bot.GuildMemberUpdated += async (SocketGuildUser socketGuildUser, SocketGuildUser instigator) =>
             {
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
@@ -207,7 +220,7 @@ namespace Bot3PG.Handlers
                 }
             };
 
-            socketClient.UserBanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
+            bot.UserBanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
             {
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
@@ -218,7 +231,7 @@ namespace Bot3PG.Handlers
                     await StaffLogs.LogBan(socketUser, socketGuild);
                 }
             };
-            socketClient.UserUnbanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
+            bot.UserUnbanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
             {
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
@@ -232,7 +245,7 @@ namespace Bot3PG.Handlers
 
             GuildUser.Muted += async (GuildUser guildUser, Punishment punishment) =>
             {
-                var socketGuild = socketClient.GetGuild(guildUser.GuildID);
+                var socketGuild = bot.GetGuild(guildUser.GuildID);
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
@@ -244,7 +257,7 @@ namespace Bot3PG.Handlers
             };
             GuildUser.Unmuted += async (GuildUser guildUser, Punishment punishment) =>
             {
-                var socketGuild = socketClient.GetGuild(guildUser.GuildID);
+                var socketGuild = bot.GetGuild(guildUser.GuildID);
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
@@ -256,7 +269,7 @@ namespace Bot3PG.Handlers
             };
             GuildUser.Warned += async (GuildUser guildUser, Punishment punishment) =>
             {
-                var socketGuild = socketClient.GetGuild(guildUser.GuildID);
+                var socketGuild = bot.GetGuild(guildUser.GuildID);
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 

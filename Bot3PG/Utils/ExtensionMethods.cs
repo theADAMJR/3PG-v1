@@ -19,6 +19,6 @@ namespace Bot3PG.Utils
 
         public static string ToTitleCase(this string str, CultureInfo cultureInfo) => cultureInfo.TextInfo.ToTitleCase(str.ToLower());
 
-        public static string ToTimestamp(this DateTime dateTime) => dateTime.ToString("dd/mm/yy hh:mm:ss ");
+        public static string ToTimestamp(this DateTime dateTime) => dateTime.ToString("dd/mm/yy hh:mm:ss");
     }
 }

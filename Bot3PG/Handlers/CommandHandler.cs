@@ -50,10 +50,10 @@ namespace Bot3PG.Handlers
                 await socketMessage.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Database", "Server configuration corrupted. Please type /reset to reset it."));
                 return;
             }
-            var commandPrefix = guild?.General?.CommandPrefix ?? "/";
+            var prefix = guild?.General?.CommandPrefix ?? "/";
 
-            int argPos = 0;
-            if (!message.HasStringPrefix(commandPrefix, ref argPos))
+            int position = 0;
+            if (!message.HasStringPrefix(prefix, ref position))
             {
                 Leveling.ValidateForXPAsync(socketMessage as SocketUserMessage);
                 return;
@@ -64,35 +64,38 @@ namespace Bot3PG.Handlers
             var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(id => id == message.Channel.Id);
             if (channelIsBlacklisted) return;
 
-            var result = commands.ExecuteAsync(context, argPos, services, MultiMatchHandling.Best);
+            var execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best);
 
-            if (!result.Result.IsSuccess)
+            if (!execution.Result.IsSuccess)
             {
-                switch (result.Result.Error)
+                if (execution.Result.Error.GetType() == typeof(CommandDisabledException))
+                {
+                    return;
+                }
+                switch (execution.Result.Error)
                 {
                     case CommandError.BadArgCount:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, commandPrefix)}", Color.Red));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
                         break;
                     case CommandError.Exception:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Something went wrong", $"{result.Result.ErrorReason}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Something went wrong", $"{execution.Result.ErrorReason}"));
                         break;
                     case CommandError.ParseFailed:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, commandPrefix)}", Color.Red));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
                         break;
                     case CommandError.UnknownCommand:
-                        var errorMessage = CorrectCommandUsage(message, commandPrefix) != null ? 
-                            $"**Did you mean** " + CorrectCommandUsage(message, commandPrefix) + "?" : $"No similar commands found. Type `{commandPrefix}help` for a list of commands.";
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Unknown command", errorMessage, Color.Red));
+                        var errorMessage = CorrectCommandUsage(message, prefix) != null ? 
+                            $"**Did you mean** " + CorrectCommandUsage(message, prefix) + "?" : $"No similar commands found. Type `{prefix}help` for a list of commands.";
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Unknown command", errorMessage, Color.Red));
                         break;
                     case CommandError.ObjectNotFound:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("⚠💀 Extreme Error!", $"{result.Result.ErrorReason}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("⚠💀 Extreme Error!", $"{execution.Result.ErrorReason}"));
                         break;
                     case CommandError.UnmetPrecondition:
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", 
-                            $"**Required permissions:** {RequiredPermissions(message)}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", $"**Required permissions:** {RequiredPermissions(message)}"));
                         break;
                     default: // TODO - if in debug mode
-                        await context.Channel.SendMessageAsync("", embed: await EmbedHandler.CreateErrorEmbed("Error", $"{result.Exception.Message} \n**Source**: {result.Exception.StackTrace}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Error", $"{execution.Exception.Message} \n**Source**: {execution.Exception.StackTrace}"));
                         break;
                 }
             }
@@ -100,7 +103,15 @@ namespace Bot3PG.Handlers
 
         private string CorrectCommandUsage(SocketUserMessage message, string prefix)
         {
-            var similarCommand = commandHelp.FirstOrDefault(c => message.Content.ToLower().Contains(c.Key)).Key;
+            string content = message.Content.ToLower();
+            string similarCommand = commandHelp.FirstOrDefault(c => content.Contains(c.Key)).Key;
+            foreach (var command in commandHelp)
+            {
+                foreach (var alias in command.Value.Alias)
+                {
+                    if (message.Content.Contains(alias)) similarCommand = command.Key;
+                }
+            }
             return similarCommand != null ? $"`{prefix}{commandHelp[similarCommand].Usage}`" : null;
         }
 

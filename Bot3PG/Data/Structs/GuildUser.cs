@@ -168,8 +168,6 @@ namespace Bot3PG.Data.Structs
             public string LastMessage { get; set; }
             public int MessageCount { get; set; }
 
-            public bool AgreedToRules { get; set; }
-
             public List<Punishment> Punishments { get; internal set; } = new List<Punishment>();
 
             public List<Punishment> Bans => Punishments.Where(p => p.Type == PunishmentType.Ban)?.ToList();

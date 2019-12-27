@@ -27,9 +27,13 @@ namespace Bot3PG.Modules.General
 
             var socketGuild = socketGuildUser.Guild;
             var channel = socketGuild.GetTextChannel(announce.Channel) ?? socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-            if (channel != null)
+            if (channel != null && !guild.General.Announce.DMNewUsers)
             {
-                await channel.SendMessageAsync("", embed: embed.Build());
+                await channel.SendMessageAsync(embed: embed.Build());
+            }
+            else if (guild.General.Announce.DMNewUsers)
+            {
+                await socketGuildUser.SendMessageAsync(embed: embed.Build());
             }
         }
 

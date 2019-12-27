@@ -35,6 +35,7 @@ namespace Bot3PG.Modules.XP
             user.XP.EXP += guild.XP.EXPPerMessage;
             int newLevel = user.XP.Level;
             user.Status.MessageCount++;
+            System.Console.WriteLine(guild.XP.RoleRewards[4]);
 
             if (oldLevel != newLevel)
             {
@@ -48,12 +49,12 @@ namespace Bot3PG.Modules.XP
                 bool newRoleGiven = await ValidateNewXPRoleAsync(socketGuildUser, guild, oldLevel, newLevel);
                 if (newRoleGiven && xp.Messages.Method != MessageMethod.DM)
                 {
-                    embed.AddField("PROMOTION",
-                        $"**Old:** {xp.RoleRewards[oldLevel].Mention}\n" +
-                        $"**New:** {xp.RoleRewards[newLevel].Mention}");
+                    embed.AddField("PROMOTION", $"**New:** {xp.RoleRewards[newLevel].Mention}");
+                    embed.WithFooter(socketGuildUser.Guild.Name);
                 }    
                 else if (newRoleGiven)
                 {
+                    // false if xp role was null (if assigned role was deleted)
                     embed.AddField("PROMOTION", "You've also received a new role!");
                 }       
                 switch (xp.Messages.Method)

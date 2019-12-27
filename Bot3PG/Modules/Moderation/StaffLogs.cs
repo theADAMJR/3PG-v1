@@ -81,6 +81,7 @@ namespace Bot3PG.Modules.Moderation
 
         public static async Task LogMessageDeletion(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel)
         {
+            int position = 0;
             if (!message.HasValue) return;
 
             var guildAuthor = message.Value.Author as SocketGuildUser;
@@ -88,6 +89,8 @@ namespace Bot3PG.Modules.Moderation
 
             var socketGuild = guildAuthor.Guild;
             var guild = await Guilds.GetAsync(socketGuild);
+            if (guild.General.RemoveCommandMessages) return;
+
             var logChannelId = guild.Moderation.StaffLogs.Channel;
             var logChannel = socketGuild.GetTextChannel(logChannelId);
 

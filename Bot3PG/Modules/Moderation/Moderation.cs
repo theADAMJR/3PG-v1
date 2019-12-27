@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Discord.Net;
 
 namespace Bot3PG.Modules.Moderation
 {
@@ -168,7 +169,6 @@ namespace Bot3PG.Modules.Moderation
             embed.ThumbnailUrl = target.GetAvatarUrl();
             embed.Color = Color.Orange;
             embed.WithTitle($"**{target.Username}**");
-            embed.AddField("Agreed To Rules", user.Status.AgreedToRules, inline: true);
             embed.AddField("Warnings", user.Status.WarningsCount, inline: true);
 
             embed.AddField("Is Banned", user.Status.IsBanned, inline: true);
@@ -200,10 +200,10 @@ namespace Bot3PG.Modules.Moderation
         public async Task ClearMessages(int amount = -1)
         {
             var messages = amount < 0 ? Context.Channel.GetMessagesAsync().FlattenAsync().Result : Context.Channel.GetMessagesAsync(amount).FlattenAsync().Result;
-            var channel =  Context.Channel as SocketTextChannel;
+            var channel = Context.Channel as SocketTextChannel;
 
             try { await channel.DeleteMessagesAsync(messages); }
-            catch 
+            catch
             { 
                 foreach (var message in messages)
                 {

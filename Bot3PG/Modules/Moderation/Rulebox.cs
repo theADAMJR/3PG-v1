@@ -23,12 +23,9 @@ namespace Bot3PG.Modules.Moderation
                 {
                     var role = socketGuildUser.Guild.Roles.First(r => r.Id == guild.Admin.Rulebox.Role);
                     await socketGuildUser.AddRoleAsync(role);
-                    user.Status.AgreedToRules = true;
                 }
                 else if (reaction.Emote.Name == guild.Admin.Rulebox.DisagreeEmote)
                 {
-                    user.Status.AgreedToRules = false;
-
                     var roles = socketGuildUser.Roles.ToList();
                     roles.RemoveAt(0);
 
@@ -57,7 +54,6 @@ namespace Bot3PG.Modules.Moderation
                     var roles = socketGuildUser.Roles.ToList();
                     roles.RemoveAt(0);
                     await socketGuildUser.RemoveRolesAsync(roles);
-                    user.Status.AgreedToRules = false;
                 }
                 await Users.Save(user);                
             }
