@@ -46,7 +46,7 @@ namespace Bot3PG.Modules
             {
                 embed.WithColor(74, 48, 80);
             }
-            return await base.ReplyAsync("", embed: embed.Build());
+            return await base.ReplyAsync(embed: embed.Build());
         }
         public async Task<IUserMessage> ReplyAsync(Task<Embed> embed) => await ReplyAsync(await embed);
         public async Task<IUserMessage> ReplyAsync(Embed embed) => await base.ReplyAsync(embed: embed);
@@ -58,10 +58,10 @@ namespace Bot3PG.Modules
             {
                 embed.WithColor(74, 48, 80);
             }
-            return await target.SendMessageAsync("", embed: embed.Build());
+            return await target.SendMessageAsync(embed: embed.Build());
         }
         public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, Task<Embed> embed) => await ReplyToUserAsync(target, await embed);
-        public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, Embed embed) => await target.SendMessageAsync("", embed: embed);
+        public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, Embed embed) => await target.SendMessageAsync(embed: embed);
         public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, string message) => await target.SendMessageAsync(message);
     }
 }

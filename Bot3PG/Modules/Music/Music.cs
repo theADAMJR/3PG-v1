@@ -18,7 +18,9 @@ namespace Bot3PG.Modules.Music
     [RequireUserPermission(GuildPermission.Speak)]
     [RequireBotPermission(GuildPermission.Speak)]
     public sealed class Music : CommandBase
-    {        
+    {
+        private readonly string moduleName = "Music 🎵";
+
         public static AudioService AudioService { get; internal set; }
 
         private LavaPlayer player => AudioService.Player;
@@ -36,14 +38,14 @@ namespace Bot3PG.Modules.Music
             var user = Context.User as SocketGuildUser;
             if (user.VoiceChannel is null)
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"You must be in a channel first, for {Context.Client.CurrentUser.Mention} to join.", Color.Red));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"You must be in a channel first, for {Context.Client.CurrentUser.Mention} to join.", Color.Red));
                 return;
             }
             await lavaClient.ConnectAsync(user.VoiceChannel, Context.Channel as ITextChannel);
             await lavaClient.MoveChannelsAsync(user.VoiceChannel);
             
             var player = lavaClient.GetPlayer(Context.Guild.Id);
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Now connected to `{user.VoiceChannel.Name}` and bound to `{player.TextChannel.Name}`.", Color.Blue));
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Now connected to `{user.VoiceChannel.Name}` and bound to `{player.TextChannel.Name}`.", Color.Blue));
         }
 
         [Command("Leave"), Alias("L")]
@@ -69,11 +71,11 @@ namespace Bot3PG.Modules.Music
                 }                
                 var channel = player.VoiceChannel;
                 await lavaClient.DisconnectAsync(channel);
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"I've left `{channel.Name}`. Thank you for playing music 🎵.", Color.Blue));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"I've left `{channel.Name}`. Thank you for playing music 🎵.", Color.Blue));
             }
             catch (InvalidOperationException ex)
             {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.ToString()));
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.ToString()));
                 return;
             }
         }
@@ -87,7 +89,7 @@ namespace Bot3PG.Modules.Music
             var user = Context.User as SocketGuildUser;
             if (user.VoiceChannel is null) 
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"You must be in a channel first, for {Context.Client.CurrentUser.Mention} to play.", Color.Red));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"You must be in a channel first, for {Context.Client.CurrentUser.Mention} to play.", Color.Red));
                 return;
             }
             try
@@ -101,35 +103,35 @@ namespace Bot3PG.Modules.Music
                 var search = await lavaRestClient.SearchYouTubeAsync(query);
                 if (search.LoadType == LoadType.NoMatches) 
                 {
-                    await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", $"OOF! I wasn't able to find anything for '{query}'."));
+                    await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, $"OOF! I wasn't able to find anything for '{query}'."));
                     return;
                 }
 
                 var track = search.Tracks.FirstOrDefault();
                 if (track is null)
                 {
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", "No results found.", Color.Red));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, "No results found.", Color.Red));
                     return;
                 }
                 else if (track.Length > TimeSpan.FromHours(CurrentGuild.Music.MaxTrackHours)) 
                 {
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Track duration must be less than `{CurrentGuild.Music.MaxTrackHours} hours`.", Color.Red));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Track duration must be less than `{CurrentGuild.Music.MaxTrackHours} hours`.", Color.Red));
                     return;
                 }
 
                 if (player.CurrentTrack != null || player.IsPaused)
                 {
                     player.Queue.Enqueue(track);
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"{Hyperlink(track)} has been added to queue.", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"{Hyperlink(track)} has been added to queue.", Color.Blue));
                 }
                 else
                 {
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"**Now playing**: {Hyperlink(track)}", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"**Now playing**: {Hyperlink(track)}", Color.Blue));
                     await player.PlayAsync(track);
                     await player.SetVolumeAsync(CurrentGuild.Music.DefaultVolume);
                 }
             }
-            catch (Exception ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.ToString())); }
+            catch (Exception ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.ToString())); }
         }
 
         [Command("Stop"), Alias("S")]
@@ -154,9 +156,9 @@ namespace Bot3PG.Modules.Music
                 {
                     player.Queue.Dequeue();
                 }
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", "I've stopped playback and the playlist has been cleared.", Color.Blue));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, "I've stopped playback and the playlist has been cleared.", Color.Blue));
             }
-            catch (Exception ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.ToString())); }
+            catch (Exception ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.ToString())); }
         }
 
         [Command("Queue"), Alias("List", "Playlist", "Q")]
@@ -175,7 +177,7 @@ namespace Bot3PG.Modules.Music
                 {
                     if (player.Queue.Count < 1 && player.CurrentTrack != null) 
                     {
-                        await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"**Now Playing**: {Hyperlink(player.CurrentTrack)}\n\nNothing else is queued.", Color.Blue));
+                        await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"**Now Playing**: {Hyperlink(player.CurrentTrack)}\n\nNothing else is queued.", Color.Blue));
                         return;
                     }
                     
@@ -186,11 +188,11 @@ namespace Bot3PG.Modules.Music
                         description += $"**[{trackNum}]**: {Hyperlink(track)}\n";
                         trackNum++;
                     }
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", 
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, 
                         $"**Now Playing**: {Hyperlink(player.CurrentTrack)}\n\n{description}", Color.Blue));
                     return;
                 }
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", "Player doesn't seem to be playing anything right now."));
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, "Player doesn't seem to be playing anything right now."));
             }
             catch {}
         }
@@ -201,9 +203,7 @@ namespace Bot3PG.Modules.Music
         public async Task Skip()
         {
             int count = 1;
-            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
-            string prefix = CurrentGuild.General.CommandPrefix;
-            
+                        
             var player = lavaClient.GetPlayer(Context.Guild.Id);
             if (player is null) 
             {
@@ -212,12 +212,12 @@ namespace Bot3PG.Modules.Music
             }
             else if (player.Queue.Count < 1) 
             {
-                await SendNotPlayingPrompt("skip", prefix);
+                await SendNotPlayingPrompt("skip");
                 return;
             }
             else if (player.Queue.Count < count)
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", "Tracks to skip must be less than playlist size.", Color.Red));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, "Tracks to skip must be less than playlist size.", Color.Red));
                 return;                    
             }
             /*if (CurrentGuild.Music.VoteToSkip)
@@ -231,7 +231,7 @@ namespace Bot3PG.Modules.Music
                 if (!hasEnoughVotes)
                 {
                     string requirement = CurrentGuild.Music.AllVotesToSkip ? "Every channel member is" : "At least 50% of members are";
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"{requirement} required to vote to skip this track", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"{requirement} required to vote to skip this track", Color.Blue));
                     return;
                 }
             }*/
@@ -240,11 +240,11 @@ namespace Bot3PG.Modules.Music
                 for (int i = 0; i < count; i++)
                 {
                     var oldTrack = await player.SkipAsync();
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"{Hyperlink(oldTrack)} successfully skipped", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"{Hyperlink(oldTrack)} successfully skipped", Color.Blue));
                     await Task.Delay(150);
                 }
             }
-            catch (Exception ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.ToString())); }
+            catch (Exception ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.ToString())); }
         }
 
         [Command("Volume"), Alias("V")]
@@ -259,20 +259,20 @@ namespace Bot3PG.Modules.Music
             }
             else if (volume == -1)
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"**Current Volume:** {player.CurrentVolume}", Color.Blue));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"**Current Volume:** {player.CurrentVolume}", Color.Blue));
             }
             else if (volume < 0 || volume > 200) 
             {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", "Volume must be between 0 and 200."));
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, "Volume must be between 0 and 200."));
             }
             else
             {
                 try
                 {
                     await player.SetVolumeAsync(volume);
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Volume has been set to `{volume}`.", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Volume has been set to `{volume}`.", Color.Blue));
                 }
-                catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.ToString())); }
+                catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.ToString())); }
             }
         }
 
@@ -281,18 +281,15 @@ namespace Bot3PG.Modules.Music
         [RequireUserPermission(GuildPermission.Speak)]
         public async Task Replay(int seconds = -1)
         {
-            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
-            string prefix = CurrentGuild.General.CommandPrefix;
-
             var player = lavaClient.GetPlayer(Context.Guild.Id);
             if (player is null) 
             {
                 await SendNoPlayerPrompt();
                 return;
             }
-            if (player.CurrentTrack is null)
+            else if (player.CurrentTrack is null)
             {
-                await SendNotPlayingPrompt("Replay", prefix);
+                await SendNotPlayingPrompt("Replay");
                 return;
             }
             
@@ -300,16 +297,16 @@ namespace Bot3PG.Modules.Music
             int totalSeconds = (int)trackLength.TotalSeconds;
             if (seconds == -1)
             {
-                await ReplyAsync(embed: EmbedHandler.CreateBasicEmbed("Music", $"{Hyperlink(player.CurrentTrack)} is `{totalSeconds}` seconds long.", Color.Blue));
+                await ReplyAsync(embed: EmbedHandler.CreateBasicEmbed(moduleName, $"{Hyperlink(player.CurrentTrack)} is `{totalSeconds}` seconds long.", Color.Blue));
                 return;
             }
             if (seconds < 0 || seconds > totalSeconds)
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Track length must be between `0` seconds and `{totalSeconds}`.", Color.Red));
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Track length must be between `0` seconds and `{totalSeconds}`.", Color.Red));
                 return;
             }
             await player.SeekAsync(TimeSpan.FromSeconds(seconds));
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Position now at `{GetDuration(TimeSpan.FromSeconds(seconds))}`/`{GetDuration(trackLength)}`.", Color.Blue));
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Position is now at {GetPosition(player.CurrentTrack)}.", Color.Blue));
         }
 
         [Command("Pause")]
@@ -328,14 +325,14 @@ namespace Bot3PG.Modules.Music
                 else if (!player.IsPaused)
                 {
                     await player.PauseAsync();
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"**Paused:** {player.CurrentTrack.Title}", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"**Paused:** {player.CurrentTrack.Title}", Color.Blue));
                 }
                 else
                 {
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Track already paused.", Color.Red));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Track already paused.", Color.Red));
                 }
             }
-            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.Message)); }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.Message)); }
         }
         
         [Command("Pause"), Alias("Resume")]
@@ -354,19 +351,39 @@ namespace Bot3PG.Modules.Music
                 else if (player.IsPaused)
                 {
                     await player.ResumeAsync();
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"**Resumed:** Now Playing {player.CurrentTrack.Title}.", Color.Blue));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"**Resumed:** Now Playing {player.CurrentTrack.Title}.", Color.Blue));
                 }
                 else
                 {
-                    await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Track already resumed.", Color.Red));
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Track already resumed.", Color.Red));
                 }
             }
-            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", ex.Message)); }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, ex.Message)); }
         }
         
         [Command("Remove"), Alias("RM")]
-        [Summary("Remove an playlist item with its number")]
+        [Summary("Remove a playlist item by its number")]
         public async Task Remove(int number = 2)
+        {
+            var player = lavaClient.GetPlayer(Context.Guild.Id);
+            if (player is null)
+            {
+                await SendNoPlayerPrompt();
+            }
+            else if (number <= 1 || player.Queue.Items.Count() < number - 1)
+            {
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, "Track to remove must be less than playlist size and greater than 2.", Color.Red));
+            }
+            else
+            {
+                var oldTrack = player.Queue.RemoveAt(number - 2) as LavaTrack;
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Removed {Hyperlink(oldTrack)} from playlist.", Color.Blue));
+            }
+        }
+
+        [Command("Shuffle")]
+        [Summary("Randomly shuffle a playlist")]
+        public async Task Shuffle()
         {
             var player = lavaClient.GetPlayer(Context.Guild.Id);
             if (player is null)
@@ -374,30 +391,54 @@ namespace Bot3PG.Modules.Music
                 await SendNoPlayerPrompt();
                 return;
             }
-            else if (number <= 1 || player.Queue.Items.Count() < number - 1)
+            player.Queue.Shuffle();
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed(moduleName, $"Shuffled playlist.", Color.Blue));
+        }
+
+        [Command("NowPlaying"), Alias("NP")]
+        [Summary("Show info about the current playing track")]
+        public async Task NowPlaying()
+        {
+            var player = lavaClient.GetPlayer(Context.Guild.Id);
+            if (player is null)
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", "Track to remove must be less than playlist size and greater than 2.", Color.Red));
+                await SendNoPlayerPrompt();
+            }
+            else if (!player.IsPlaying)
+            {
+                await SendNotPlayingPrompt("show track");
             }
             else
             {
-                var oldTrack = player.Queue.RemoveAt(number - 2) as LavaTrack;
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Music", $"Removed {Hyperlink(oldTrack)} from playlist.", Color.Blue));
+                var track = player.CurrentTrack;
+                string thumbnail = await track.FetchThumbnailAsync();
+
+                var embed = new EmbedBuilder();
+                embed.WithTitle("Now Playing 🎶");
+                embed.WithThumbnailUrl(thumbnail);
+                embed.AddField($"[{track.Title}]({track.Uri})", GetPosition(track));
+                embed.WithColor(Color.Blue);
+
+                await ReplyAsync(embed);             
             }
         }
 
-        
-
         private async Task SendNoPlayerPrompt()
         {
-            var guild = await Guilds.GetAsync(Context.Guild);
+            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
             string prefix = CurrentGuild.General.CommandPrefix;
-            await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", 
+            await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, 
             $"Could not get player.\nAre you using {Context.Client.CurrentUser.Mention} right now? Type `{prefix}help` for more info."));
         }
 
-        private async Task SendNotPlayingPrompt(string action, string prefix) 
-            => await ReplyAsync(EmbedHandler.CreateErrorEmbed("Music", $"Unable to {action} as there are one or no songs playing.\nDid you mean `{prefix}stop`?"));
+        private async Task SendNotPlayingPrompt(string action)
+        {
+            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
+            string prefix = CurrentGuild.General.CommandPrefix;           
+            await ReplyAsync(EmbedHandler.CreateErrorEmbed(moduleName, $"Unable to {action} as there are one or no songs playing.\nDid you mean `{prefix}stop`?"));
+        }
 
+        public static string GetPosition(LavaTrack track) => $"`{GetDuration(track.Position)}`/`{GetDuration(track.Length)}`";
         public static string GetDuration(TimeSpan timeSpan) => timeSpan.ToString(timeSpan > TimeSpan.FromHours(1) ? @"hh\:mm\:ss" : @"mm\:ss");
         public static string Hyperlink(LavaTrack track) => AudioService.Hyperlink(track);
     }

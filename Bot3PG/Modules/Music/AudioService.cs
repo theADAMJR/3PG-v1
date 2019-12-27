@@ -22,9 +22,16 @@ namespace Bot3PG.Modules.Music
 
         public async Task OnFinished(LavaPlayer player, LavaTrack track, TrackEndReason reason)
         {
-            System.Console.WriteLine("on finish");
-            System.Console.WriteLine(reason);
-            if (reason is TrackEndReason.LoadFailed || reason is TrackEndReason.Cleanup || reason is TrackEndReason.Replaced || reason is TrackEndReason.Stopped) return;
+            System.Console.WriteLine(track.Title + ": " + reason);
+            if (reason is TrackEndReason.Cleanup || reason is TrackEndReason.Replaced || reason is TrackEndReason.Stopped) return;
+            else if (reason is TrackEndReason.LoadFailed)
+            {
+                if (player.TextChannel != null)
+                {
+                    await player.TextChannel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Load Failed", $"Failed to load `{track.Title}`."));
+                }
+                return;
+            }
 
             player.Queue.TryDequeue(out var queueObject);
             var nextTrack = queueObject as LavaTrack;
@@ -40,6 +47,6 @@ namespace Bot3PG.Modules.Music
         }
         
         public static string GetTrackDuration(LavaTrack track) => track.Length.ToString(track.Length > TimeSpan.FromHours(1) ? @"hh\:mm\:ss" : @"mm\:ss");
-        public static string Hyperlink(LavaTrack track) => $"[{track.Title}]({track.Uri}) `{GetTrackDuration(track)}`";
+        public static string Hyperlink(LavaTrack track) => track is null ? "N/A" : $"[{track.Title}]({track.Uri}) `{GetTrackDuration(track)}`";
     }
 }
