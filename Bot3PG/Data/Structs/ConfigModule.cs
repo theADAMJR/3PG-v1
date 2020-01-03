@@ -5,14 +5,17 @@ namespace Bot3PG.Data.Structs
 {
     public class ConfigModule
     {
-        [Config("Whether this module is enabled. Modules are enabled by default.")]
+        [Config("Whether this module is enabled. Most modules are enabled by default.")]
         public virtual bool Enabled { get; set; } = true;
 
-        public class SubModule : ConfigModule
+        public virtual bool IsAllowed(bool condition) => Enabled && condition;
+
+        public class Submodule : ConfigModule
         {
-            private static bool _enabled = true;
-            [Config("Whether this module is enabled. Modules are enabled by default.")]
-            public override bool Enabled { get => base.Enabled && _enabled; set => _enabled = value; }
+            [Config("Whether this submodule is enabled. Most submodules are enabled by default.")]
+            public override bool Enabled { get; set; } = true;
+            
+            public override bool IsAllowed(bool condition) => base.Enabled && this.Enabled && condition;
         }
     }
 }

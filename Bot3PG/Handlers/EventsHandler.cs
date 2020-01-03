@@ -4,6 +4,7 @@ using System.Linq;
 using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Modules;
+using Bot3PG.Modules.Admin;
 using Bot3PG.Modules.General;
 using Bot3PG.Modules.Moderation;
 using Bot3PG.Modules.Music;
@@ -44,6 +45,7 @@ namespace Bot3PG.Handlers
             lavaClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
             services.GetRequiredService<CommandService>().Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
             bot.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
+
         }
 
         private void HookClientEvents()
@@ -53,15 +55,14 @@ namespace Bot3PG.Handlers
                 try
                 {
                     await lavaClient.StartAsync(bot);
+                    lavaClient.ToggleAutoDisconnect();
                     lavaClient.OnTrackFinished += services.GetService<AudioService>().OnFinished;
+
                     await bot.SetGameAsync(Global.Config.GameStatus);
 
                     await new DatabaseManager().UpdateCommands(new CommandHelp());
                 }
-                catch (Exception ex)
-                {
-                    await Debug.LogInformationAsync(ex.Source, ex.Message);
-                }
+                catch (Exception ex) { await Debug.LogInformationAsync(ex.Source, ex.Message); }
             };
 
             bot.JoinedGuild += async (SocketGuild socketGuild) =>
@@ -99,10 +100,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                if (guild.Admin.Rulebox.Enabled)
-                {
-                    await Rulebox.OnReactionRemoved(cache, channel, reaction);
-                }
+                if (guild.Admin.Rulebox.Enabled) await Rulebox.OnReactionRemoved(cache, channel, reaction);
             };
 
             bot.MessageReceived += async (SocketMessage message) =>
@@ -126,10 +124,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.Moderation.StaffLogs.Enabled)
-                {
-                    await AutoModeration.ValidateMessage(message);
-                }
+                if (guild.Moderation.StaffLogs.Enabled) await AutoModeration.ValidateMessage(message);
             };
 
             bot.MessagesBulkDeleted += async (IReadOnlyCollection<Cacheable<IMessage, ulong>> messages, ISocketMessageChannel channel) =>
@@ -141,10 +136,7 @@ namespace Bot3PG.Handlers
                 if (guild is null) return;
 
                 bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.MessageDeleted);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogBulkMessageDeletion(messages, channel);
-                }
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog) await StaffLogs.LogBulkMessageDeletion(messages, channel);
             };
 
             bot.MessageDeleted += async (Cacheable<IMessage, ulong> message, ISocketMessageChannel channel) =>
@@ -156,10 +148,7 @@ namespace Bot3PG.Handlers
                 if (guild is null) return;
 
                 bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.MessageDeleted);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogMessageDeletion(message, channel);
-                }
+                if (guild.Moderation.StaffLogs.Enabled && shouldLog) await StaffLogs.LogMessageDeletion(message, channel);
             };
         }
 
@@ -170,10 +159,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.General.Announce.Enabled && guild.General.Announce.Welcomes)
-                {
-                    await Announce.AnnounceUserJoin(socketGuildUser);
-                }
+                if (guild.General.Announce.Enabled && guild.General.Announce.Welcomes) await Announce.AnnounceUserJoin(socketGuildUser);
                 if (guild.General.Enabled && guild.General.NewMemberRoles.Length > 0)
                 {
                     var socketGuild = socketGuildUser.Guild;
@@ -193,19 +179,10 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.General.Announce.Enabled && guild.General.Announce.Goodbyes)
-                {
-                    await Announce.AnnounceUserLeft(socketGuildUser);
-                }
-                if (guild.Admin.Rulebox.Enabled)
-                {
-                    await Rulebox.RemoveUserReaction(socketGuildUser);
-                }
-                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Kick);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogKick(socketGuildUser);
-                }
+                if (guild.General.Announce.Enabled && guild.General.Announce.Goodbyes) await Announce.AnnounceUserLeft(socketGuildUser);
+                if (guild.Admin.Rulebox.Enabled) await Rulebox.RemoveUserReaction(socketGuildUser);
+
+                if (ShouldLog(LogEvent.Kick, guild)) await StaffLogs.LogKick(socketGuildUser);
             };
 
             bot.GuildMemberUpdated += async (SocketGuildUser socketGuildUser, SocketGuildUser instigator) =>
@@ -213,11 +190,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                // TODO -> NicknameFilter depends on module being enabled
-                if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter)
-                {
-                    await AutoModeration.ValidateUsername(guild, socketGuildUser);
-                }
+                if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter) await AutoModeration.ValidateUsername(guild, socketGuildUser);
             };
 
             bot.UserBanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
@@ -225,22 +198,14 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Ban);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogBan(socketUser, socketGuild);
-                }
+                if (ShouldLog(LogEvent.Ban, guild)) await StaffLogs.LogBan(socketUser, socketGuild);
             };
             bot.UserUnbanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
             {
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Unban);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogUserUnban(socketUser, socketGuild);
-                }
+                if (ShouldLog(LogEvent.Unban, guild)) await StaffLogs.LogUserUnban(socketUser, socketGuild);
             };
 
             GuildUser.Muted += async (GuildUser guildUser, Punishment punishment) =>
@@ -249,11 +214,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Mute);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogMute(guildUser, punishment);
-                }
+                if (ShouldLog(LogEvent.Mute, guild)) await StaffLogs.LogMute(guildUser, punishment);
             };
             GuildUser.Unmuted += async (GuildUser guildUser, Punishment punishment) =>
             {
@@ -261,11 +222,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Mute);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogUnmute(guildUser, punishment);
-                }
+                if (ShouldLog(LogEvent.Unmute, guild)) await StaffLogs.LogUnmute(guildUser, punishment);
             };
             GuildUser.Warned += async (GuildUser guildUser, Punishment punishment) =>
             {
@@ -273,12 +230,14 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                bool shouldLog = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == LogEvent.Mute);
-                if (guild.Moderation.StaffLogs.Enabled && shouldLog)
-                {
-                    await StaffLogs.LogWarn(guildUser, punishment);
-                }
+                if (ShouldLog(LogEvent.Warn, guild)) await StaffLogs.LogWarn(guildUser, punishment);
             };
+        }
+
+        private bool ShouldLog(LogEvent logEvent, Guild guild) 
+        {
+            var hasFilter = Array.Exists(guild.Moderation.StaffLogs.LogEvents, l => l == logEvent);
+            return guild.Moderation.StaffLogs.IsAllowed(hasFilter);
         }
     }
 }

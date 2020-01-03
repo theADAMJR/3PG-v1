@@ -38,7 +38,7 @@ namespace Bot3PG.Handlers
 
         public async Task HandleCommandAsync(SocketMessage socketMessage)
         {
-            if (!(socketMessage is SocketUserMessage message) || message.Author.IsBot || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
+            if (!(socketMessage is SocketUserMessage message)  || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
 
             var socketGuildUser = socketMessage.Author as SocketGuildUser;
             if (socketGuildUser is null) return;
@@ -50,14 +50,16 @@ namespace Bot3PG.Handlers
                 await socketMessage.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Database", "Server configuration corrupted. Please type /reset to reset it."));
                 return;
             }
-            var prefix = guild?.General?.CommandPrefix ?? "/";
+            var prefix = guild?.General.CommandPrefix ?? "/";
 
             int position = 0;
-            if (!message.HasStringPrefix(prefix, ref position))
+            bool isCommand = message.HasStringPrefix(prefix, ref position);
+            if (!isCommand && guild.XP.Enabled || !isCommand && message.Author.IsBot && guild.XP.BotsCanEarnEXP)
             {
                 Leveling.ValidateForXPAsync(socketMessage as SocketUserMessage);
                 return;
             }
+            if (message.Author.IsBot) return;
 
             var context = new SocketCommandContext(Global.Client, socketMessage as SocketUserMessage);
 
@@ -68,31 +70,29 @@ namespace Bot3PG.Handlers
 
             if (!execution.Result.IsSuccess)
             {
-                if (execution.Result.Error.GetType() == typeof(CommandDisabledException))
-                {
-                    return;
-                }
+                if (execution.Result.Error.GetType() == typeof(CommandDisabledException)) return;
+
                 switch (execution.Result.Error)
                 {
                     case CommandError.BadArgCount:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❌ Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
                         break;
                     case CommandError.Exception:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Something went wrong", $"{execution.Result.ErrorReason}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🤔 Something went wrong", $"{execution.Result.ErrorReason}"));
                         break;
                     case CommandError.ParseFailed:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("🚫 Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
                         break;
                     case CommandError.UnknownCommand:
                         var errorMessage = CorrectCommandUsage(message, prefix) != null ? 
                             $"**Did you mean** " + CorrectCommandUsage(message, prefix) + "?" : $"No similar commands found. Type `{prefix}help` for a list of commands.";
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Unknown command", errorMessage, Color.Red));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❓ Unknown command", errorMessage, Color.Red));
                         break;
                     case CommandError.ObjectNotFound:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("⚠💀 Extreme Error!", $"{execution.Result.ErrorReason}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("👀 Not found", $"{execution.Result.ErrorReason}"));
                         break;
                     case CommandError.UnmetPrecondition:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Insufficient permissions", $"**Required permissions:** {RequiredPermissions(message)}"));
+                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🔒 Insufficient permissions", $"**Required permissions:** {RequiredPermissions(message)}"));
                         break;
                     default: // TODO - if in debug mode
                         await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Error", $"{execution.Exception.Message} \n**Source**: {execution.Exception.StackTrace}"));
@@ -105,14 +105,17 @@ namespace Bot3PG.Handlers
         {
             string content = message.Content.ToLower();
             string similarCommand = commandHelp.FirstOrDefault(c => content.Contains(c.Key)).Key;
+            
+            string usedAlias = null;
             foreach (var command in commandHelp)
             {
                 foreach (var alias in command.Value.Alias)
                 {
-                    if (message.Content.Contains(alias)) similarCommand = command.Key;
+                    if (message.Content.Split(" ")[0].Contains(alias)) usedAlias = alias;
                 }
             }
-            return similarCommand != null ? $"`{prefix}{commandHelp[similarCommand].Usage}`" : null;
+            var discordCommand = Global.CommandService.Commands.FirstOrDefault(c => c.Name.ToLower() == similarCommand || c.Aliases.Contains(usedAlias));
+            return discordCommand != null ? $"`{prefix}{CommandHelp.GetUsage(discordCommand, similarCommand ?? usedAlias)}`" : null;
         }
 
         private string RequiredPermissions(SocketUserMessage message)

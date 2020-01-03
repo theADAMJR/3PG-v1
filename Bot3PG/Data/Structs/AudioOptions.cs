@@ -2,10 +2,20 @@
 
 namespace Bot3PG.Data.Structs
 {
-    public struct AudioOptions
+    public struct TrackOptions
     {
-        public bool Shuffle { get; set; }
-        public bool RepeatTrack { get; set; }
-        public IUser Summoner { get; set; }
+        public string ID { get; set; }
+
+        public int SkipVotes { get; set; }
+        public bool Repeat { get; set; }
+        public ulong RequestorID { get; set; }
+
+        public TrackOptions(string id, ulong requestorID, bool repeat = false)
+        {
+            ID = id;
+            RequestorID = requestorID;
+            Repeat = repeat;
+            SkipVotes = 0;
+        }
     }
 }

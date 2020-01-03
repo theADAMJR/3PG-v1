@@ -2,11 +2,12 @@
 
 namespace Bot3PG.Data.Structs
 {
-    public  class Config
+    public class Config
     {
         public string Token { get; set; }
         public string GameStatus { get; set; }
-        public string WebappLink { get; set; } = "https://3pg.xyz";
+        public string WebappLink { get; set; }
+        public string Emote { get; set; }
         public LogSeverity LogSeverity { get; set; } = LogSeverity.Verbose;
 
         public DatabaseConfig DB { get; set; } = new DatabaseConfig();

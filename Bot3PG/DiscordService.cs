@@ -4,6 +4,7 @@ using Bot3PG.Modules.Music;
 using Bot3PG.Services;
 using Discord;
 using Discord.Commands;
+using Discord.Webhook;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;

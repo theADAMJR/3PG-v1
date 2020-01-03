@@ -114,7 +114,8 @@ namespace Bot3PG.Data.Structs
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been kicked from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
-            await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });
+            try { await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });}
+            catch {}
             await Users.Save(this);
         }
 

@@ -2,90 +2,31 @@
 using Bot3PG.Handlers;
 using Discord;
 using Discord.Commands;
-using Discord.WebSocket;
 using System;
 using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using System.Linq;
-using Bot3PG.Data.Structs;
 
 namespace Bot3PG.Modules.General
 {
     [Color(65, 50, 130)]
     public sealed class General : CommandBase
     {
+        internal override string ModuleName => "General";
+        internal override Color ModuleColour => Color.Teal;
+
         public Lazy<CommandHelp> CommandHelp => new Lazy<CommandHelp>();
         private CommandHelp Commands => CommandHelp.Value;
 
+
         [Command("Help"), Alias("?")]
-        [Summary("Show command details or search for commands"), Remarks("**Modules:** Admin, General, Moderation, Music, XP")]
-        public async Task Help([Remainder]string module = "")
+        [Summary("Show commands link")]
+        public async Task Help()
         {
-            var target = Context.User;
+            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
             var prefix = CurrentGuild.General.CommandPrefix;
-
-            string moduleName = Commands.Modules.FirstOrDefault(m => m.Name.ToLower() == module.ToLower())?.Name;
-            if (module != "" && moduleName is null)
-            {
-                await SearchCommands(target, prefix, module);
-                return;
-            }
-            var embed = new EmbedBuilder();
-
-            string previousModule = Commands.Modules.Select(m => m.Name).Reverse().First();
-            ConfigModule configModule = null;
-            foreach (var command in Commands.Values.Reverse())
-            {
-                if (!string.IsNullOrEmpty(module) && command.Module.Name.ToLower() != moduleName.ToLower()) continue;
-
-                if (previousModule != command.Module.Name)
-                {
-                    embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
-
-                    if (configModule?.Enabled ?? false) 
-                    {
-                        await ReplyToUserAsync(target, embed);
-                    }
-                    embed = new EmbedBuilder();
-                    embed.WithColor(command.Module.Color);
-                }
-                previousModule = command.Module.Name;
-                configModule = CurrentGuild.GetType().GetProperty(previousModule).GetValue(CurrentGuild) as ConfigModule;
-
-                embed.AddField($"{prefix}{command.Usage}", $"{command.Summary}", inline: true);
-            }
-
             string prefixQuery = prefix != "/" ? $"?prefix={prefix}" : "";
-            embed.WithTitle($"**{Context.Client.CurrentUser.Username} - {previousModule} commands**");
-            if (configModule.Enabled)
-            {
-                await ReplyToUserAsync(target, embed);
-            }
-            await ReplyToUserAsync(target, await EmbedHandler.CreateBasicEmbed("View all commands", $"{Global.Config.WebappLink}/commands{prefixQuery}", Color.DarkPurple));
-        }
-
-        private async Task SearchCommands(SocketUser target, string prefix, string search)
-        {
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Showing Results for '{search}'");
-            var similarCommands = Commands.Where(c => c.Value.Alias.Contains(search) || c.Key.Contains(search)).Take(5).ToArray();
-            foreach (var command in similarCommands)
-            {
-                bool similarToAlias = command.Value.Alias.Contains(search);
-                if (similarToAlias || command.Key.Contains(search))
-                {                    
-                    embed.AddField($"\n**{prefix}{command.Key}**", 
-                        $"\n**Usage:** {prefix}{command.Value.Usage} " +
-                        $"\n**Summary:** {command.Value.Summary}" +
-                        $"{(command.Value.Remarks != null ? "\n" + command.Value.Remarks : "")}" +
-                        $"\n**Module:** {command.Value.Module.Name}");
-                }
-            }
-            if (similarCommands.Length <= 0)
-            {
-                embed.AddField("**Results**", "No results found");
-            }
-            await ReplyToUserAsync(target, embed);
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"View all commands", $"{Global.Config.WebappLink}/commands{prefixQuery}", Color.DarkPurple));
         }
 
         [Command("Ping")]
@@ -141,18 +82,22 @@ namespace Bot3PG.Modules.General
         }
 
         [Command("Embed")]
-        [Summary("Create a custom embed")]
-        public async Task Embed(string title = "Not set", string url = "", [Remainder] string description = "Not set")
+        [Summary("Create a custom embed. Separate Title, Description, and Image URL with '|' (vertical bar) ")]
+        public async Task Embed([Remainder] string details)
         {
-            var embed = new EmbedBuilder();
-            embed.WithTitle(title);
-            embed.WithDescription(description);
-            embed.WithColor(Color.DarkGreen);
-
-            if (url.Contains("http") || url.Contains("data"))
+            var features = details.Split("|");
+            if (features.Length <= 1 || features.Length > 3)
             {
-                embed.WithThumbnailUrl(url);
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title, Description, and Image URL with '|' (vertical bar)"));
+                return;
             }
+
+            var embed = new EmbedBuilder();
+            embed.WithTitle(features[0]);
+            embed.WithDescription(features[1]);
+            embed.WithThumbnailUrl(features.Length > 2 ? features[2] : "");
+            embed.WithColor(Color.DarkGreen);
+            
             await ReplyAsync(embed);
         }
 

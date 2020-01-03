@@ -13,6 +13,9 @@ namespace Bot3PG.Modules.XP
     [Color(75, 40, 65)]
     public sealed class XP : CommandBase
     {
+        internal override string ModuleName => "XP ✨";
+        internal override Color ModuleColour => Color.Green;
+
         [Command("XP"), Alias("EXP", "Rank")]
         [Summary("Display a user's XP stats")]
         [RequireUserPermission(GuildPermission.SendMessages)]

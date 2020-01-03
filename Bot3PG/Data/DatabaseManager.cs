@@ -67,7 +67,7 @@ namespace Bot3PG.Data
                     guildMirror[module][modProp.Name]["Config"] = GetConfig(modProp);
                     guildMirror[module][modProp.Name]["Type"] = modProp.PropertyType.ToString();
                     guildMirror[module][modProp.Name]["SpecialType"] = GetSpecialType(modProp);
-                    if (modProp.PropertyType.BaseType != typeof(ConfigModule.SubModule)) continue;
+                    if (modProp.PropertyType.BaseType != typeof(ConfigModule.Submodule)) continue;
 
                     guildMirror[module][modProp.Name]["Type"] = "Submodule";
                     foreach (var submodProp in modProp.PropertyType.GetProperties())
@@ -113,8 +113,8 @@ namespace Bot3PG.Data
             {
                 commandMirror["Commands"] = commandHelp.ToBsonDocument();
 
-                //var configModules = typeof(Guild).GetProperties().Where(p => p.PropertyType.BaseType == typeof(ConfigModule));
-                commandMirror["Modules"] = new BsonArray(new string[] {"Admin", "General", "Moderation", "Music", "XP"});//(configModules.Select(p => p.Name));
+                var configModules = typeof(Guild).GetProperties().Where(p => p.PropertyType.BaseType == typeof(CommandConfigModule));
+                commandMirror["Modules"] = new BsonArray(configModules.Select(p => p.Name));
             }
             catch (Exception err) { await Debug.LogAsync("database", LogSeverity.Error, err); }
 
@@ -140,7 +140,7 @@ namespace Bot3PG.Data
             try
             {
                 var result = await collection.FindAsync(predicate);
-                return await result.FirstOrDefaultAsync();                
+                return await result.FirstOrDefaultAsync();           
             }
             catch (Exception err)
             {

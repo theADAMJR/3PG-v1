@@ -1,23 +1,22 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
-using Bot3PG.Modules.General;
 using Bot3PG.Utils;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System.Threading.Tasks;
-using System;
 using System.Linq;
-using System.Collections.Generic;
-using Discord.Net;
+using Discord.Rest;
 
 namespace Bot3PG.Modules.Moderation
 {
     [Color(75, 65, 150)]
-    [RequireContext(ContextType.Guild)]
     public sealed class Moderation : CommandBase
     {
+        internal override string ModuleName => "Moderation 🔨";
+        internal override Color ModuleColour => Color.Orange;
+
         [Command("Kick")]
         [Summary("Kick a user [with reason]")]
         [RequireUserPermission(GuildPermission.KickMembers), RequireBotPermission(GuildPermission.KickMembers)]
@@ -26,10 +25,11 @@ namespace Bot3PG.Modules.Moderation
             var user = await Users.GetAsync(target);
             if (target.GuildPermissions.Administrator)
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be kicked.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Admins can't be kicked.", Color.Red));
                 return;
             }
             await user.KickAsync(reason, Context.User);
+            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Kicked {target.Mention} - `{reason}`.", Color.Orange));
         }
 
         [Command("Ban")]
@@ -43,7 +43,7 @@ namespace Bot3PG.Modules.Moderation
 
             if (user.Status.IsBanned)
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User already banned.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User already banned.", Color.Red));
                 return;
             }
             else
@@ -54,10 +54,11 @@ namespace Bot3PG.Modules.Moderation
                 if (targetHighest < senderHighest)
                 {
                     await user.BanAsync(banDuration, reason, Context.User);
+                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Banned {target.Mention} for `{duration}` - `{reason}`.", Color.Orange));
                 }
                 else
                 {
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Higher rank user cannot be banned.", Color.Red));
+                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Higher rank user cannot be banned.", Color.Red));
                     return;
                 }
             }
@@ -66,20 +67,21 @@ namespace Bot3PG.Modules.Moderation
         [Command("Unban")]
         [Summary("Unban a user [with reason]")]
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
-        public async Task UnbanUser(SocketUser target, [Remainder] string reason = "No reason provided.")
+        public async Task UnbanUser(ulong targetId, [Remainder] string reason = "No reason provided.")
         {
-            var restBan = await Context.Guild.GetBanAsync(target);
-            target = restBan != null ? Context.Guild.GetUser(restBan.User.Id) : target;
-
-            if ((target as SocketGuildUser) != null)
+            RestBan restBan = null;
+            try { restBan = await Context.Guild.GetBanAsync(targetId); }
+            catch 
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User not currently banned.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User not currently banned.", Color.Red));
                 return;
             }
-            await Context.Guild.RemoveBanAsync(target);
-            if (!target.IsBot)
+
+            await Context.Guild.RemoveBanAsync(targetId);
+            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Unbanned {restBan.User.Mention} - `{reason}`.", Color.Orange));
+            if (!restBan.User.IsBot)
             {
-                await target.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
+                await restBan.User.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed(ModuleName, $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
             }
         }
 
@@ -93,18 +95,18 @@ namespace Bot3PG.Modules.Moderation
 
             if (target.GuildPermissions.Administrator)
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be muted.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Admins can't be muted.", Color.Red));
                 return;
             }
 
             if (!user.Status.IsMuted)
             {
                 await user.MuteAsync(muteDuration, reason, Context.User);
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Muted {target.Mention} for {muteDuration}", Color.Green));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Muted {target.Mention} for `{duration}` - `{reason}`", Color.Green));
             }
             else
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User is already muted.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User is already muted.", Color.Red));
             }
         }
 
@@ -117,9 +119,10 @@ namespace Bot3PG.Modules.Moderation
             if (user.Status.IsMuted)
             {
                 await user.UnmuteAsync(reason, Context.User);
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Unmuted {target.Mention} - `{reason}`.", Color.Orange));
                 return;
             }
-            await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"User account not found.", Color.Red));
+            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User account not found.", Color.Red));
         }
 
         [Command("Warn")]
@@ -129,17 +132,18 @@ namespace Bot3PG.Modules.Moderation
         {
             if (target.IsBot)
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Bots cannot be warned.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Bots cannot be warned.", Color.Red));
                 return;
             }
 
             var user = await Users.GetAsync(target);
             if (target.GuildPermissions.Administrator)
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", $"Admins can't be warned.", Color.Red));
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Admins can't be warned.", Color.Red));
                 return;
             }
             await user.WarnAsync(reason, Context.User);
+            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Warned {target.Mention} - `{reason}`.", Color.Orange));
         }
 
         [Command("User")]
@@ -154,13 +158,13 @@ namespace Bot3PG.Modules.Moderation
             {
                 if (target is null)
                 {
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", "User not found", Color.Red));
+                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User not found", Color.Red));
                     return;
                 }
                 else
                 {
                     await Users.ResetAsync(target);
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed("Moderation", "User account reset", Color.Orange));
+                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
                     return;
                 }
             }
@@ -197,9 +201,14 @@ namespace Bot3PG.Modules.Moderation
         [Command("Clear"), Alias("Purge")]
         [RequireUserPermission(GuildPermission.ManageMessages), RequireBotPermission(GuildPermission.ManageMessages)]
         [Summary("Remove a specified amount of messages from a channel")]
-        public async Task ClearMessages(int amount = -1)
+        public async Task ClearMessages(int amount = 100)
         {
-            var messages = amount < 0 ? Context.Channel.GetMessagesAsync().FlattenAsync().Result : Context.Channel.GetMessagesAsync(amount).FlattenAsync().Result;
+            if (amount < 0 || amount > 100)
+            {
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Messages to remove must be between 0 and 100"));
+                return;
+            }
+            var messages = amount == -1 ? Context.Channel.GetMessagesAsync().FlattenAsync().Result : Context.Channel.GetMessagesAsync(amount).FlattenAsync().Result;
             var channel = Context.Channel as SocketTextChannel;
 
             try { await channel.DeleteMessagesAsync(messages); }
@@ -211,8 +220,7 @@ namespace Bot3PG.Modules.Moderation
                     await message.DeleteAsync();
                 }
             }
-            string deleted = amount < 0 ? "all" : amount.ToString();
-
+            string deleted = amount.ToString();
             var reply = await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Clear", $"Cleared {deleted} messages from {channel.Mention}", Color.Blue));
 
             await Task.Delay(4000);

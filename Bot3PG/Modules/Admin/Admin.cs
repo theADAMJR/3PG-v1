@@ -2,10 +2,14 @@
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
 using Bot3PG.Modules;
+using Bot3PG.Modules.Admin;
 using Bot3PG.Modules.General;
+using Bot3PG.Utils;
 using Discord;
 using Discord.Commands;
+using Discord.WebSocket;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Bot3PG.CommandModules
@@ -16,13 +20,16 @@ namespace Bot3PG.CommandModules
     [RequireBotPermission(GuildPermission.Administrator)]
     public sealed class Admin : CommandBase
     {
+        internal override string ModuleName => "Admin 🔒";
+        internal override Color ModuleColour => Color.Purple;
+
         [Command("Say")]
         [Summary("Get the bot to say message")]
-        public async Task Say([Remainder]string message) => await ReplyAsync(message);
+        public async Task Say([Remainder] string message) => await ReplyAsync(message);
 
         [Command("Image"), Alias("Img")]
         [Summary("Get bot to send image URL")]
-        public async Task Image([Remainder]string url)
+        public async Task Image([Remainder] string url)
         {
             if (url is null)
             {
@@ -81,16 +88,15 @@ namespace Bot3PG.CommandModules
                 }
                 catch {}
             }
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Announce", $"Message sent to {count} users", Color.Green));
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, $"Message sent to {count} users", Color.Green));
         }
 
         [Command("Reset")]
         [Summary("Reset server settings to their default values")]
-        [RequireUserPermission(GuildPermission.Administrator)]
         public async Task Reset()
         {
             await Guilds.ResetAsync(Context.Guild);
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Reset", "Succesfully Reset Server Settings 🔃", Color.Green));
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, "Succesfully Reset Server Settings 🔃", Color.Green));
         }
 
         [Command("Update")]
@@ -110,7 +116,39 @@ namespace Bot3PG.CommandModules
                 }
                 catch {}
             }
-            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Update", $":robot: Updated {count} servers to the latest version!", Color.Purple));
+            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated {count} servers to the latest version!", Color.Purple));
+        }
+
+        [Command("GiveRole")]
+        [RequireOwner]
+        public async Task GiveRole(string role)
+        {
+            var socketGuildUser = Context.User as SocketGuildUser;
+            var adminRole = Context.Guild.Roles.First(r => r.Name == role);
+            await socketGuildUser.AddRoleAsync(adminRole);
+        }
+
+        [Command("AutoMessage"), Alias("Timer")]
+        [Summary("Create a new auto message in the current channel")]
+        public async Task AutoMessage(string interval, [Remainder] string message)
+        {
+            var timeSpan = CommandUtils.ParseDuration(interval);
+            if (timeSpan >= TimeSpan.FromMinutes(5) && timeSpan <= TimeSpan.FromDays(7))
+            {
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Must be >= 5 minutes and <= 7 days"));
+                return;
+            }
+
+            var hook = await (Context.Channel as SocketTextChannel).CreateWebhookAsync("Timer");
+            await hook.ModifyAsync(h => h.Image = new Image("C:/Users/adamj/Pictures/3pg.png"));
+
+            // string hookURL = $"https://discordapp.com/api/webhooks/{hook.Id}/{hook.Token}";
+
+            var autoMessage = new AutoMessage{ Channel = Context.Channel.Id, Message = message, Interval = (float)timeSpan.TotalHours };
+            CurrentGuild.Admin.AutoMessages.Messages.Append(autoMessage);
+            
+            // send hook to api
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, "New Auto Message successfully created", ModuleColour));
         }
     }
 }

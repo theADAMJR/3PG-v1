@@ -81,7 +81,6 @@ namespace Bot3PG.Modules.Moderation
 
         public static async Task LogMessageDeletion(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel)
         {
-            int position = 0;
             if (!message.HasValue) return;
 
             var guildAuthor = message.Value.Author as SocketGuildUser;
@@ -100,13 +99,15 @@ namespace Bot3PG.Modules.Moderation
                 return;
             }
             var embed = new EmbedBuilder();
+
+            string validation = AutoModeration.GetContentValidation(guild, message.Value.Content.ToString()).ToString();
             
             embed.WithTitle("Message Deleted");
             embed.AddField("User", message.Value.Author.Mention, true);
             embed.AddField("Message", $"{message.Value.Content.ToString()}", true);
-            embed.AddField("Explicit", $"{!AutoModeration.IsContentValid(guild, message.Value.Content.ToString())}", true);
-            embed.WithFooter($"Message ID: {message.Value.Id}");                
+            embed.AddField("Reason", $"{(string.IsNullOrEmpty(validation) ? "User Removed" : validation.ToSentenceCase())}", true);   
             embed.AddField("Channel", $"{(channel as SocketTextChannel).Mention}", true);
+            embed.WithFooter($"Message ID: {message.Value.Id}");
             embed.WithColor(Color.DarkPurple);
             embed.WithCurrentTimestamp();
 

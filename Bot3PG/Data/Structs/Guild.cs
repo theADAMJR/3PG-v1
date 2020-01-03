@@ -1,4 +1,6 @@
-﻿using Bot3PG.Modules.Moderation;
+﻿using Bot3PG.CommandModules;
+using Bot3PG.Modules.Admin;
+using Bot3PG.Modules.Moderation;
 using Discord;
 using Discord.WebSocket;
 using MongoDB.Bson;
@@ -29,6 +31,10 @@ namespace Bot3PG.Data.Structs
         [Config("Sit back and play any track 🎵")]
         public MusicModule Music { get; private set; } = new MusicModule();
 
+        [Config("Connect social media to Discord 💬")]
+        [BsonDefaultValue(typeof(SocialModule))]
+        public SocialModule Social { get; private set; } = new SocialModule();
+
         [Config("Earn EXP and reward user's activity ✨")]
         public XPModule XP { get; private set; } = new XPModule();
 
@@ -44,7 +50,10 @@ namespace Bot3PG.Data.Structs
             [Config("Make members have to agree to the rules to use your server")]
             public RuleboxSubModule Rulebox { get; private set; } = new RuleboxSubModule();
 
-            public class RuleboxSubModule : SubModule
+            [Config("Automatically send messages to specific channels between intervals")]
+            public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
+
+            public class RuleboxSubModule : Submodule
             {
                 [Config("The ID of the rulebox message")]
                 [BsonRepresentation(BsonType.String)] public ulong MessageId { get; set; } // If a field was immutable before it updates (_id -> ...otherName) it will be required in saved schema
@@ -66,6 +75,12 @@ namespace Bot3PG.Data.Structs
 
                 [Config("Set the message in the rulebox embed")]
                 public string Message { get; set; } = "Do you agree to the rules?";
+            }
+
+            public class AutoMessagesSubmodule : Submodule
+            {
+                [Config("The messages that are automatically sent after intervals")]
+                public AutoMessage[] Messages { get; set; }
             }
         }
 
@@ -96,7 +111,7 @@ namespace Bot3PG.Data.Structs
             [BsonRepresentation(BsonType.String)]
             public ulong[] NewMemberRoles { get; private set; } = {};
 
-            public class AnnounceSubModule : SubModule
+            public class AnnounceSubModule : Submodule
             {
                 [Config("Whether to directly send welcome messages to new users")]
                 public bool DMNewUsers { get; set; } = false;
@@ -109,7 +124,7 @@ namespace Bot3PG.Data.Structs
 
                 [Config("Welcome messages for new users")]
                 //[ExtraInfo("**Placeholders:** `[GUILD]` or `[SERVER]` - Discord server name\n `[USER]` - Mention target server user\n")]
-                public string[] WelcomeMessages { get; set; } = { "Welcome to [SERVER] [USER]!", "Welcome [USER] to [SERVER]!", "Hey [USER]! Welcome to [SERVER]!" };
+                public string[] WelcomeMessages { get; set; } = { "Welcome to [SERVER], [USER]!", "Welcome [USER] to [SERVER]!", "Hey [USER]! Welcome to [SERVER]!" };
 
                 [Config("Goodbye messages for users")]
                 public string[] GoodbyeMessages { get; set; } = { "[USER] left the server.", "It's sad to see you go... [USER].", "Bye [USER]!" };
@@ -134,7 +149,7 @@ namespace Bot3PG.Data.Structs
             [Config("Reset all user data on this server if they get banned")]
             public bool ResetBannedUsers { get; private set; }
 
-            public class AutoModerationSubModule : SubModule
+            public class AutoModerationSubModule : Submodule
             {
                 [Config("Use a list of predefined explicit words for auto detection")]
                 public bool UseDefaultBanWords { get; set; } = true;
@@ -163,14 +178,24 @@ namespace Bot3PG.Data.Structs
                 [Config("Prevent user access if they have an explicit username/nickname")]
                 public bool NicknameFilter { get; set; } = true;
 
+                [Config("Automatically reset explicit usernames")]
+                public bool ResetNickname { get; set; } = true;
+
                 [Config("Punishment to users who have an explicit username"), Dropdown(typeof(PunishmentType))]
-                public PunishmentType ExplicitUsernamePunishment { get; set; } = PunishmentType.Kick;
+                public PunishmentType ExplicitUsernamePunishment { get; set; } = PunishmentType.Warn;
 
                 [Config("Inform users that are spamming chat")]
                 public bool SpamNotification { get; set; } = true;
+
+                [Config("The message content that 3PG should disallow"), List(typeof(AutoModeration.FilterType))]
+                public AutoModeration.FilterType[] Filters { get; set; } = { AutoModeration.FilterType.BadWords, AutoModeration.FilterType.BadLinks, AutoModeration.FilterType.MassMention };
+                
+                [Config("Roles that are not affected by auto moderation"), List(typeof(SocketRole))]
+                [BsonRepresentation(BsonType.String)]
+                public ulong[] ExemptRoles { get; set; } = {};
             }
 
-            public class StaffLogsSubModule : SubModule
+            public class StaffLogsSubModule : Submodule
             {
                 [Config("Channel for logs")]
                 [BsonRepresentation(BsonType.String), SpecialType(typeof(SocketTextChannel))]
@@ -184,6 +209,8 @@ namespace Bot3PG.Data.Structs
 
         public class MusicModule : CommandConfigModule
         {
+            public enum SkipType { None, MajorityVote, AllVotes }
+
             [Config("Default volume for music, set when 3PG first plays tracks"), Range(0, 200)]
             public int DefaultVolume { get; private set; } = 100;
 
@@ -192,12 +219,33 @@ namespace Bot3PG.Data.Structs
 
             [Config("The maximum allowed duration in hours for a track"), Range(0.25f, 24)]
             public float MaxTrackHours { get; private set; } = 2;
+            
+            [Config("Warn users if their ears may be under attack")]
+            public bool HeadphoneWarning { get; private set; } = true;
 
-            [Config("Whether users have to vote for tracks to be skipped")]
-            public bool VoteToSkip { get; private set; }
+            // [Config("The voting system used for skipping tracks"), Dropdown(typeof(SkipType))]
+            // public SkipType SkipTrackType { get; private set; }
+        }
 
-            [Config("Whether all voice channel members have to vote to skip, otherwise at least 50% of members are required")]
-            public bool AllVotesToSkip { get; private set; }
+        public class SocialModule : CommandConfigModule
+        {
+            [Config("Know when your favourite YouTuber's post new content")]
+            public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
+
+            [Config("Alerts for when your favourite Twitch streamers are live")]
+            public TwitchSubmodule Twitch { get; private set; } = new TwitchSubmodule();
+
+            public class YouTubeSubmodule : Submodule
+            {
+                [Config("Get notifications when YouTuber's upload")]
+                public YouTubeWebhook[] Hooks { get; set; } = { new YouTubeWebhook{ Channel = "tseries", TextChannel = 662275583400607774 }};
+            }
+
+            public class TwitchSubmodule : Submodule
+            {
+                [Config("Get notifications when Twitch streamer's upload")]
+                public TwitchWebhook[] Hooks { get; set; } = { new TwitchWebhook{ User = "ad4mjf", TextChannel = 662275583400607774 }};                
+            }
         }
 
         public class XPModule : CommandConfigModule
@@ -222,6 +270,9 @@ namespace Bot3PG.Data.Structs
             [Config("A cooldown given to users after being muted")]
             public int ExtendedCooldown { get; set; } = 300;
 
+            [Config("Whether bots can earn EXP")]
+            public bool BotsCanEarnEXP { get; set; }
+
             [Config("Delay when to allow messages with identical content to the last")]
             public int DuplicateMessageThreshold { get; set; } = 5;
 
@@ -236,7 +287,7 @@ namespace Bot3PG.Data.Structs
             [Config("Leaderboard command maximum page"), Range(1, 1000)]
             public int MaxLeaderboardPage { get; set; } = 100;
 
-            public class RoleRewardsSubModule : SubModule
+            public class RoleRewardsSubModule : Submodule
             {
                 public SocketRole this[int levelNumber]
                 {
@@ -258,7 +309,7 @@ namespace Bot3PG.Data.Structs
                 public Dictionary<string, ulong> LevelRoles { get; set; } = new Dictionary<string, ulong> {};
             }
 
-            public class MessagesSubmodule : SubModule
+            public class MessagesSubmodule : Submodule
             {
                 [Config("Method for sending XP messages"), Dropdown(typeof(MessageMethod))]
                 public MessageMethod Method { get; set; } = MessageMethod.DM;
@@ -274,7 +325,7 @@ namespace Bot3PG.Data.Structs
             [Config("Minimum permissions for using members using webapp features")]
             public PermissionsSubModule Permissions { get; private set; } = new PermissionsSubModule();
 
-            public class PermissionsSubModule : SubModule
+            public class PermissionsSubModule : Submodule
             {
                 [Config("Minimum permission for editing server modules"), Dropdown(typeof(GuildPermission))]
                 public GuildPermission EditModules { get; set; } = GuildPermission.ManageGuild;
@@ -289,5 +340,38 @@ namespace Bot3PG.Data.Structs
                 public bool AppearOnGlobalLeaderboard { get; set; } = false;
             }
         }
+    }
+
+    public abstract class Webhook
+    {
+        [Config("The channel the notification message is sent to")]
+        [BsonRepresentation(BsonType.String)]
+        public ulong TextChannel { get; set; }
+
+        public abstract string Message { get; set; }
+    }
+
+    public class YouTubeWebhook : Webhook
+    {
+        [Config("The YouTube channel of the posted content")]
+        public string Channel { get; set; } = "";
+
+        [Config("The YouTube notification message")]
+        public override string Message { get; set; } = "[AUTHOR] just uploaded a new video: [TITLE] at [URL]";
+    }
+
+    public class TwitchWebhook : Webhook
+    {
+        [Config("The Twitch channel of the posted content")]
+        public string User { get; set; } = "";
+
+        [Config("The Twitch notification message")]
+        public override string Message { get; set; } = "**[STREAMER]** is live - **Viewers**: `[VIEWERS]`";
+
+        [Config("Whether to notify @everyone")]
+        public bool PingEveryone { get; set; } = true;
+
+        [Config("Whether have the stream thumbnail with the notification embed")]
+        public bool IncludeThumbnail { get; set; } = true;
     }
 }

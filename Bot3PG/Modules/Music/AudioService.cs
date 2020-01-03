@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 using Victoria;
 using Victoria.Entities;
 using System;
+using Bot3PG.Data.Structs;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace Bot3PG.Modules.Music
 {
@@ -12,6 +15,8 @@ namespace Bot3PG.Modules.Music
         public LavaPlayer Player { get; private set; }
         public LavaSocketClient LavaClient { get; private set; }
         public LavaRestClient LavaRestClient { get; private set; }
+
+        public ConcurrentDictionary<ulong, Queue<TrackOptions>> Tracks { get; internal set; } = new ConcurrentDictionary<ulong, Queue<TrackOptions>>(); 
 
         public AudioService(LavaSocketClient lavaSocketClient, LavaRestClient lavaRestClient) 
         { 
@@ -22,7 +27,6 @@ namespace Bot3PG.Modules.Music
 
         public async Task OnFinished(LavaPlayer player, LavaTrack track, TrackEndReason reason)
         {
-            System.Console.WriteLine(track.Title + ": " + reason);
             if (reason is TrackEndReason.Cleanup || reason is TrackEndReason.Replaced || reason is TrackEndReason.Stopped) return;
             else if (reason is TrackEndReason.LoadFailed)
             {

@@ -4,6 +4,7 @@ using Discord.Commands;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,12 +20,7 @@ namespace Bot3PG.Modules
             var commandService = Global.CommandService;
             foreach (var command in commandService.Commands)
             {
-                string usage = command.Name.ToLower();
-                for (int i = 0; i < command.Parameters.Count; i++)
-                {
-                    var argument = command.Parameters[i];
-                    usage += argument.IsOptional ? $" [{argument}]" : $" {argument}";
-                }
+                string usage = GetUsage(command);
                 var color = Color.Purple;
                 for (int i = 0; i < command.Module.Attributes.Count; i++)
                 {
@@ -47,12 +43,28 @@ namespace Bot3PG.Modules
                 {
                     if (command.Module.Preconditions[i] is RequireUserPermissionAttribute userPermissionAttribute)
                     {
-                        preconditions.Add(userPermissionAttribute.GuildPermission);
+                        if (!preconditions.Contains(userPermissionAttribute.GuildPermission))
+                        {
+                            preconditions.Add(userPermissionAttribute.GuildPermission);
+                        }
                     }
                 }
 
                 this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, color), command.Aliases, preconditions);
             }
+        }
+
+        public static string GetUsage(CommandInfo command, string alias = null)
+        {
+            if (command is null) throw new NullReferenceException("Command cannot be null");
+
+            string usage = alias?.ToLower() ?? command.Name.ToLower();
+            for (int i = 0; i < command.Parameters.Count; i++)
+            {
+                var argument = command.Parameters[i];
+                usage += argument.IsOptional ? $" [{argument}]" : $" {argument}";
+            }
+            return usage;
         }
     }
 }

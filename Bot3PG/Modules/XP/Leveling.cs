@@ -35,7 +35,6 @@ namespace Bot3PG.Modules.XP
             user.XP.EXP += guild.XP.EXPPerMessage;
             int newLevel = user.XP.Level;
             user.Status.MessageCount++;
-            System.Console.WriteLine(guild.XP.RoleRewards[4]);
 
             if (oldLevel != newLevel)
             {
@@ -60,6 +59,7 @@ namespace Bot3PG.Modules.XP
                 switch (xp.Messages.Method)
                 {
                     case MessageMethod.DM:
+                        if (socketGuildUser.IsBot) return;
                         await socketGuildUser.SendMessageAsync(embed: embed.Build());
                         break;
                     case MessageMethod.SpecificChannel:
