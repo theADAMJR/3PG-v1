@@ -45,7 +45,6 @@ namespace Bot3PG.Handlers
             lavaClient.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
             services.GetRequiredService<CommandService>().Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
             bot.Log += async (LogMessage message) => await Debug.LogAsync(message.Source, message.Severity, message.Message);
-
         }
 
         private void HookClientEvents()
@@ -55,14 +54,13 @@ namespace Bot3PG.Handlers
                 try
                 {
                     await lavaClient.StartAsync(bot);
-                    lavaClient.ToggleAutoDisconnect();
                     lavaClient.OnTrackFinished += services.GetService<AudioService>().OnFinished;
 
                     await bot.SetGameAsync(Global.Config.GameStatus);
 
                     await new DatabaseManager().UpdateCommands(new CommandHelp());
                 }
-                catch (Exception ex) { await Debug.LogInformationAsync(ex.Source, ex.Message); }
+                catch (Exception ex) { await Debug.LogCriticalAsync(ex.Source, ex.Message); }
             };
 
             bot.JoinedGuild += async (SocketGuild socketGuild) =>
@@ -88,10 +86,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser?.Guild);
                 if (guild is null) return;
 
-                if (guild.Admin.Rulebox.Enabled)
-                {
-                    await Rulebox.CheckRuleAgreement(guild, socketGuildUser, reaction);
-                }
+                if (guild.Admin.Rulebox.Enabled) await Rulebox.CheckRuleAgreement(guild, socketGuildUser, reaction);
             };
 
             bot.ReactionRemoved += async (Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction) =>

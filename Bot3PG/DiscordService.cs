@@ -28,7 +28,7 @@ namespace Bot3PG
             client = new DiscordSocketClient(new DiscordSocketConfig
             {
                 AlwaysDownloadUsers = true,
-                LogLevel = LogSeverity.Debug,
+                LogLevel = LogSeverity.Verbose,
                 MessageCacheSize = 100,
                 ExclusiveBulkDelete = true
             });

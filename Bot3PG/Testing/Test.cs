@@ -8,12 +8,6 @@ namespace Bot3PG.Testing
 {
     public class Test
     {
-        public void ConnectToDatabase() 
-        {
-            var config = GlobalConfig.Config;
-            new Global(null, null, config, null);
-        }
-
         [Test]
         public void Test1() 
         {

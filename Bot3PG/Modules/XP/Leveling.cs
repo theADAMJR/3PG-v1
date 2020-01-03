@@ -66,7 +66,7 @@ namespace Bot3PG.Modules.XP
                         var channel = socketGuildUser.Guild.GetTextChannel(xp.Messages.XPChannel);
                         await channel.SendMessageAsync(embed: embed.Build());
                         break;                    
-                    default:
+                    case MessageMethod.AnyChannel:
                         await message.Channel.SendMessageAsync(embed: embed.Build());
                         break;
                 }

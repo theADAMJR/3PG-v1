@@ -44,6 +44,26 @@ namespace Bot3PG.CommandModules
             }
         }
 
+        [Command("Embed")]
+        [Summary("Create a custom embed. Separate Title, Description, and Image URL with '|' (vertical bar) ")]
+        public async Task Embed([Remainder] string details)
+        {
+            var features = details.Split("|");
+            if (features.Length <= 1 || features.Length > 3)
+            {
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title, Description, and Image URL with '|' (vertical bar)"));
+                return;
+            }
+
+            var embed = new EmbedBuilder();
+            embed.WithTitle(features[0]);
+            embed.WithDescription(features[1]);
+            embed.WithThumbnailUrl(features.Length > 2 ? features[2] : "");
+            embed.WithColor(Color.DarkGreen);
+            
+            await ReplyAsync(embed);
+        }
+
         [Command("Rulebox")]
         [Summary("Create rule agreement embed")]
         [RequireUserPermission(GuildPermission.Administrator)]
@@ -145,10 +165,32 @@ namespace Bot3PG.CommandModules
             // string hookURL = $"https://discordapp.com/api/webhooks/{hook.Id}/{hook.Token}";
 
             var autoMessage = new AutoMessage{ Channel = Context.Channel.Id, Message = message, Interval = (float)timeSpan.TotalHours };
-            CurrentGuild.Admin.AutoMessages.Messages.Append(autoMessage);
+            // CurrentGuild.Admin.AutoMessages.Messages.Append(autoMessage);
             
             // send hook to api
             await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, "New Auto Message successfully created", ModuleColour));
+        }
+
+        [Command("Test")]
+        [RequireOwner]
+        public async Task Test([Remainder] string details)
+        {
+            var features = details.Split("|");
+            const int maxLength = 2;
+            if (features.Length <= 1 || features.Length > maxLength)
+            {
+                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title and Expected with | (vertical bar)"));
+                return;
+            }
+            await Context.Message.DeleteAsync();
+
+            var embed = new EmbedBuilder();
+            embed.WithTitle($"`TEST` {features[0]}");
+            embed.WithDescription(features[1]);
+            embed.WithColor(ModuleColour);
+            
+            var message = await ReplyAsync(embed);
+            await message.AddReactionsAsync(new []{ new Emoji("✅"), new Emoji("❌")});
         }
     }
 }

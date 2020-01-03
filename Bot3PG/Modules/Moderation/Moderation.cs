@@ -203,7 +203,8 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Remove a specified amount of messages from a channel")]
         public async Task ClearMessages(int amount = 100)
         {
-            if (amount < 0 || amount > 100)
+            const int max = 100;
+            if (amount < 0 || amount > max)
             {
                 await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Messages to remove must be between 0 and 100"));
                 return;
@@ -220,8 +221,7 @@ namespace Bot3PG.Modules.Moderation
                     await message.DeleteAsync();
                 }
             }
-            string deleted = amount.ToString();
-            var reply = await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Clear", $"Cleared {deleted} messages from {channel.Mention}", Color.Blue));
+            var reply = await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Clear", $"Cleared `{messages.Count()}` messages from {channel.Mention}", Color.Blue));
 
             await Task.Delay(4000);
             await reply.DeleteAsync();

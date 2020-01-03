@@ -31,9 +31,8 @@ namespace Bot3PG.Data.Structs
         [Config("Sit back and play any track 🎵")]
         public MusicModule Music { get; private set; } = new MusicModule();
 
-        [Config("Connect social media to Discord 💬")]
-        [BsonDefaultValue(typeof(SocialModule))]
-        public SocialModule Social { get; private set; } = new SocialModule();
+        //[Config("Connect social media to Discord 💬")]
+        //public SocialModule Social { get; private set; } = new SocialModule();
 
         [Config("Earn EXP and reward user's activity ✨")]
         public XPModule XP { get; private set; } = new XPModule();
@@ -50,8 +49,8 @@ namespace Bot3PG.Data.Structs
             [Config("Make members have to agree to the rules to use your server")]
             public RuleboxSubModule Rulebox { get; private set; } = new RuleboxSubModule();
 
-            [Config("Automatically send messages to specific channels between intervals")]
-            public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
+            //[Config("Automatically send messages to specific channels between intervals")]
+            //public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
 
             public class RuleboxSubModule : Submodule
             {
@@ -152,7 +151,7 @@ namespace Bot3PG.Data.Structs
             public class AutoModerationSubModule : Submodule
             {
                 [Config("Use a list of predefined explicit words for auto detection")]
-                public bool UseDefaultBanWords { get; set; } = true;
+                public bool UseDefaultBanWords { get; set; } = false;
 
                 [Config("Maximum amount of messages that can be sent in a minute by a user")]
                 public int SpamThreshold { get; set; } = 10;
@@ -167,10 +166,10 @@ namespace Bot3PG.Data.Structs
                 public string[] CustomBanLinks { get; set; } = {};
 
                 [Config("Warnings required to auto-kick the offender"), Range(-1, 50)]
-                public int WarningsForKick { get; set; } = 5;
+                public int WarningsForKick { get; set; } = -1;
 
                 [Config("Warnings required to auto-ban the offender"), Range(-1, 50)]
-                public int WarningsForBan { get; set; } = 10;
+                public int WarningsForBan { get; set; } = -1;
 
                 [Config("Length of time to auto-mute the offender")]
                 public int AutoMuteSeconds { get; set; } = -1;
@@ -250,7 +249,7 @@ namespace Bot3PG.Data.Structs
 
         public class XPModule : CommandConfigModule
         {
-            public enum MessageType { AnyChannel, DM, SpecificChannel }
+            public enum MessageType { None, AnyChannel, DM, SpecificChannel }
 
             [Config("Reward roles as XP rewards")]
             public RoleRewardsSubModule RoleRewards { get; private set; } = new RoleRewardsSubModule();
@@ -312,7 +311,7 @@ namespace Bot3PG.Data.Structs
             public class MessagesSubmodule : Submodule
             {
                 [Config("Method for sending XP messages"), Dropdown(typeof(MessageMethod))]
-                public MessageMethod Method { get; set; } = MessageMethod.DM;
+                public MessageMethod Method { get; set; } = MessageMethod.AnyChannel;
 
                 [Config("Specific channel for sending messages"), SpecialType(typeof(SocketTextChannel))]
                 [BsonRepresentation(BsonType.String)]

@@ -27,7 +27,12 @@ namespace Bot3PG.Modules.Music
 
         public async Task OnFinished(LavaPlayer player, LavaTrack track, TrackEndReason reason)
         {
-            if (reason is TrackEndReason.Cleanup || reason is TrackEndReason.Replaced || reason is TrackEndReason.Stopped) return;
+            if (reason is TrackEndReason.Cleanup || reason is TrackEndReason.Replaced) return;
+            else if (reason is TrackEndReason.Stopped)
+            {
+                await Task.Delay(60000);
+                await LavaClient.DisconnectAsync(player.VoiceChannel);
+            }
             else if (reason is TrackEndReason.LoadFailed)
             {
                 if (player.TextChannel != null)

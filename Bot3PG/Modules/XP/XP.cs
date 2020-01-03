@@ -39,7 +39,6 @@ namespace Bot3PG.Modules.XP
                 if (user.XP.Level >= boundary)
                 {
                     cardColour = Context.Guild.GetRole(role.Value)?.Color ?? Color.Default;
-                    continue;
                 }
             }
 
@@ -67,31 +66,32 @@ namespace Bot3PG.Modules.XP
                 await ReplyAsync(embed: await EmbedHandler.CreateBasicEmbed($"🏆 {Context.Guild.Name} Leaderboard", $"Leaderboard page must between 1 and {guild.XP.MaxLeaderboardPage}", Color.Red));
                 return;
             }
+            int usersPerPage = 10;
+            int pageStartIndex = (page * usersPerPage) - usersPerPage;
+            int pageEndIndex = page * usersPerPage;
 
-            var usersPerPage = 10;
-            var pageStartIndex = (page * usersPerPage) - usersPerPage;
-            var leaderboardUsers = await Users.GetGuildUsersAsync(Context.Guild);
-            leaderboardUsers = leaderboardUsers.OrderByDescending(u => u.XP.EXP).ToList();
-            var pageEndIndex = page * usersPerPage;
+            var users = await Users.GetGuildUsersAsync(Context.Guild);
+            users = users.OrderByDescending(u => u.XP.EXP).ToList();
 
-            var embed = new EmbedBuilder();
-            string leaderboard = "\u200B\n";
+            string details = "\u200B\n";
             for (int i = pageStartIndex; i < pageEndIndex; i++)
             {
-                if (i >= leaderboardUsers.Count)
+                if (i >= users.Count)
                 {
-                    leaderboard += $"**#{i + 1}** - N/A\n";
+                    details += $"**#{i + 1}** - N/A\n";
                     continue;
                 }
-                var user = leaderboardUsers[i];
+                var user = users[i];
                 var socketGuildUser = Context.Guild.GetUser(user.ID);
-                leaderboard += $"**#{i + 1}** - {user.XP.EXP} XP - {socketGuildUser?.Mention ?? "N/A"}\n";
+                details += $"**#{i + 1}** - {user.XP.EXP} XP - {socketGuildUser?.Mention ?? "N/A"}\n";
             }
+
+            var embed = new EmbedBuilder();
             embed.WithColor(Color.Teal);
-            embed.AddField($"🏆 **{ Context.Guild.Name} Leaderboard **", leaderboard, inline: false);
+            embed.AddField($"🏆 **{ Context.Guild.Name} Leaderboard **", details, inline: false);
             embed.AddField("View Leaderboard", $"{Global.Config.WebappLink}/servers/{Context.Guild.Id}/leaderboard");
             embed.WithThumbnailUrl(Context.Guild.IconUrl);
-            embed.WithFooter($"Page {page}/{guild.XP.MaxLeaderboardPage} • Users with XP: {leaderboardUsers.Count}");
+            embed.WithFooter($"Page {page}/{guild.XP.MaxLeaderboardPage} • Users with XP: {users.Count}");
 
             await ReplyAsync(embed);
         }

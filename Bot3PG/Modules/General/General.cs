@@ -81,26 +81,6 @@ namespace Bot3PG.Modules.General
             await ReplyAsync(embed);
         }
 
-        [Command("Embed")]
-        [Summary("Create a custom embed. Separate Title, Description, and Image URL with '|' (vertical bar) ")]
-        public async Task Embed([Remainder] string details)
-        {
-            var features = details.Split("|");
-            if (features.Length <= 1 || features.Length > 3)
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title, Description, and Image URL with '|' (vertical bar)"));
-                return;
-            }
-
-            var embed = new EmbedBuilder();
-            embed.WithTitle(features[0]);
-            embed.WithDescription(features[1]);
-            embed.WithThumbnailUrl(features.Length > 2 ? features[2] : "");
-            embed.WithColor(Color.DarkGreen);
-            
-            await ReplyAsync(embed);
-        }
-
         [Command("Suggest")]
         [Summary("Suggest a new feature"), Remarks("Seperate *Title*, *Subtitle*, and *Description* with | (vertical bar)")]
         public async Task Suggest([Remainder] string details)
@@ -124,7 +104,7 @@ namespace Bot3PG.Modules.General
             embed.WithTitle(title);
             embed.AddField(subtitle, description);
             embed.WithColor(Color.DarkBlue);
-            embed.WithFooter($"By {Context.User.Username}");
+            embed.WithFooter($"By {Context.User.Username}#{Context.User.Discriminator}");
             embed.WithCurrentTimestamp();
 
             var suggestMessage = await ReplyAsync(embed);

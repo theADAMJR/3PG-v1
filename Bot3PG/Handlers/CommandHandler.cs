@@ -60,12 +60,12 @@ namespace Bot3PG.Handlers
                 return;
             }
             if (message.Author.IsBot) return;
-
+            
             var context = new SocketCommandContext(Global.Client, socketMessage as SocketUserMessage);
-
+            
             var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(id => id == message.Channel.Id);
             if (channelIsBlacklisted) return;
-
+            
             var execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best);
 
             if (!execution.Result.IsSuccess)
