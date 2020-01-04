@@ -46,7 +46,7 @@ namespace Bot3PG.Modules.Moderation
 
                 if (GetContentValidation(guild, message.Content) != null)
                 {
-                    await AutoPunishUser(guildAuthor, "Explicit message");
+                    await PunishUser(guildAuthor, "Explicit message");
                     try { await message.DeleteAsync(); } // 404 - there may be other auto mod bots -> message already deleted
                     catch {}
                     finally { await user.XP.ExtendXPCooldown(); }
@@ -55,47 +55,39 @@ namespace Bot3PG.Modules.Moderation
             }
             catch (Exception ex) { await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Auto Moderation", ex.Message)); }
         }
+        
         public static FilterType? GetContentValidation(Guild guild, string content)
         {
             if (content is null) return null;
 
             var autoMod = guild.Moderation.Auto;
-            if (autoMod.Filters.Any(f => f == FilterType.BadWords || f == FilterType.BadLinks))
-            {
-                if (IsContentExplicit(guild, content)) return FilterType.BadWords;
-            }
-            if (autoMod.Filters.Any(f => f == FilterType.AllCaps))
-            {
-                if (content.All(c => char.IsUpper(c))) return FilterType.AllCaps;
-            }
-            if (autoMod.Filters.Any(f => f == FilterType.DiscordInvites))
-            {
-                if (content.Contains("discord.gg")) return FilterType.DiscordInvites;
-            }
-            if (autoMod.Filters.Any(f => f == FilterType.EmojiSpam))
-            {
-                bool halfCaps = content.Remove(0, content.Length / 2).All(c => char.IsSymbol(c));
-                if (halfCaps) return FilterType.EmojiSpam;
-            }
-            if (autoMod.Filters.Any(f => f == FilterType.MassMention))
-            {
-                if (content.Count(c => c == '@') >= 5) return FilterType.MassMention;
-            }
+            bool HasFilter(FilterType filter) => autoMod.Filters.Any(f => f == filter);
+            
+            bool hasHalfEmojis = content.Remove(0, content.Length / 2).All(c => char.IsSymbol(c));
+            const int maxAtSigns = 5;
+            
+            if (HasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
+            if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content)) return FilterType.BadLinks;
+            if (HasFilter(FilterType.AllCaps) && content.All(c => char.IsUpper(c))) return FilterType.AllCaps;
+            if (HasFilter(FilterType.DiscordInvites) && content.Contains("discord.gg")) return FilterType.DiscordInvites;
+            if (HasFilter(FilterType.EmojiSpam) && hasHalfEmojis) return FilterType.EmojiSpam;
+            if (HasFilter(FilterType.MassMention) && content.Count(c => c == '@') >= maxAtSigns) return FilterType.MassMention;
+
             return null;
         }
 
-        public static bool IsContentExplicit(Guild guild, string content)
+        public static bool ContentIsExplicit(Guild guild, string content)
         {           
             if (content is null) return false;        
 
             var autoMod = guild.Moderation.Auto;
-            var defaultBannedWords = BannedWords.Words;
-            var defaultBannedLinks = BannedLinks.Links;
-            var customBannedWords = autoMod.CustomBanWords;
-            var customBannedLinks = autoMod.CustomBanLinks;
+            var badWords = BannedWords.Words;
+            var badLinks = BannedWords.Links;
+            var customBadWords = autoMod.CustomBanWords;
+            var customBadLinks = autoMod.CustomBanLinks;
 
-            var banWords = autoMod.UseDefaultBanWords ? defaultBannedWords.Concat(customBannedWords) : customBannedWords;
-            var banLinks = autoMod.UseDefaultBanLinks ? defaultBannedLinks.Concat(customBannedLinks) : customBannedLinks;
+            var banWords = autoMod.UseDefaultBanWords ? badWords.Concat(customBadWords) : customBadWords;
+            var banLinks = autoMod.UseDefaultBanLinks ? badLinks.Concat(customBadLinks) : customBadLinks;
 
             string lowerCaseContent = content.ToLower();
             var words = content.ToLower().Split(" ");
@@ -105,7 +97,7 @@ namespace Bot3PG.Modules.Moderation
 
         public static async Task ValidateUsername(Guild guild, SocketGuildUser socketGuildUser)
         {
-            if (IsContentExplicit(guild, socketGuildUser.Nickname) || IsContentExplicit(guild, socketGuildUser.Username))
+            if (ContentIsExplicit(guild, socketGuildUser.Nickname) || ContentIsExplicit(guild, socketGuildUser.Username))
             {
                 var user = await Users.GetAsync(socketGuildUser);
 
@@ -138,7 +130,7 @@ namespace Bot3PG.Modules.Moderation
             }
         }
 
-        public static async Task AutoPunishUser(SocketGuildUser socketGuildUser, string reason)
+        public static async Task PunishUser(SocketGuildUser socketGuildUser, string reason)
         {
             var guild = await Guilds.GetAsync(socketGuildUser.Guild);
             var autoMod = guild.Moderation.Auto;
@@ -146,17 +138,14 @@ namespace Bot3PG.Modules.Moderation
             if (socketGuildUser.GuildPermissions.Administrator) return;
 
             var user = await Users.GetAsync(socketGuildUser);
-            switch (user.Status.WarningsCount)
-            {
-                case int warnings when (warnings >= autoMod.WarningsForBan && autoMod.WarningsForBan > 0):
-                    await user.BanAsync(TimeSpan.FromDays(-1), reason, Global.Client.CurrentUser);
-                    break;
-                case int warnings when (warnings >= autoMod.WarningsForKick && autoMod.WarningsForKick > 0):
-                    await user.KickAsync(reason, Global.Client.CurrentUser);
-                    break;
-            }
-            bool userAlreadyNotified = user.Status.WarningsCount >= autoMod.WarningsForKick || user.Status.WarningsCount >= autoMod.WarningsForBan;
-            await user.WarnAsync(reason, Global.Client.CurrentUser, !userAlreadyNotified);
+            int warnings = user.Status.WarningsCount;
+
+            if (warnings >= autoMod.WarningsForBan && autoMod.WarningsForBan > 0)
+                await user.BanAsync(TimeSpan.FromDays(-1), reason, Global.Client.CurrentUser);                
+            else if (warnings >= autoMod.WarningsForKick && autoMod.WarningsForKick > 0)
+                await user.KickAsync(reason, Global.Client.CurrentUser);
+            else
+                await user.WarnAsync(reason, Global.Client.CurrentUser);
         }
     }
 }

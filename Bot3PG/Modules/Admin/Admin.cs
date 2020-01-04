@@ -148,7 +148,7 @@ namespace Bot3PG.CommandModules
             await socketGuildUser.AddRoleAsync(adminRole);
         }
 
-        [Command("AutoMessage"), Alias("Timer")]
+        /*[Command("AutoMessage"), Alias("Timer")]
         [Summary("Create a new auto message in the current channel")]
         public async Task AutoMessage(string interval, [Remainder] string message)
         {
@@ -169,7 +169,7 @@ namespace Bot3PG.CommandModules
             
             // send hook to api
             await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, "New Auto Message successfully created", ModuleColour));
-        }
+        }*/
 
         [Command("Test")]
         [RequireOwner]
@@ -184,10 +184,10 @@ namespace Bot3PG.CommandModules
             }
             await Context.Message.DeleteAsync();
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"`TEST` {features[0]}");
-            embed.WithDescription(features[1]);
-            embed.WithColor(ModuleColour);
+            var embed = new EmbedBuilder()
+                .WithTitle($"`TEST` {features[0]}")
+                .WithDescription(features[1])
+                .WithColor(ModuleColour);
             
             var message = await ReplyAsync(embed);
             await message.AddReactionsAsync(new []{ new Emoji("✅"), new Emoji("❌")});

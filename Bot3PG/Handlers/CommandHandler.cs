@@ -43,7 +43,7 @@ namespace Bot3PG.Handlers
             var socketGuildUser = socketMessage.Author as SocketGuildUser;
             if (socketGuildUser is null) return;
 
-            var guild = new Guild(socketGuildUser.Guild);
+            Guild guild = null;
             try { guild = await Guilds.GetAsync(socketGuildUser.Guild); }
             catch
             {
@@ -54,7 +54,9 @@ namespace Bot3PG.Handlers
 
             int position = 0;
             bool isCommand = message.HasStringPrefix(prefix, ref position);
-            if (!isCommand && guild.XP.Enabled || !isCommand && message.Author.IsBot && guild.XP.BotsCanEarnEXP)
+
+            bool userCanEarnEXP = guild.XP.Enabled || message.Author.IsBot && guild.XP.BotsCanEarnEXP;
+            if (!isCommand && userCanEarnEXP)
             {
                 Leveling.ValidateForXPAsync(socketMessage as SocketUserMessage);
                 return;
@@ -70,8 +72,6 @@ namespace Bot3PG.Handlers
 
             if (!execution.Result.IsSuccess)
             {
-                if (execution.Result.Error.GetType() == typeof(CommandDisabledException)) return;
-
                 switch (execution.Result.Error)
                 {
                     case CommandError.BadArgCount:

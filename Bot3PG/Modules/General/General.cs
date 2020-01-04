@@ -45,18 +45,18 @@ namespace Bot3PG.Modules.General
         {
             string creationDate = $"{Context.Client.CurrentUser.CreatedAt.Day}/{Context.Client.CurrentUser.CreatedAt.Month}/{Context.Client.CurrentUser.CreatedAt.Year}";
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"{Context.Client.CurrentUser.Username} stats");
-            embed.AddField("Creator", Context.Client.CurrentUser.Mention, true);
-            embed.AddField("Servers", Context.Client.Guilds.Count, true);
-            embed.AddField("Uptime", $"{Global.Uptime.Days}d {Global.Uptime.Hours}h {Global.Uptime.Minutes}m {Global.Uptime.Seconds}s", true);
-            embed.AddField("Creation Date", creationDate, true);
-            embed.AddField("DM Channels", Context.Client.DMChannels.Count, true);
-            embed.AddField("Processor Count", Environment.ProcessorCount, true);
-            embed.AddField("Page Size", $"{Environment.SystemPageSize} bytes", true);
-            embed.WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl());
-            embed.WithFooter($"Bot ID: {Context.Client.CurrentUser.Id}");
-            embed.WithColor(Color.DarkMagenta);
+            var embed = new EmbedBuilder()
+                .WithTitle($"{Context.Client.CurrentUser.Username} stats")
+                .AddField("Creator", Context.Client.GetUser(Global.CreatorID).Mention, true)
+                .AddField("Servers", Context.Client.Guilds.Count, true)
+                .AddField("Uptime", $"{Global.Uptime.Days}d {Global.Uptime.Hours}h {Global.Uptime.Minutes}m {Global.Uptime.Seconds}s", true)
+                .AddField("Creation Date", creationDate, true)
+                .AddField("DM Channels", Context.Client.DMChannels.Count, true)
+                .AddField("Processor Count", Environment.ProcessorCount, true)
+                .AddField("Page Size", $"{Environment.SystemPageSize} bytes", true)
+                .WithFooter($"Bot ID: {Context.Client.CurrentUser.Id}")
+                .WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl())
+                .WithColor(Color.DarkMagenta);
 
             await ReplyAsync(embed);
         }
@@ -65,18 +65,18 @@ namespace Bot3PG.Modules.General
         [Summary("Show server stats")]
         public async Task Stats()
         {
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(Context.Guild.IconUrl);
-            embed.WithColor(Color.DarkMagenta);
-            embed.AddField("Owner", Context.Guild.Owner.Mention, true);
-            embed.AddField("Default Channel", Context.Guild.DefaultChannel.Mention, true);
-            embed.AddField("Member Count", Context.Guild.MemberCount, true);
-            embed.AddField("Creation Date", Context.Guild.CreatedAt.ToString("dd/MM/yy"), true);
-            embed.AddField("Role Count", Context.Guild.Roles.Count, true);
-            embed.AddField("Channel Count", Context.Guild.Channels.Count, true);
-            embed.AddField("Text Channels", Context.Guild.TextChannels.Count, true);
-            embed.AddField("Voice Channels", Context.Guild.VoiceChannels.Count, true);
-            embed.WithFooter($"Server Name: {Context.Guild.Name} | ServerID: {Context.Guild.Id}");
+            var embed = new EmbedBuilder()
+                .WithThumbnailUrl(Context.Guild.IconUrl)
+                .WithColor(Color.DarkMagenta)
+                .AddField("Owner", Context.Guild.Owner.Mention, true)
+                .AddField("Default Channel", Context.Guild.DefaultChannel.Mention, true)
+                .AddField("Member Count", Context.Guild.MemberCount, true)
+                .AddField("Creation Date", Context.Guild.CreatedAt.ToString("dd/MM/yy"), true)
+                .AddField("Role Count", Context.Guild.Roles.Count, true)
+                .AddField("Channel Count", Context.Guild.Channels.Count, true)
+                .AddField("Text Channels", Context.Guild.TextChannels.Count, true)
+                .AddField("Voice Channels", Context.Guild.VoiceChannels.Count, true)
+                .WithFooter($"Server Name: {Context.Guild.Name} | ServerID: {Context.Guild.Id}");
 
             await ReplyAsync(embed);
         }
@@ -100,12 +100,12 @@ namespace Bot3PG.Modules.General
             string subtitle = features[1];
             string description = features[2];
             
-            var embed = new EmbedBuilder();
-            embed.WithTitle(title);
-            embed.AddField(subtitle, description);
-            embed.WithColor(Color.DarkBlue);
-            embed.WithFooter($"By {Context.User.Username}#{Context.User.Discriminator}");
-            embed.WithCurrentTimestamp();
+            var embed = new EmbedBuilder()
+                .WithTitle(title)
+                .AddField(subtitle, description)
+                .WithColor(Color.DarkBlue)
+                .WithFooter($"By {Context.User.Username}#{Context.User.Discriminator}")
+                .WithCurrentTimestamp();
 
             var suggestMessage = await ReplyAsync(embed);
 

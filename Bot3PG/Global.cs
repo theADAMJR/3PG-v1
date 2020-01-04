@@ -7,8 +7,10 @@ using Victoria;
 
 namespace Bot3PG
 {
-    public class Global
+    public struct Global
     {
+        public const ulong CreatorID = 218459216145285121;
+
         public static DiscordSocketClient Client { get; private set; }
         public static LavaSocketClient Lavalink { get; private set; }
         public static Config Config { get; private set; }

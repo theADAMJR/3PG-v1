@@ -38,7 +38,7 @@ namespace Bot3PG.Modules
             if (CurrentGuild.General.RemoveCommandMessages)
             {
                 try { await Context.Message.DeleteAsync(); }
-                catch (System.Exception) {}
+                catch (Exception) {}
             } 
         }
         

@@ -15,17 +15,17 @@ namespace Bot3PG
 {
     public class DiscordService
     {
-        private DiscordSocketClient client;
-        private LavaSocketClient lavaSocketClient;
+        private DiscordSocketClient bot;
+        private LavaSocketClient lavaClient;
         private ServiceProvider services;
         
         public async Task InitializeAsync()
         {
             services = ConfigureServices();
-            lavaSocketClient = services.GetRequiredService<LavaSocketClient>();
-            client = services.GetRequiredService<DiscordSocketClient>();
+            lavaClient = services.GetRequiredService<LavaSocketClient>();
+            bot = services.GetRequiredService<DiscordSocketClient>();
 
-            client = new DiscordSocketClient(new DiscordSocketConfig
+            bot = new DiscordSocketClient(new DiscordSocketConfig
             {
                 AlwaysDownloadUsers = true,
                 LogLevel = LogSeverity.Verbose,
@@ -33,13 +33,12 @@ namespace Bot3PG
                 ExclusiveBulkDelete = true
             });
 
-            new EventsHandler(services, client, lavaSocketClient);
-            new Global(client, lavaSocketClient, GlobalConfig.Config, services.GetRequiredService<CommandService>());
-            new DatabaseManager();
+            new EventsHandler(services, bot, lavaClient);
+            new Global(bot, lavaClient, GlobalConfig.Config, services.GetRequiredService<CommandService>());
 
             await ValidateBotToken();
-            await client.LoginAsync(TokenType.Bot, Global.Config.Token);
-            await client.StartAsync();
+            await bot.LoginAsync(TokenType.Bot, Global.Config.Token);
+            await bot.StartAsync();
 
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 

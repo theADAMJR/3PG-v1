@@ -1,26 +1,27 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.IO;
 
 namespace Bot3PG.Data
 {
     public class BannedWords
     {
-        private const string BanWordsFolder = "Resources";
-        private const string BanWordsFile = "ban-words.txt";
+        private const string Folder = "Resources";
+        private const string BadLinksFile = "ban-links.txt";
+        private const string BadWordsFile = "ban-words.txt";
+
+        public static string[] Links => File.ReadAllLines(Folder + "/" + BadLinksFile).ToArray();
+        public static string[] Words => File.ReadAllLines(Folder + "/" + BadWordsFile).ToArray();
 
         protected BannedWords()
         {
-            if (!Directory.Exists(BanWordsFolder))
+            if (!Directory.Exists(Folder))
             {
-                Directory.CreateDirectory(BanWordsFolder);
+                Directory.CreateDirectory(Folder);
             }
-            if (!File.Exists(BanWordsFolder + "/" + BanWordsFile))
+            if (!File.Exists(Folder + "/" + BadLinksFile))
             {
-                File.Create(BanWordsFolder + "/" + BanWordsFile);
+                File.Create(Folder + "/" + BadLinksFile);
             }
         }
-
-        public static string[] Words => File.ReadAllLines(BanWordsFolder + "/" + BanWordsFile).ToArray();
     }
 }

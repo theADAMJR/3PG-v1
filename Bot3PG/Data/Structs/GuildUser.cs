@@ -119,11 +119,11 @@ namespace Bot3PG.Data.Structs
             await Users.Save(this);
         }
 
-        public async Task WarnAsync(string reason, SocketUser instigator, bool alertUser = true)
+        public async Task WarnAsync(string reason, SocketUser instigator)
         {
             var punishment = new Punishment(PunishmentType.Warn, reason, instigator, DateTime.Now, DateTime.Now);
             Status.Punishments.Add(punishment);
-            if (alertUser && !DiscordUser.IsBot)
+            if (!DiscordUser.IsBot)
             {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }

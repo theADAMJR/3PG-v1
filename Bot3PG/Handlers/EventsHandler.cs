@@ -69,7 +69,7 @@ namespace Bot3PG.Handlers
                 var channel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
 
                 var embed = new EmbedBuilder();
-                embed.WithTitle($"Hi, I'm {bot.CurrentUser.Username}.");
+                embed.WithTitle($"Hi, I'm {bot.CurrentUser.Username}!");
                 embed.AddField("⚙️ Config", $"Customize me to your server's needs at {Global.Config.WebappLink}/servers/{socketGuild.Id}", inline: true);
                 embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
                 embed.AddField("❔ Support", $"Need help with {bot.CurrentUser.Username}? Join our Discord for more support: {Global.Config.WebappLink}/support", inline: true);

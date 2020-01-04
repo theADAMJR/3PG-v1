@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using Bot3PG.Data;
 using Bot3PG.Handlers;
 using System;
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using Victoria;

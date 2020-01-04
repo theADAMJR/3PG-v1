@@ -18,9 +18,9 @@ namespace Bot3PG.Modules.Music
 
         public ConcurrentDictionary<ulong, Queue<TrackOptions>> Tracks { get; internal set; } = new ConcurrentDictionary<ulong, Queue<TrackOptions>>(); 
 
-        public AudioService(LavaSocketClient lavaSocketClient, LavaRestClient lavaRestClient) 
+        public AudioService(LavaSocketClient lavaClient, LavaRestClient lavaRestClient) 
         { 
-            LavaClient = lavaSocketClient;
+            LavaClient = lavaClient;
             LavaRestClient = lavaRestClient;
             Music.AudioService = this;
         }
@@ -36,9 +36,7 @@ namespace Bot3PG.Modules.Music
             else if (reason is TrackEndReason.LoadFailed)
             {
                 if (player.TextChannel != null)
-                {
-                    await player.TextChannel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Load Failed", $"Failed to load `{track.Title}`."));
-                }
+                    await player.TextChannel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Load Failed", $"Failed to load `{Hyperlink(track)}`."));
                 return;
             }
 
@@ -49,9 +47,7 @@ namespace Bot3PG.Modules.Music
             {
                 await player.PlayAsync(nextTrack);
                 if (player.TextChannel != null)
-                {
                     await player.TextChannel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Now Playing", $"{Hyperlink(nextTrack)}", Color.Blue));
-                }
             }
         }
         
