@@ -67,6 +67,18 @@ namespace Bot3PG.Data
                     guildMirror[module][modProp.Name]["Config"] = GetConfig(modProp);
                     guildMirror[module][modProp.Name]["Type"] = modProp.PropertyType.ToString();
                     guildMirror[module][modProp.Name]["SpecialType"] = GetSpecialType(modProp);
+                    
+                    if (modProp.PropertyType.IsArray)
+                    {
+                        var arrayTypeProps = modProp.PropertyType.GetElementType().GetProperties();
+                        foreach (var arrayProp in arrayTypeProps)
+                        {
+                            guildMirror[module][modProp.Name][arrayProp.Name] = new BsonDocument();
+                            guildMirror[module][modProp.Name][arrayProp.Name]["Config"] = GetConfig(arrayProp);
+                            guildMirror[module][modProp.Name][arrayProp.Name]["Type"] = arrayProp.PropertyType.ToString();
+                            guildMirror[module][modProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);                            
+                        }
+                    }
                     if (modProp.PropertyType.BaseType != typeof(ConfigModule.Submodule)) continue;
 
                     guildMirror[module][modProp.Name]["Type"] = "Submodule";
@@ -76,6 +88,16 @@ namespace Bot3PG.Data
                         guildMirror[module][modProp.Name][submodProp.Name]["Config"] = GetConfig(submodProp);
                         guildMirror[module][modProp.Name][submodProp.Name]["Type"] = submodProp.PropertyType.ToString();
                         guildMirror[module][modProp.Name][submodProp.Name]["SpecialType"] = GetSpecialType(submodProp);
+                        if (!submodProp.PropertyType.IsArray) continue;
+
+                        var arrayTypeProps = submodProp.PropertyType.GetElementType().GetProperties();
+                        foreach (var arrayProp in arrayTypeProps)
+                        {
+                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name] = new BsonDocument();
+                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Config"] = GetConfig(arrayProp);
+                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Type"] = arrayProp.PropertyType.ToString();
+                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);                            
+                        }
                     }
                 }
             }
@@ -96,11 +118,12 @@ namespace Bot3PG.Data
                 collection.ReplaceOne(d => d["_id"] == "Attributes", guildMirror);
             }
         }
-        private static BsonDocument? GetConfig(PropertyInfo propertyInfo) => GetConfigAttribute(propertyInfo).ToBsonDocument() ?? new BsonDocument();
+
+        private static BsonDocument GetConfig(PropertyInfo propertyInfo) => GetConfigAttribute(propertyInfo).ToBsonDocument() ?? new BsonDocument();
         private static ConfigAttribute GetConfigAttribute(PropertyInfo propertyInfo) 
             => propertyInfo.GetCustomAttributes(attributeType: typeof(ConfigAttribute), false).FirstOrDefault() as ConfigAttribute;
 
-        private static BsonDocument? GetSpecialType(PropertyInfo propertyInfo) => GetSpecialTypeAttribute(propertyInfo).ToBsonDocument() ?? new BsonDocument();
+        private static BsonDocument GetSpecialType(PropertyInfo propertyInfo) => GetSpecialTypeAttribute(propertyInfo).ToBsonDocument() ?? new BsonDocument();
         private static SpecialTypeAttribute GetSpecialTypeAttribute(PropertyInfo propertyInfo) 
             => propertyInfo.GetCustomAttributes(attributeType: typeof(SpecialTypeAttribute), false).FirstOrDefault() as SpecialTypeAttribute;
 
@@ -142,9 +165,9 @@ namespace Bot3PG.Data
                 var result = await collection.FindAsync(predicate);
                 return await result.FirstOrDefaultAsync();           
             }
-            catch (Exception err)
+            catch (Exception ex)
             {
-                await Debug.LogErrorAsync("db", err.Message, err);
+                await Debug.LogErrorAsync("db", ex.Message, ex);
                 return default;
             }
         }

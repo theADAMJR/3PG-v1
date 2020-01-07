@@ -1,12 +1,10 @@
 ﻿using Discord;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Bot3PG.Modules
 {
-    public class Command
+    public struct Command
     {
         public string Usage { get; private set; }
         public string Summary { get; private set; }

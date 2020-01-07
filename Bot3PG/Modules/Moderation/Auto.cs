@@ -9,10 +9,8 @@ using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.Moderation
 {
-    public static class AutoModeration
+    public static class Auto
     {
-        public enum FilterType { BadWords, BadLinks, EmojiSpam, MassMention, DiscordInvites, AllCaps }
-
         public static async Task ValidateMessage(SocketMessage message)
         {
             try
@@ -67,7 +65,7 @@ namespace Bot3PG.Modules.Moderation
             const int maxAtSigns = 5;
             
             if (HasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
-            if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content)) return FilterType.BadLinks;
+            if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content, links: true)) return FilterType.BadLinks;
             if (HasFilter(FilterType.AllCaps) && content.All(c => char.IsUpper(c))) return FilterType.AllCaps;
             if (HasFilter(FilterType.DiscordInvites) && content.Contains("discord.gg")) return FilterType.DiscordInvites;
             if (HasFilter(FilterType.EmojiSpam) && hasHalfEmojis) return FilterType.EmojiSpam;
@@ -76,7 +74,7 @@ namespace Bot3PG.Modules.Moderation
             return null;
         }
 
-        public static bool ContentIsExplicit(Guild guild, string content)
+        public static bool ContentIsExplicit(Guild guild, string content, bool links = false)
         {           
             if (content is null) return false;        
 
@@ -92,11 +90,14 @@ namespace Bot3PG.Modules.Moderation
             string lowerCaseContent = content.ToLower();
             var words = content.ToLower().Split(" ");
 
-            return banWords.Concat(banLinks).Any(w => words.Contains(w));
+            var isExplicit = banWords.Any(w => words.Contains(w)) || links && banLinks.Any(l => content.Contains(l));
+            return isExplicit;
         }
 
-        public static async Task ValidateUsername(Guild guild, SocketGuildUser socketGuildUser)
+        public static async Task ValidateUsername(Guild guild, SocketGuildUser oldUser)
         {
+            var socketGuildUser = oldUser.Guild.GetUser(oldUser.Id);
+            
             if (ContentIsExplicit(guild, socketGuildUser.Nickname) || ContentIsExplicit(guild, socketGuildUser.Username))
             {
                 var user = await Users.GetAsync(socketGuildUser);

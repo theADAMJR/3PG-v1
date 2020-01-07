@@ -6,13 +6,15 @@ using NUnit.Framework;
 
 namespace Bot3PG.Testing
 {
-    public class Test
+    public class GuildTests
     {
+        // MethodName_StateUnderTest_ExpectedBehavior
+        // e.g. WithdrawMoney_InvalidAccount_ExceptionThrown
         [Test]
-        public void Test1() 
+        public void NewGuild_Null_ExceptionThrown() 
         {
-            Assert.AreSame(1, "1");
-            //new CommandHandler();
+            TestDelegate test = () => new Guild(null);
+            Assert.Catch(test);
         }
     }
 }

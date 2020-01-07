@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace Bot3PG.Modules
 {
-    public class CommandModule
+    public struct CommandModule
     {
         public string Name { get; private set; }
         [BsonIgnore] public Color Color { get; private set; }

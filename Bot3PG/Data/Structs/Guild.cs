@@ -5,6 +5,7 @@ using Discord;
 using Discord.WebSocket;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -31,8 +32,8 @@ namespace Bot3PG.Data.Structs
         [Config("Sit back and play any track 🎵")]
         public MusicModule Music { get; private set; } = new MusicModule();
 
-        //[Config("Connect social media to Discord 💬")]
-        //public SocialModule Social { get; private set; } = new SocialModule();
+        [Config("Connect social media to Discord 💬")]
+        public SocialModule Social { get; private set; } = new SocialModule();
 
         [Config("Earn EXP and reward user's activity ✨")]
         public XPModule XP { get; private set; } = new XPModule();
@@ -42,7 +43,18 @@ namespace Bot3PG.Data.Structs
 
         [BsonIgnore] public static SocketGuild DiscordGuild => Global.Client.GetGuild(_id);
 
-        public Guild(SocketGuild socketGuild) { _id = socketGuild.Id; ID = socketGuild.Id; }
+        public Guild(SocketGuild socketGuild) 
+        {
+            if (socketGuild is null) throw new ArgumentNullException("socketGuild cannot be null!");
+            
+            _id = socketGuild.Id; 
+            ID = socketGuild.Id; 
+        }
+
+        public void InitializeModules()
+        {
+            Social ??= new SocialModule();
+        }
 
         public class AdminModule : CommandConfigModule
         {
@@ -186,8 +198,8 @@ namespace Bot3PG.Data.Structs
                 [Config("Inform users that are spamming chat")]
                 public bool SpamNotification { get; set; } = true;
 
-                [Config("The message content that 3PG should disallow"), List(typeof(AutoModeration.FilterType))]
-                public AutoModeration.FilterType[] Filters { get; set; } = { AutoModeration.FilterType.BadWords, AutoModeration.FilterType.BadLinks, AutoModeration.FilterType.MassMention };
+                [Config("The message content that 3PG should disallow"), List(typeof(FilterType))]
+                public FilterType[] Filters { get; set; } = { FilterType.BadWords, FilterType.BadLinks, FilterType.MassMention };
                 
                 [Config("Roles that are not affected by auto moderation"), List(typeof(SocketRole))]
                 [BsonRepresentation(BsonType.String)]
@@ -228,22 +240,25 @@ namespace Bot3PG.Data.Structs
 
         public class SocialModule : CommandConfigModule
         {
-            [Config("Know when your favourite YouTuber's post new content")]
-            public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
+            public override bool Enabled { get; set; } = false;
+            //[Config("Know when your favourite YouTuber's post new content")]
+            //public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
 
-            [Config("Alerts for when your favourite Twitch streamers are live")]
+            [Config("Alerts for when specific Twitch streamers are live",
+            extraInfo: "Variables: \n[STREAMER] - name of streamer \n[TITLE] - title of stream \n[URL] - url of stream \n"
+            + "[VIEWERS] - stream viewer count")]
             public TwitchSubmodule Twitch { get; private set; } = new TwitchSubmodule();
 
             public class YouTubeSubmodule : Submodule
             {
                 [Config("Get notifications when YouTuber's upload")]
-                public YouTubeWebhook[] Hooks { get; set; } = { new YouTubeWebhook{ Channel = "tseries", TextChannel = 662275583400607774 }};
+                public YouTubeWebhook[] Hooks { get; private set; } = { new YouTubeWebhook{ Channel = "tseries", TextChannel = 662275583400607774 }};
             }
 
             public class TwitchSubmodule : Submodule
             {
                 [Config("Get notifications when Twitch streamer's upload")]
-                public TwitchWebhook[] Hooks { get; set; } = { new TwitchWebhook{ User = "ad4mjf", TextChannel = 662275583400607774 }};                
+                public TwitchWebhook[] Hooks { get; set; } = { new TwitchWebhook()};
             }
         }
 
@@ -344,7 +359,7 @@ namespace Bot3PG.Data.Structs
     public abstract class Webhook
     {
         [Config("The channel the notification message is sent to")]
-        [BsonRepresentation(BsonType.String)]
+        [BsonRepresentation(BsonType.String), SpecialType(typeof(SocketTextChannel))]
         public ulong TextChannel { get; set; }
 
         public abstract string Message { get; set; }
@@ -367,10 +382,10 @@ namespace Bot3PG.Data.Structs
         [Config("The Twitch notification message")]
         public override string Message { get; set; } = "**[STREAMER]** is live - **Viewers**: `[VIEWERS]`";
 
-        [Config("Whether to notify @everyone")]
-        public bool PingEveryone { get; set; } = true;
+        // [Config("Whether to notify @everyone")]
+        // public bool PingEveryone { get; set; } = true;
 
-        [Config("Whether have the stream thumbnail with the notification embed")]
-        public bool IncludeThumbnail { get; set; } = true;
+        // [Config("Whether have the stream thumbnail with the notification embed")]
+        // public bool IncludeThumbnail { get; set; } = true;
     }
 }

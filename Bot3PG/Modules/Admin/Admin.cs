@@ -7,15 +7,12 @@ using Bot3PG.Modules.General;
 using Bot3PG.Utils;
 using Discord;
 using Discord.Commands;
-using Discord.WebSocket;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
-namespace Bot3PG.CommandModules
+namespace Bot3PG.Modules.Admin
 {
     [Color(80, 55, 80)]
-    [RequireContext(ContextType.Guild)]
     [RequireUserPermission(GuildPermission.Administrator)]
     [RequireBotPermission(GuildPermission.Administrator)]
     public sealed class Admin : CommandBase
@@ -95,15 +92,15 @@ namespace Bot3PG.CommandModules
         [Summary("Send a direct message to all users in a server")]
         public async Task Announce([Remainder] string message)
         {
-            var socketGuildUsers = Context.Guild.Users;
+            var guildUsers = Context.Guild.Users;
             int count = 0;
-            foreach (var socketGuildUser in socketGuildUsers)
+            foreach (var guildUser in guildUsers)
             {
                 try
                 {
-                    if (socketGuildUser.IsBot) continue;
+                    if (guildUser.IsBot) continue;
                     
-                    await socketGuildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed($"`{Context.Guild.Name}` - Announcement", message, Color.DarkTeal));                    
+                    await guildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed($"`{Context.Guild.Name}` - Announcement", message, Color.DarkTeal));                    
                     count++;
                 }
                 catch {}
@@ -117,80 +114,6 @@ namespace Bot3PG.CommandModules
         {
             await Guilds.ResetAsync(Context.Guild);
             await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, "Succesfully Reset Server Settings 🔃", Color.Green));
-        }
-
-        [Command("Update")]
-        [Summary("Update all server documents to the latest version")]
-        [RequireOwner]
-        public async Task Update()
-        {
-            int count = 0;
-            var socketGuilds = Context.Client.Guilds;
-            foreach (var socketGuild in socketGuilds)
-            {
-                try
-                {
-                    var guild = await Guilds.GetAsync(socketGuild);
-                    await Guilds.Save(guild);
-                    count++;           
-                }
-                catch {}
-            }
-            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated {count} servers to the latest version!", Color.Purple));
-        }
-
-        [Command("GiveRole")]
-        [RequireOwner]
-        public async Task GiveRole(string role)
-        {
-            var socketGuildUser = Context.User as SocketGuildUser;
-            var adminRole = Context.Guild.Roles.First(r => r.Name == role);
-            await socketGuildUser.AddRoleAsync(adminRole);
-        }
-
-        /*[Command("AutoMessage"), Alias("Timer")]
-        [Summary("Create a new auto message in the current channel")]
-        public async Task AutoMessage(string interval, [Remainder] string message)
-        {
-            var timeSpan = CommandUtils.ParseDuration(interval);
-            if (timeSpan >= TimeSpan.FromMinutes(5) && timeSpan <= TimeSpan.FromDays(7))
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Must be >= 5 minutes and <= 7 days"));
-                return;
-            }
-
-            var hook = await (Context.Channel as SocketTextChannel).CreateWebhookAsync("Timer");
-            await hook.ModifyAsync(h => h.Image = new Image("C:/Users/adamj/Pictures/3pg.png"));
-
-            // string hookURL = $"https://discordapp.com/api/webhooks/{hook.Id}/{hook.Token}";
-
-            var autoMessage = new AutoMessage{ Channel = Context.Channel.Id, Message = message, Interval = (float)timeSpan.TotalHours };
-            // CurrentGuild.Admin.AutoMessages.Messages.Append(autoMessage);
-            
-            // send hook to api
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, "New Auto Message successfully created", ModuleColour));
-        }*/
-
-        [Command("Test")]
-        [RequireOwner]
-        public async Task Test([Remainder] string details)
-        {
-            var features = details.Split("|");
-            const int maxLength = 2;
-            if (features.Length <= 1 || features.Length > maxLength)
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title and Expected with | (vertical bar)"));
-                return;
-            }
-            await Context.Message.DeleteAsync();
-
-            var embed = new EmbedBuilder()
-                .WithTitle($"`TEST` {features[0]}")
-                .WithDescription(features[1])
-                .WithColor(ModuleColour);
-            
-            var message = await ReplyAsync(embed);
-            await message.AddReactionsAsync(new []{ new Emoji("✅"), new Emoji("❌")});
         }
     }
 }

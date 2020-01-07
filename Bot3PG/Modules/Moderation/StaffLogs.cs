@@ -100,7 +100,7 @@ namespace Bot3PG.Modules.Moderation
             }
             var embed = new EmbedBuilder();
 
-            string validation = AutoModeration.GetContentValidation(guild, message.Value.Content.ToString()).ToString();
+            string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString()).ToString();
             
             embed.WithTitle("Message Deleted");
             embed.AddField("User", message.Value.Author.Mention, true);

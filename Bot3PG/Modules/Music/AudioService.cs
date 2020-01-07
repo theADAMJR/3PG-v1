@@ -30,8 +30,8 @@ namespace Bot3PG.Modules.Music
             if (reason is TrackEndReason.Cleanup || reason is TrackEndReason.Replaced) return;
             else if (reason is TrackEndReason.Stopped)
             {
-                await Task.Delay(60000);
-                await LavaClient.DisconnectAsync(player.VoiceChannel);
+                // TODO(Adam): add auto disconnect
+                return;
             }
             else if (reason is TrackEndReason.LoadFailed)
             {

@@ -107,7 +107,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                await AutoModeration.ValidateMessage(message);
+                await Auto.ValidateMessage(message);
                 await services.GetRequiredService<CommandHandler>().HandleCommandAsync(message);
             };
 
@@ -119,7 +119,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.Moderation.StaffLogs.Enabled) await AutoModeration.ValidateMessage(message);
+                if (guild.Moderation.StaffLogs.Enabled) await Auto.ValidateMessage(message);
             };
 
             bot.MessagesBulkDeleted += async (IReadOnlyCollection<Cacheable<IMessage, ulong>> messages, ISocketMessageChannel channel) =>
@@ -185,7 +185,7 @@ namespace Bot3PG.Handlers
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
                 if (guild is null) return;
 
-                if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter) await AutoModeration.ValidateUsername(guild, socketGuildUser);
+                if (guild.Moderation.Auto.Enabled && guild.Moderation.Auto.NicknameFilter) await Auto.ValidateUsername(guild, socketGuildUser);
             };
 
             bot.UserBanned += async (SocketUser socketUser, SocketGuild socketGuild) =>
