@@ -49,15 +49,12 @@ namespace Bot3PG.Data.Structs
 
             await DiscordUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
             if (DiscordUser.IsBot)
-            {
                 await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been banned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
-            }
 
             var guild = await GetGuild();
-            if (guild.Moderation.ResetBannedUsers)
-            {
+            if (guild.Moderation.ResetBannedUsers) 
                 await Users.ResetAsync(DiscordUser);
-            }
+
             await Users.Save(this);
         }
 
@@ -155,7 +152,7 @@ namespace Bot3PG.Data.Structs
                 var user = await GetUser();
                 var guild = await GetGuild();
 
-                var nextAvailableMsg = DateTime.Now.Add(TimeSpan.FromSeconds(guild.XP.ExtendedCooldown * (1 + user.Status.WarningsCount)));
+                var nextAvailableMsg = DateTime.Now.Add(TimeSpan.FromSeconds(guild.XP.MuteCooldown * (1 + user.Status.WarningsCount)));
                 LastXPMsg = nextAvailableMsg;
             }
         }

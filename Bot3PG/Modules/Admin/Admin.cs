@@ -39,20 +39,21 @@ namespace Bot3PG.Modules.Admin
         [Summary("Create a custom embed. Separate Title, Description, and Image URL with '|' (vertical bar) ")]
         public async Task Embed([Remainder] string details)
         {
-            var features = details.Split("|");
-            if (features.Length <= 1 || features.Length > 3)
+            try
             {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title, Description, and Image URL with '|' (vertical bar)"));
-                return;
-            }
+                var features = details.Split("|");
+                if (features.Length <= 1 || features.Length > 3)
+                    throw new ArgumentException("Please separate Title, Description, and Image URL with '|' (vertical bar)");
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle(features[0]);
-            embed.WithDescription(features[1]);
-            embed.WithThumbnailUrl(features.Length > 2 ? features[2] : "");
-            embed.WithColor(Color.DarkGreen);
-            
-            await ReplyAsync(embed);
+                var embed = new EmbedBuilder();
+                embed.WithTitle(features[0]);
+                embed.WithDescription(features[1]);
+                embed.WithThumbnailUrl(features.Length > 2 ? features[2] : "");
+                embed.WithColor(Color.DarkGreen);
+                
+                await ReplyAsync(embed);                
+            }
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Image"), Alias("Img")]

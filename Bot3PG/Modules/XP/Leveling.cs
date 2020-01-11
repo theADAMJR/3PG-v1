@@ -80,18 +80,18 @@ namespace Bot3PG.Modules.XP
 
         private static async Task SendLevelUpMessageAsync(SocketUserMessage message, Guild guild, GuildUser guildUser, int oldLevel, int newLevel)
         {
-            var socketGuildUser = message.Author as SocketGuildUser;
-            var embed = await GetLevelUpEmbed(socketGuildUser, guild, guildUser, oldLevel, newLevel);
+            var guildAuthor = message.Author as SocketGuildUser;
+            var embed = await GetLevelUpEmbed(guildAuthor, guild, guildUser, oldLevel, newLevel);
             
             switch (guild.XP.Messages.Method)
             {
                 case MessageMethod.DM:
-                    if (socketGuildUser.IsBot) return;
-                    try { await socketGuildUser.SendMessageAsync(embed: embed); }
+                    if (guildAuthor.IsBot) return;
+                    try { await guildAuthor.SendMessageAsync(embed: embed); }
                     catch (Exception) {}
                     break;
                 case MessageMethod.SpecificChannel:
-                    var channel = socketGuildUser.Guild.GetTextChannel(guild.XP.Messages.XPChannel);
+                    var channel = guildAuthor.Guild.GetTextChannel(guild.XP.Messages.XPChannel);
                     try { await channel.SendMessageAsync(embed: embed); }
                     catch (Exception) {}
                     break;
@@ -105,7 +105,6 @@ namespace Bot3PG.Modules.XP
         public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser socketGuildUser, Guild guild, int oldLevel, int newLevel)
         {
             if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist || !NewRoleRequired(socketGuildUser, guild, newLevel)) return false;
-
             if (!guild.XP.RoleRewards.StackRoles)
             {
                 var oldXPRole = guild.XP.RoleRewards[oldLevel];
@@ -118,10 +117,10 @@ namespace Bot3PG.Modules.XP
             return true;
         }
 
-        public static bool NewRoleRequired(SocketGuildUser socketGuildUser, Guild guild, int newLevel)
+        public static bool NewRoleRequired(SocketGuildUser user, Guild guild, int newLevel)
         {
             ulong? levelRoleId = guild.XP.RoleRewards[newLevel]?.Id;
-            return !socketGuildUser.Roles.Any(r => r.Id == levelRoleId);
+            return !user.Roles.Any(r => r.Id == levelRoleId);
         }
     }
 }

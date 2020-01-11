@@ -60,15 +60,10 @@ namespace Bot3PG.Data
         {
             foreach (var textChannel in socketGuild.TextChannels)
             {
-                string lowerTextChannelName = textChannel.Name.ToLower();
-                if (lowerTextChannelName.Contains("logs"))
-                {
-                    guild.Moderation.StaffLogs.Channel = textChannel.Id;
-                }
-                if (lowerTextChannelName.Contains("general"))
-                {
+                if (textChannel.Name.ToLower().Contains("logs"))
+                    guild.Moderation.StaffLogs.Channel = textChannel.Id;                    
+                if (textChannel.Name.ToLower().Contains("general"))
                     guild.General.Announce.Channel = textChannel.Id;
-                }
                 else
                 {
                     var announceChannel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;

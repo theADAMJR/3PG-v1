@@ -17,6 +17,39 @@ namespace Bot3PG.CommandModules
         internal override string ModuleName => "Owner 🤖";
         internal override Color ModuleColour => Color.LighterGrey;
 
+        [Command("Advertise")]
+        [Summary("Send messages to predefined list of people")]
+        [RequireOwner]
+        public async Task Advertise()
+        {
+            ulong[] userIds = { 218459216145285121, 308584056944328705 };
+            var users = userIds.Select(id => Context.Client.GetUser(id));
+            int count = 0;
+            
+            foreach (var user in users)
+            {
+                try
+                {
+                    if (user.IsBot) continue;
+
+                    await user.SendMessageAsync($"Hey {user.Username},\nDo you want a bot with Music Commands, Twitch Alerts, Staff Logs, \n" +
+                    "EXP, Ban panels, Web dashboard, Auto-moderation, Ruleboxes… and much more? https://3pg.xyz\n" +
+                    "(if not, please ignore this message, and sorry for messaging you)");                    
+                    count++;
+                }
+                catch {}
+            }
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, $"Message sent to {count} users", Color.Green));
+        }
+        
+        [Command("GivePro")]
+        [Summary("Give Pro to server")]
+        public async Task GivePro([Remainder]string role)
+        {
+            CurrentGuild.IsPremium = true;
+            await Guilds.Save(CurrentGuild);
+        }
+
         [Command("GiveRole")]
         [Summary("Give named role to user")]
         public async Task GiveRole([Remainder]string role)
@@ -70,29 +103,5 @@ namespace Bot3PG.CommandModules
             await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated `{count}`/`{count + failedCount}` servers to the latest version!", Color.Purple));
         }
 
-        [Command("Advertise")]
-        [Summary("Send messages to predefined list of people")]
-        [RequireOwner]
-        public async Task Advertise()
-        {
-            ulong[] userIds = { 218459216145285121, 308584056944328705 };
-            var users = userIds.Select(id => Context.Client.GetUser(id));
-            int count = 0;
-            
-            foreach (var user in users)
-            {
-                try
-                {
-                    if (user.IsBot) continue;
-
-                    await user.SendMessageAsync($"Hey {user.Username},\nDo you want a bot with Music Commands, Twitch Alerts, Staff Logs, \n" +
-                    "EXP, Ban panels, Web dashboard, Auto-moderation, Ruleboxes… and much more? https://3pg.xyz\n" +
-                    "(if not, please ignore this message, and sorry for messaging you)");                    
-                    count++;
-                }
-                catch {}
-            }
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, $"Message sent to {count} users", Color.Green));
-        }
     }
 }

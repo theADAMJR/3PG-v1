@@ -33,13 +33,15 @@ namespace Bot3PG.Modules
 
         public static string GetUsage(CommandInfo command, string alias = null)
         {
-            if (command is null) throw new ArgumentNullException("Command cannot be null");
+            if (command is null) 
+                throw new ArgumentNullException("Command cannot be null");
 
             string usage = alias?.ToLower() ?? command.Name.ToLower();
             for (int i = 0; i < command.Parameters.Count; i++)
             {
                 var argument = command.Parameters[i];
-                usage += argument.IsOptional ? $" [{argument}]" : $" {argument}";
+                string defaultValue = !string.IsNullOrEmpty(argument.DefaultValue?.ToString()) ? $" = {argument.DefaultValue}" : "";
+                usage += argument.IsOptional ? $" [{argument}{defaultValue}]" : $" {argument}";
             }
             return usage;
         }

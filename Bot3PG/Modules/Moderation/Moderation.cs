@@ -8,6 +8,7 @@ using Discord.WebSocket;
 using System.Threading.Tasks;
 using System.Linq;
 using Discord.Rest;
+using System.Collections.Generic;
 
 namespace Bot3PG.Modules.Moderation
 {
@@ -225,6 +226,26 @@ namespace Bot3PG.Modules.Moderation
 
             await Task.Delay(4000);
             await reply.DeleteAsync();
+        }
+
+        [Command("Freeze"), Alias("Lock")]
+        [RequireUserPermission(GuildPermission.ManageChannels), RequireBotPermission(GuildPermission.ManageChannels)]
+        [Summary("Prevent messages/reactions in a channel")]
+        public async Task FreezeChannel()
+        {
+            var textChannel = Context.Channel as SocketTextChannel;            
+            await textChannel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, OverwritePermissions.DenyAll(Context.Channel));
+            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $"🔒 Locked {textChannel.Mention}", ModuleColour));
+        }
+
+        [Command("Unfreeze"), Alias("Unlock")]
+        [RequireUserPermission(GuildPermission.ManageChannels), RequireBotPermission(GuildPermission.ManageChannels)]
+        [Summary("Prevent messages/reactions in a channel")]
+        public async Task UnfreezeChannel()
+        {
+            var textChannel = Context.Channel as SocketTextChannel;            
+            await textChannel.RemovePermissionOverwriteAsync(Context.Guild.EveryoneRole);
+            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $"🔓 Unlocked {textChannel.Mention}", ModuleColour));
         }
     }
 }

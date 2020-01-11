@@ -18,7 +18,7 @@ namespace Bot3PG.Data.Structs
         [BsonRepresentation(BsonType.String)]
         [BsonId] public ulong ID { get; private set; }
 
-        public bool IsPremium { get; private set; }
+        public bool IsPremium { get; set; }
         
         [Config("Features only for admins 🔒")]
         public AdminModule Admin { get; private set; } = new AdminModule();
@@ -45,7 +45,8 @@ namespace Bot3PG.Data.Structs
 
         public Guild(SocketGuild socketGuild) 
         {
-            if (socketGuild is null) throw new ArgumentNullException("socketGuild cannot be null!");
+            if (socketGuild is null) 
+                throw new ArgumentNullException($"{nameof(socketGuild)} cannot be null!");
             
             _id = socketGuild.Id; 
             ID = socketGuild.Id; 
@@ -279,7 +280,7 @@ namespace Bot3PG.Data.Structs
             public int Cooldown { get; set; } = 5;
             
             [Config("A cooldown given to users after being muted")]
-            public int ExtendedCooldown { get; set; } = 300;
+            public int MuteCooldown { get; set; } = 300;
 
             [Config("Whether bots can earn EXP")]
             public bool BotsCanEarnEXP { get; set; }
@@ -302,7 +303,7 @@ namespace Bot3PG.Data.Structs
                     get
                     {
                         LevelRoles.TryGetValue(levelNumber.ToString(), out ulong id);
-                        return DiscordGuild.GetRole(id);
+                        return DiscordGuild?.GetRole(id);
                     }
                     set => LevelRoles[$"{levelNumber}"] = value.Id;
                 }
