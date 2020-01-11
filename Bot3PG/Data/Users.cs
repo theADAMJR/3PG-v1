@@ -23,16 +23,13 @@ namespace Bot3PG.Data
             db = new Lazy<DatabaseManager>().Value;
 
             var collections = db.Database.ListCollectionNames().ToList();
+            
             if (!collections.Any(c => c == users))
-            {
                 db.Database.CreateCollection(users);
-            }
             userCollection = db.Database.GetCollection<User>(users);
 
             if (!collections.Any(c => c == guildUsers))
-            {
-                db.Database.CreateCollection(guildUsers);
-            }
+                db.Database.CreateCollection(guildUsers);                
             guildUserCollection = db.Database.GetCollection<GuildUser>(guildUsers);
         }
 

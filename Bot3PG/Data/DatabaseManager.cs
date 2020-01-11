@@ -44,11 +44,27 @@ namespace Bot3PG.Data
             UpdateAttributes();
         }
 
-        private void UpdateAttributes()
+        private void UpdateAttributes() => SaveGuildMirror(BuildGuildMirror());
+
+        private void SaveGuildMirror(BsonDocument guildMirror)
+        {
+            var collections = Database.ListCollectionNames().ToList();
+            if (!collections.Any(c => c == attributes))
+                Database.CreateCollection(attributes);
+
+            var collection = Database.GetCollection<BsonDocument>(attributes);
+
+            bool isSaved = collection.FindSync(d => d["_id"] == "Attributes").Any();
+            if (!isSaved)
+                collection.InsertOne(guildMirror);
+            else
+                collection.ReplaceOne(d => d["_id"] == "Attributes", guildMirror);
+        }
+
+        private static BsonDocument BuildGuildMirror()
         {
             var guildMirror = new Dictionary<string, dynamic>{}.ToBsonDocument();
             guildMirror["_id"] = "Attributes";
-
             foreach (var property in typeof(Guild).GetProperties())
             {
                 bool isModule = property.PropertyType.BaseType == typeof(ConfigModule) || property.PropertyType.BaseType.BaseType == typeof(ConfigModule);
@@ -67,7 +83,7 @@ namespace Bot3PG.Data
                     guildMirror[module][modProp.Name]["Config"] = GetConfig(modProp);
                     guildMirror[module][modProp.Name]["Type"] = modProp.PropertyType.ToString();
                     guildMirror[module][modProp.Name]["SpecialType"] = GetSpecialType(modProp);
-                    
+
                     if (modProp.PropertyType.IsArray)
                     {
                         var arrayTypeProps = modProp.PropertyType.GetElementType().GetProperties();
@@ -76,7 +92,7 @@ namespace Bot3PG.Data
                             guildMirror[module][modProp.Name][arrayProp.Name] = new BsonDocument();
                             guildMirror[module][modProp.Name][arrayProp.Name]["Config"] = GetConfig(arrayProp);
                             guildMirror[module][modProp.Name][arrayProp.Name]["Type"] = arrayProp.PropertyType.ToString();
-                            guildMirror[module][modProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);                            
+                            guildMirror[module][modProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);
                         }
                     }
                     if (modProp.PropertyType.BaseType != typeof(ConfigModule.Submodule)) continue;
@@ -96,27 +112,12 @@ namespace Bot3PG.Data
                             guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name] = new BsonDocument();
                             guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Config"] = GetConfig(arrayProp);
                             guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Type"] = arrayProp.PropertyType.ToString();
-                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);                            
+                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);
                         }
                     }
                 }
             }
-            var collections = Database.ListCollectionNames().ToList();
-            if (!collections.Any(c => c == attributes))
-            {
-                Database.CreateCollection(attributes);
-            }
-            var collection = Database.GetCollection<BsonDocument>(attributes);
-
-            bool isSaved = collection.FindSync(d => d["_id"] == "Attributes").Any();
-            if (!isSaved)
-            {
-                collection.InsertOne(guildMirror);
-            }
-            else
-            {
-                collection.ReplaceOne(d => d["_id"] == "Attributes", guildMirror);
-            }
+            return guildMirror;
         }
 
         private static BsonDocument GetConfig(PropertyInfo propertyInfo) => GetConfigAttribute(propertyInfo).ToBsonDocument() ?? new BsonDocument();
@@ -143,13 +144,9 @@ namespace Bot3PG.Data
 
             var commands = await collection.FindAsync(d => d["_id"] == "Commands");
             if (!commands.Any())
-            {
                 collection.InsertOne(commandMirror);
-            }
             else
-            {
                 collection.ReplaceOne(d => d["_id"] == "Commands", commandMirror);
-            }
         }
 
         public async Task InsertAsync<T>(T item, IMongoCollection<T> collection)

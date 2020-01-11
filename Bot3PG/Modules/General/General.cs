@@ -18,27 +18,6 @@ namespace Bot3PG.Modules.General
         public Lazy<CommandHelp> CommandHelp => new Lazy<CommandHelp>();
         private CommandHelp Commands => CommandHelp.Value;
 
-
-        [Command("Help"), Alias("?")]
-        [Summary("Show commands link")]
-        public async Task Help()
-        {
-            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
-            var prefix = CurrentGuild.General.CommandPrefix;
-            string prefixQuery = prefix != "/" ? $"?prefix={prefix}" : "";
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"View all commands", $"{Global.Config.WebappLink}/commands{prefixQuery}", Color.DarkPurple));
-        }
-
-        [Command("Ping")]
-        [Summary("Display bot reponse speed")]
-        public async Task Ping()
-        {
-            var ping = new Ping();
-            var reply = ping.Send(Global.DatabaseConfig.Server, 1000);
-            var embed = await EmbedHandler.CreateSimpleEmbed("Pong! 🏓", $"**Database:** {reply.RoundtripTime}ms\n **Latency:** {Global.Client.Latency}ms", Color.Magenta);
-            await ReplyAsync(embed);
-        }
-
         [Command("Bot")]
         [Summary("Display bot statstics")]
         public async Task Bot()
@@ -60,6 +39,36 @@ namespace Bot3PG.Modules.General
 
             await ReplyAsync(embed);
         }
+
+        [Command("Flip"), Alias("Coin", "Coinflip", "CF")]
+        [Summary("Flip a coin, with a psuedo-random result - heads or tails?")]
+        public async Task Flip()
+        {
+            var random = new Random();
+            bool heads = random.Next(0, 2) == 1;
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed("Coin Flip", $"The coin landed on... `{(heads ? "heads" : "tails")}`", Color.LightOrange));
+        }
+
+        [Command("Help"), Alias("?")]
+        [Summary("Show commands link")]
+        public async Task Help()
+        {
+            CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
+            var prefix = CurrentGuild.General.CommandPrefix;
+            string prefixQuery = prefix != "/" ? $"?prefix={prefix}" : "";
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"View all commands", $"{Global.Config.WebappLink}/commands{prefixQuery}", Color.DarkPurple));
+        }
+
+        [Command("Ping")]
+        [Summary("Display bot reponse speed")]
+        public async Task Ping()
+        {
+            var ping = new Ping();
+            var reply = ping.Send(Global.DatabaseConfig.Server, 1000);
+            var embed = await EmbedHandler.CreateSimpleEmbed("Pong! 🏓", $"**Database:** {reply.RoundtripTime}ms\n **Latency:** {Global.Client.Latency}ms", Color.Magenta);
+            await ReplyAsync(embed);
+        }
+
 
         [Command("Stats")]
         [Summary("Show server stats")]
@@ -85,42 +94,37 @@ namespace Bot3PG.Modules.General
         [Summary("Suggest a new feature"), Remarks("Seperate *Title*, *Subtitle*, and *Description* with | (vertical bar)")]
         public async Task Suggest([Remainder] string details)
         {
-            var features = details.Split("|");
-            if (features.Length < 3)
+            try
             {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Suggest", "Please seperate *Title*, *Subtitle*, and *Description* with | (vertical bar).", Color.Red));
-                return;
-            }
-            if (string.IsNullOrWhiteSpace(details.Replace("|", "")))
-            {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed("Suggest", "Please add content to the suggestion.", Color.Red));
-                return;
-            }
-            string title = features[0];
-            string subtitle = features[1];
-            string description = features[2];
-            
-            var embed = new EmbedBuilder()
-                .WithTitle(title)
-                .AddField(subtitle, description)
-                .WithColor(Color.DarkBlue)
-                .WithFooter($"By {Context.User.Username}#{Context.User.Discriminator}")
-                .WithCurrentTimestamp();
+                var features = details.Split("|");
+                if (features.Length < 3)
+                    throw new ArgumentException("Suggest", "Please seperate *Title*, *Subtitle*, and *Description* with | (vertical bar).");
+                else if (string.IsNullOrWhiteSpace(details.Replace("|", "")))
+                    throw new ArgumentException("Suggest", "Please add content to the suggestion.");
 
-            var suggestMessage = await ReplyAsync(embed);
+                string title = features[0];
+                string subtitle = features[1];
+                string description = features[2];
+                
+                var embed = new EmbedBuilder()
+                    .WithTitle(title)
+                    .AddField(subtitle, description)
+                    .WithColor(Color.DarkBlue)
+                    .WithFooter($"By {Context.User.Username}#{Context.User.Discriminator}")
+                    .WithCurrentTimestamp();
 
-            Emoji[] emotes = { new Emoji(CurrentGuild.General.UpvoteEmote), new Emoji(CurrentGuild.General.DownvoteEmote)};
-            emotes = emotes.Where(e => e != null).ToArray();
-            await suggestMessage.AddReactionsAsync(emotes);
+                var suggestMessage = await ReplyAsync(embed);
+
+                Emoji[] emotes = { new Emoji(CurrentGuild.General.UpvoteEmote), new Emoji(CurrentGuild.General.DownvoteEmote)};
+                emotes = emotes.Where(e => e != null).ToArray();
+                await suggestMessage.AddReactionsAsync(emotes);
+            }
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
-        [Command("Flip"), Alias("Coin", "Coinflip", "CF")]
-        [Summary("Flip a coin, with a psuedo-random result - heads or tails?")]
-        public async Task Flip()
-        {
-            var random = new Random();
-            bool heads = random.Next(0, 2) == 1;
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed("Coin Flip", $"The coin landed on... `{(heads ? "heads" : "tails")}`", Color.LightOrange));
-        }
+        [Command("Support")]
+        [Summary("Get a link to the 3PG support Discord server")]
+        public async Task SendSupportMessage() 
+            => await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Support 💬", $"**3PG Discord Server**: {Global.Config.WebappLink}/support", Color.Purple));
     }
 }

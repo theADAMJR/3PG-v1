@@ -17,20 +17,7 @@ namespace Bot3PG.Modules
         internal abstract string ModuleName { get; }
         internal abstract Color ModuleColour { get; }
 
-        protected async override void BeforeExecute(CommandInfo command)
-        {
-            CurrentGuild = await Guilds.GetAsync(Context.Guild);
-            /*var socketGuildUser = Context.User as SocketGuildUser;
-            
-            var module = CurrentGuild.GetType().GetProperty(command.Module.Name)?.GetValue(CurrentGuild) as CommandConfigModule;
-            if (module is null || !module.Enabled) throw new Exception("Module is not enabled.");
-
-            var commandOverride = module.Commands.FirstOrDefault(c => c.Name.ToLower() == command.Name.ToLower());
-            if (!commandOverride?.Enabled ?? false) throw new CommandException(command, Context, new CommandDisabledException("Command is disabled."));
-            
-            bool isAuthorized = commandOverride is null || socketGuildUser.GuildPermissions.Has(commandOverride.Permission);
-            if (!isAuthorized) throw new CommandException(command, Context, new CommandDisabledException("Insufficient permissions."));*/
-        }
+        protected async override void BeforeExecute(CommandInfo command) => CurrentGuild = await Guilds.GetAsync(Context.Guild);
 
         protected async override void AfterExecute(CommandInfo command)
         {

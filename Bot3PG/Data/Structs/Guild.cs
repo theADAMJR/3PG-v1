@@ -199,7 +199,7 @@ namespace Bot3PG.Data.Structs
                 public bool SpamNotification { get; set; } = true;
 
                 [Config("The message content that 3PG should disallow"), List(typeof(FilterType))]
-                public FilterType[] Filters { get; set; } = { FilterType.BadWords, FilterType.BadLinks, FilterType.MassMention };
+                public FilterType[] Filters { get; set; } = { FilterType.BadWords, FilterType.BadLinks, FilterType.MassMention, FilterType.DuplicateMessage };
                 
                 [Config("Roles that are not affected by auto moderation"), List(typeof(SocketRole))]
                 [BsonRepresentation(BsonType.String)]
@@ -224,9 +224,6 @@ namespace Bot3PG.Data.Structs
 
             [Config("Default volume for music, set when 3PG first plays tracks"), Range(0, 200)]
             public int DefaultVolume { get; private set; } = 100;
-
-            // [Config("Whether the bot joins the channel on play")]
-            // public bool JoinOnPlay { get; private set; } = true;
 
             [Config("The maximum allowed duration in hours for a track"), Range(0.25f, 24)]
             public float MaxTrackHours { get; private set; } = 2;
@@ -286,9 +283,6 @@ namespace Bot3PG.Data.Structs
 
             [Config("Whether bots can earn EXP")]
             public bool BotsCanEarnEXP { get; set; }
-
-            [Config("Delay when to allow messages with identical content to the last")]
-            public int DuplicateMessageThreshold { get; set; } = 5;
 
             [Config("Text channels where EXP cannot be earned"), List(typeof(SocketTextChannel))]
             [BsonRepresentation(BsonType.String)]

@@ -37,9 +37,7 @@ namespace Bot3PG.Modules.XP
             {
                 int.TryParse(role.Key, out int boundary);
                 if (user.XP.Level >= boundary)
-                {
                     cardColour = Context.Guild.GetRole(role.Value)?.Color ?? Color.Default;
-                }
             }
 
             var embed = new EmbedBuilder();
@@ -48,7 +46,7 @@ namespace Bot3PG.Modules.XP
             embed.AddField("EXP", user.XP.EXP, true);
             embed.AddField("EXP for Next Level", user.XP.EXPForNextLevel, true);
             embed.AddField("Level", user.XP.Level, true);
-            embed.AddField("Rank", rank, false);
+            embed.AddField("Rank", $"#{rank}", false);
             embed.WithColor(cardColour);
 
             await ReplyAsync(embed);
@@ -59,41 +57,43 @@ namespace Bot3PG.Modules.XP
         [RequireUserPermission(GuildPermission.SendMessages)]
         public async Task Leaderboard(int page = 1)
         {
-            var guild = await Guilds.GetAsync(Context.Guild);
-
-            if (page < 1 || page > guild.XP.MaxLeaderboardPage)
+            try
             {
-                await ReplyAsync(embed: await EmbedHandler.CreateBasicEmbed($"🏆 {Context.Guild.Name} Leaderboard", $"Leaderboard page must between 1 and {guild.XP.MaxLeaderboardPage}", Color.Red));
-                return;
-            }
-            int usersPerPage = 10;
-            int pageStartIndex = (page * usersPerPage) - usersPerPage;
-            int pageEndIndex = page * usersPerPage;
+                var guild = await Guilds.GetAsync(Context.Guild);
 
-            var users = await Users.GetGuildUsersAsync(Context.Guild);
-            users = users.OrderByDescending(u => u.XP.EXP).ToList();
+                if (page < 1 || page > guild.XP.MaxLeaderboardPage)
+                    throw new ArgumentException($"Leaderboard page must between 1 and {guild.XP.MaxLeaderboardPage}");
+                
+                int usersPerPage = 10;
+                int pageStartIndex = (page * usersPerPage) - usersPerPage;
+                int pageEndIndex = page * usersPerPage;
 
-            string details = "\u200B\n";
-            for (int i = pageStartIndex; i < pageEndIndex; i++)
-            {
-                if (i >= users.Count)
+                var users = await Users.GetGuildUsersAsync(Context.Guild);
+                users = users.OrderByDescending(u => u.XP.EXP).ToList();
+
+                string details = "\n";
+                for (int i = pageStartIndex; i < pageEndIndex; i++)
                 {
-                    details += $"**#{i + 1}** - N/A\n";
-                    continue;
+                    if (i >= users.Count)
+                    {
+                        details += $"**#{i + 1}** - N/A\n";
+                        continue;
+                    }
+                    var user = users[i];
+                    var socketGuildUser = Context.Guild.GetUser(user.ID);
+                    details += $"**#{i + 1}** - {user.XP.EXP} XP - {socketGuildUser?.Mention ?? "N/A"}\n";
                 }
-                var user = users[i];
-                var socketGuildUser = Context.Guild.GetUser(user.ID);
-                details += $"**#{i + 1}** - {user.XP.EXP} XP - {socketGuildUser?.Mention ?? "N/A"}\n";
+
+                var embed = new EmbedBuilder();
+                embed.WithColor(Color.Teal);
+                embed.AddField($"🏆 **{ Context.Guild.Name} Leaderboard **", details, inline: false);
+                embed.AddField("View Leaderboard", $"{Global.Config.WebappLink}/servers/{Context.Guild.Id}/leaderboard");
+                embed.WithThumbnailUrl(Context.Guild.IconUrl);
+                embed.WithFooter($"Page {page}/{guild.XP.MaxLeaderboardPage} • Users with XP: {users.Count}");
+
+                await ReplyAsync(embed);
             }
-
-            var embed = new EmbedBuilder();
-            embed.WithColor(Color.Teal);
-            embed.AddField($"🏆 **{ Context.Guild.Name} Leaderboard **", details, inline: false);
-            embed.AddField("View Leaderboard", $"{Global.Config.WebappLink}/servers/{Context.Guild.Id}/leaderboard");
-            embed.WithThumbnailUrl(Context.Guild.IconUrl);
-            embed.WithFooter($"Page {page}/{guild.XP.MaxLeaderboardPage} • Users with XP: {users.Count}");
-
-            await ReplyAsync(embed);
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
     }
 }

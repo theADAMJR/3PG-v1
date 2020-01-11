@@ -1,13 +1,10 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
-using Bot3PG.Modules;
-using Bot3PG.Modules.Admin;
-using Bot3PG.Modules.General;
-using Bot3PG.Utils;
 using Discord;
 using Discord.Commands;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.Admin
@@ -20,25 +17,22 @@ namespace Bot3PG.Modules.Admin
         internal override string ModuleName => "Admin 🔒";
         internal override Color ModuleColour => Color.Purple;
 
-        [Command("Say")]
-        [Summary("Get the bot to say message")]
-        public async Task Say([Remainder] string message) => await ReplyAsync(message);
-
-        [Command("Image"), Alias("Img")]
-        [Summary("Get bot to send image URL")]
-        public async Task Image([Remainder] string url)
+        [Command("Announce")]
+        [Summary("Send a direct message to all users in a server")]
+        public async Task Announce([Remainder] string message)
         {
-            if (url is null)
+            var guildUsers = Context.Guild.Users;
+            int count = 0;
+            foreach (var guildUser in guildUsers.Where(u => !u.IsBot))
             {
-                await ReplyAsync("Command argument must contain image URL.");
-                return;
+                try
+                {                    
+                    await guildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed($"`{Context.Guild.Name}` - Announcement", message, Color.DarkTeal));                    
+                    count++;
+                }
+                catch {}
             }
-            else
-            {
-                var embed = new EmbedBuilder();
-                embed.WithImageUrl(url);
-                await ReplyAsync(embed);
-            }
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, $"Message sent to `{count}` users", Color.Green));
         }
 
         [Command("Embed")]
@@ -61,10 +55,59 @@ namespace Bot3PG.Modules.Admin
             await ReplyAsync(embed);
         }
 
+        [Command("Image"), Alias("Img")]
+        [Summary("Get bot to send image URL")]
+        public async Task SendImage([Remainder] string url)
+        {
+            try
+            {
+                if (url is null)
+                    throw new ArgumentException("Command argument must contain image URL.");
+                
+                var embed = new EmbedBuilder();
+                embed.WithImageUrl(url);
+                await ReplyAsync(embed);
+            }
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+        }
+
+        [Command("Prefix")]
+        [Summary("Quickly view/change your server prefix without using the dashboard")]
+        public async Task SetPrefix([Remainder] string prefix = "")
+        {
+            try
+            {
+                CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
+
+                if (string.IsNullOrEmpty(prefix))
+                {
+                    await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, $"**Current Prefix**: `{CurrentGuild.General.CommandPrefix}`", ModuleColour));
+                    return;
+                }                
+                const int maxLength = 16;
+                if (prefix.Length > maxLength)
+                    throw new ArgumentException($"Prefix must be less than {maxLength + 1} characters long.");
+
+                CurrentGuild.General.CommandPrefix = prefix;
+                await Guilds.Save(CurrentGuild);
+
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, $"Prefix has been set to `{prefix}`", Color.Green));
+            }
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+        }
+
+        [Command("Reset")]
+        [Summary("Reset server settings to their default values")]
+        public async Task ResetGuild()
+        {
+            await Guilds.ResetAsync(Context.Guild);
+            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, "Succesfully Reset Server Settings 🔃", Color.Green));
+        }
+
         [Command("Rulebox")]
         [Summary("Create rule agreement embed")]
         [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task Rulebox()
+        public async Task CreateRulebox()
         {
             var embed = new EmbedBuilder();
             embed.WithTitle(CurrentGuild.Admin.Rulebox.Message);
@@ -88,32 +131,8 @@ namespace Bot3PG.Modules.Admin
             await rulebox.PinAsync();
         }
 
-        [Command("Announce")]
-        [Summary("Send a direct message to all users in a server")]
-        public async Task Announce([Remainder] string message)
-        {
-            var guildUsers = Context.Guild.Users;
-            int count = 0;
-            foreach (var guildUser in guildUsers)
-            {
-                try
-                {
-                    if (guildUser.IsBot) continue;
-                    
-                    await guildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed($"`{Context.Guild.Name}` - Announcement", message, Color.DarkTeal));                    
-                    count++;
-                }
-                catch {}
-            }
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, $"Message sent to {count} users", Color.Green));
-        }
-
-        [Command("Reset")]
-        [Summary("Reset server settings to their default values")]
-        public async Task Reset()
-        {
-            await Guilds.ResetAsync(Context.Guild);
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, "Succesfully Reset Server Settings 🔃", Color.Green));
-        }
+        [Command("Say")]
+        [Summary("Get the bot to say message")]
+        public async Task Say([Remainder] string message) => await ReplyAsync(message);
     }
 }

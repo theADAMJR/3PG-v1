@@ -40,11 +40,11 @@ namespace Bot3PG.Handlers
         {
             if (!(socketMessage is SocketUserMessage message)  || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
 
-            var socketGuildUser = socketMessage.Author as SocketGuildUser;
-            if (socketGuildUser is null) return;
+            var guildAuthor = socketMessage.Author as SocketGuildUser;
+            if (guildAuthor is null) return;
 
             Guild guild = null;
-            try { guild = await Guilds.GetAsync(socketGuildUser.Guild); }
+            try { guild = await Guilds.GetAsync(guildAuthor.Guild); }
             catch
             {
                 await socketMessage.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Database", "Server configuration corrupted. Please type /reset to reset it."));
@@ -58,7 +58,7 @@ namespace Bot3PG.Handlers
             bool userCanEarnEXP = guild.XP.Enabled || message.Author.IsBot && guild.XP.BotsCanEarnEXP;
             if (!isCommand && userCanEarnEXP)
             {
-                Leveling.ValidateForXPAsync(socketMessage as SocketUserMessage);
+                Leveling.ValidateForEXPAsync(socketMessage as SocketUserMessage, guild);
                 return;
             }
             if (message.Author.IsBot) return;
@@ -68,8 +68,18 @@ namespace Bot3PG.Handlers
             var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(id => id == message.Channel.Id);
             if (channelIsBlacklisted) return;
             
-            var execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best);
+            CommandInfo command;
+            try { command = commands.Search(context, position).Commands.FirstOrDefault().Command; }
+            catch (ArgumentNullException) { return; }
 
+            try { ValidateCommand(command, guild, guildAuthor); }
+            catch (InvalidOperationException ex) 
+            { 
+                await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Commands", ex.Message));
+                return;
+            }
+
+            var execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best);
             if (!execution.Result.IsSuccess)
             {
                 switch (execution.Result.Error)
@@ -99,6 +109,22 @@ namespace Bot3PG.Handlers
                         break;
                 }
             }
+        }
+
+        protected void ValidateCommand(CommandInfo command, Guild guild, SocketGuildUser instigator)
+        {
+            var module = guild.GetType().GetProperty(command.Module.Name)?.GetValue(guild) as CommandConfigModule;
+            if (module is null) return;
+            else if (!module.Enabled) 
+                throw new InvalidOperationException("Module is not enabled.");
+
+            var commandOverride = module.Commands.Overrides.FirstOrDefault(c => c?.Name?.ToLower() == command?.Name?.ToLower());
+            if (commandOverride != null && !commandOverride.Enabled)
+                throw new InvalidOperationException("Command is disabled.");
+            
+            bool isAuthorized = commandOverride is null || instigator.GuildPermissions.Has(commandOverride.Permission);
+            if (!isAuthorized) 
+                throw new InvalidOperationException("Insufficient permissions.");
         }
 
         private string CorrectCommandUsage(SocketUserMessage message, string prefix)

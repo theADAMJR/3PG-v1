@@ -6,72 +6,100 @@ using System.Threading.Tasks;
 using System.Collections;
 using System.Linq;
 using Bot3PG.Data.Structs;
+using Bot3PG.Services;
 
 namespace Bot3PG.Modules.XP
 {
     public class Leveling
     {
-        public static async void ValidateForXPAsync(SocketUserMessage message)
+        public static async void ValidateForEXPAsync(SocketUserMessage message, Guild guild)
         {
-            if (message is null || !(message.Author is SocketGuildUser socketGuildUser)) return;
-
-            var user = await Users.GetAsync(socketGuildUser);
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var xp = guild.XP;
-
-            bool inCooldown = await user.XP.GetXPCooldown();
-            if (user is null || guild is null || inCooldown || message.Content.Length <= xp.MessageLengthThreshold) return;
-
-            bool inSpamCooldown = user.XP.LastXPMsg.AddSeconds(xp.DuplicateMessageThreshold) > DateTime.Now;
-            bool channelIsBlacklisted = guild.XP.ExemptChannels.Any(id => id == message.Channel.Id);
-            bool roleIsBlackListed = guild.XP.ExemptRoles.Any(id => socketGuildUser.Roles.Any(r => r.Id == id));
-
-            if (channelIsBlacklisted || roleIsBlackListed || user.Status.LastMessage == message.Content && inSpamCooldown) return;
-
-            user.Status.LastMessage = message.Content;
-            user.XP.LastXPMsg = DateTime.Now;
-
-            int oldLevel = user.XP.Level;
-            user.XP.EXP += guild.XP.EXPPerMessage;
-            int newLevel = user.XP.Level;
-            user.Status.MessageCount++;
-
-            if (oldLevel != newLevel)
+            try
             {
-                var embed = new EmbedBuilder();
-                embed.WithColor(Color.Green);
-                embed.WithTitle("✨ **LEVEL UP!**");
-                embed.WithDescription(xp.Messages.Method == MessageMethod.DM ? $"{socketGuildUser.Mention}, you leveled up!" : $"{socketGuildUser.Mention} just leveled up!");
-                embed.AddField("LEVEL", newLevel, true);
-                embed.AddField("XP", user.XP.EXP, true);
+                var guildUser = await ValidateCanEarnEXP(message, guild);
+                var user = await Users.GetAsync(message.Author);
 
-                bool newRoleGiven = await ValidateNewXPRoleAsync(socketGuildUser, guild, oldLevel, newLevel);
-                if (newRoleGiven && xp.Messages.Method != MessageMethod.DM)
-                {
-                    embed.AddField("PROMOTION", $"**New:** {xp.RoleRewards[newLevel].Mention}");
-                    embed.WithFooter(socketGuildUser.Guild.Name);
-                }    
-                else if (newRoleGiven)
-                {
-                    // false if xp role was null (if assigned role was deleted)
-                    embed.AddField("PROMOTION", "You've also received a new role!");
-                }       
-                switch (xp.Messages.Method)
-                {
-                    case MessageMethod.DM:
-                        if (socketGuildUser.IsBot) return;
-                        await socketGuildUser.SendMessageAsync(embed: embed.Build());
-                        break;
-                    case MessageMethod.SpecificChannel:
-                        var channel = socketGuildUser.Guild.GetTextChannel(xp.Messages.XPChannel);
-                        await channel.SendMessageAsync(embed: embed.Build());
-                        break;                    
-                    case MessageMethod.AnyChannel:
-                        await message.Channel.SendMessageAsync(embed: embed.Build());
-                        break;
-                }
+                guildUser.Status.LastMessage = message.Content;
+                guildUser.XP.LastXPMsg = DateTime.Now;
+
+                int oldLevel = guildUser.XP.Level;
+                guildUser.XP.EXP += guild.XP.EXPPerMessage;
+
+                int newLevel = guildUser.XP.Level;
+                guildUser.Status.MessageCount++;
+                user.MessageCount++;
+
+                await Users.Save(guildUser);
+                await Users.Save(user);
+
+                if (oldLevel != newLevel)
+                    await SendLevelUpMessageAsync(message, guild, guildUser, oldLevel, newLevel);
             }
-            await Users.Save(user);
+            catch (InvalidOperationException) {}
+            catch (Exception ex) { await Debug.LogCriticalAsync("Leveling", ex.Message, ex); }
+        }
+
+        public static async Task<GuildUser> ValidateCanEarnEXP(SocketUserMessage message, Guild guild)
+        {
+            if (message is null || guild is null || !(message.Author is SocketGuildUser guildAuthor))
+                throw new InvalidOperationException("Message author could not be found.");
+
+            var guildUser = await Users.GetAsync(guildAuthor);
+
+            bool inCooldown = await guildUser.XP.GetXPCooldown();
+            if (guildUser is null || inCooldown || message.Content.Length <= guild.XP.MessageLengthThreshold)
+                throw new InvalidOperationException("User cannot earn EXP.");
+
+            bool channelIsBlacklisted = guild.XP.ExemptChannels.Any(id => id == message.Channel.Id);
+            bool roleIsBlackListed = guild.XP.ExemptRoles.Any(id => guildAuthor.Roles.Any(r => r.Id == id));
+            if (channelIsBlacklisted || roleIsBlackListed)
+                throw new InvalidOperationException("Channel or role cannot earn EXP.");
+
+            return guildUser;
+        }
+
+        private static async Task<Embed> GetLevelUpEmbed(SocketGuildUser socketGuildUser, Guild guild, GuildUser guildUser, int oldLevel, int newLevel)
+        {            
+            var embed = new EmbedBuilder();
+            embed.WithColor(Color.Green);
+            embed.WithTitle("✨ **LEVEL UP!**");
+            embed.WithDescription(guild.XP.Messages.Method == MessageMethod.DM ? $"{socketGuildUser.Mention}, you leveled up!" : $"{socketGuildUser.Mention} just leveled up!");
+            embed.AddField("LEVEL", newLevel, true);
+            embed.AddField("XP", guildUser.XP.EXP, true);
+
+            bool newRoleGiven = await ValidateNewXPRoleAsync(socketGuildUser, guild, oldLevel, newLevel);
+            if (newRoleGiven && guild.XP.Messages.Method != MessageMethod.DM)
+            {
+                embed.AddField("PROMOTION", $"**New:** {guild.XP.RoleRewards[newLevel]?.Mention}");
+                embed.WithFooter(socketGuildUser.Guild.Name);
+            }
+            else if (newRoleGiven)
+                embed.AddField("PROMOTION", "You've also received a new role!");
+            return embed.Build();
+        }
+
+        private static async Task SendLevelUpMessageAsync(SocketUserMessage message, Guild guild, GuildUser guildUser, int oldLevel, int newLevel)
+        {
+            var socketGuildUser = message.Author as SocketGuildUser;
+            var embed = await GetLevelUpEmbed(socketGuildUser, guild, guildUser, oldLevel, newLevel);
+            
+            switch (guild.XP.Messages.Method)
+            {
+                case MessageMethod.DM:
+                    if (socketGuildUser.IsBot) return;
+                    try { await socketGuildUser.SendMessageAsync(embed: embed); }
+                    catch (Exception) {}
+                    break;
+                case MessageMethod.SpecificChannel:
+                    var channel = socketGuildUser.Guild.GetTextChannel(guild.XP.Messages.XPChannel);
+                    try { await channel.SendMessageAsync(embed: embed); }
+                    catch (Exception) {}
+                    break;
+                case MessageMethod.AnyChannel:
+                    try { await message.Channel.SendMessageAsync(embed: embed); }
+                    catch (Exception) {}
+                    break;
+            }
         }
 
         public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser socketGuildUser, Guild guild, int oldLevel, int newLevel)

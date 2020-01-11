@@ -124,35 +124,13 @@ namespace Bot3PG.Modules.Music
                     await Player.StopAsync();
                     
                 foreach (var track in Player.Queue.Items)
-                {
                     Player.Queue.Dequeue();
-                }
+                
                 await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, "I've stopped playback and the playlist has been cleared.", Color.Blue));
             }
             catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
-        [Command("Queue"), Alias("List", "Playlist", "Q")]
-        [Summary("Show currently playing or listed tracks")]
-        public async Task Queue()
-        {
-            try
-            {
-                await CheckPlayer();
-                await CheckIsPlaying("show playlist");
-                
-                string description = null;
-                int trackNum = 2;
-                foreach (LavaTrack track in Player.Queue.Items)
-                {
-                    description += $"**[{trackNum}]**: {FullHyperlink(track)}\n";
-                    trackNum++;
-                }
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, 
-                    $"**Now Playing**: {FullHyperlink(Player.CurrentTrack)}\n\n{(description ?? "Nothing else is queued")}", Color.Blue));
-            }
-            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
-        }
 
         [Command("Skip"), Alias("Next")]
         [Summary("Play the next queued track")]
@@ -168,9 +146,8 @@ namespace Bot3PG.Modules.Music
                     throw new InvalidOperationException("Tracks to skip must be within playlist size.");
 
                 for (int i = 1; i < count; i++)
-                {
                     Player.Queue.Dequeue();
-                }
+                
                 var oldTrack = await Player.SkipAsync();
 
                 var message = count > 1 ? $"`{count}` tracks successfully skipped." : $"{Hyperlink(oldTrack)} successfully skipped";
@@ -211,7 +188,7 @@ namespace Bot3PG.Modules.Music
             try
             {
                 await CheckPlayer();
-                await CheckIsPlaying("Replay");
+                await CheckIsPlaying("replay");
                 
                 var trackLength = Player.CurrentTrack.Length;
                 int totalSeconds = (int)trackLength.TotalSeconds;
@@ -312,31 +289,9 @@ namespace Bot3PG.Modules.Music
             catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
-        [Command("YouTube"), Alias("YT")]
-        [Summary("Search YouTube for top results")]
-        public async Task SearchYouTube([Remainder] string query)
-        {
-            var results = await lavaRestClient.SearchYouTubeAsync(query);
-            if (results.Tracks.Count() <= 0)
-            {
-                await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, $"No results found for `{query}`", Color.Red));
-                return;
-            }
-            
-            string details = "";
-            var embed = new EmbedBuilder();
-            
-            var tracks = results.Tracks.Take(10).ToList();
-            for (int i = 0; i < tracks.Count; i++)
-            {
-                var track = tracks[i];
-                details += $"**[{i + 1}]** {Hyperlink(track)} by `{track.Author}`\n";
-            }
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"Results for `{query}`\n", details, Color.Blue));
-        }
         
         [Command("Replay")]
-        [Summary("Replay the last track played")]
+        [Summary("Readd the last track played to the queue")]
         public async Task Replay()
         {
             try
@@ -366,6 +321,51 @@ namespace Bot3PG.Modules.Music
                 }                
             }
             catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+        }
+
+        [Command("Queue"), Alias("List", "Playlist", "Q")]
+        [Summary("Show currently playing or listed tracks")]
+        public async Task Queue()
+        {
+            try
+            {
+                await CheckPlayer();
+                await CheckIsPlaying("show playlist");
+                
+                string description = null;
+                int trackNum = 2;
+                foreach (LavaTrack track in Player.Queue.Items)
+                {
+                    description += $"**[{trackNum}]**: {FullHyperlink(track)}\n";
+                    trackNum++;
+                }
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, 
+                    $"**Now Playing**: {FullHyperlink(Player.CurrentTrack)}\n\n{(description ?? "Nothing else is queued")}", Color.Blue));
+            }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+        }
+
+        [Command("YouTube"), Alias("YT")]
+        [Summary("Search YouTube for top results")]
+        public async Task SearchYouTube([Remainder] string query)
+        {
+            var results = await lavaRestClient.SearchYouTubeAsync(query);
+            if (results.Tracks.Count() <= 0)
+            {
+                await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, $"No results found for `{query}`", Color.Red));
+                return;
+            }
+            
+            string details = "";
+            var embed = new EmbedBuilder();
+            
+            var tracks = results.Tracks.Take(10).ToList();
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                var track = tracks[i];
+                details += $"**[{i + 1}]** {Hyperlink(track)} by `{track.Author}`\n";
+            }
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"Results for `{query}`\n", details, Color.Blue));
         }
 
         private async Task<LavaPlayer> JoinAndGetPlayer()

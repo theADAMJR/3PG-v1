@@ -90,6 +90,8 @@ namespace Bot3PG.Modules.Moderation
             var guild = await Guilds.GetAsync(socketGuild);
             if (guild.General.RemoveCommandMessages) return;
 
+            var user = await Users.GetAsync(guildAuthor);
+
             var logChannelId = guild.Moderation.StaffLogs.Channel;
             var logChannel = socketGuild.GetTextChannel(logChannelId);
 
@@ -100,7 +102,7 @@ namespace Bot3PG.Modules.Moderation
             }
             var embed = new EmbedBuilder();
 
-            string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString()).ToString();
+            string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString(), user).ToString();
             
             embed.WithTitle("Message Deleted");
             embed.AddField("User", message.Value.Author.Mention, true);

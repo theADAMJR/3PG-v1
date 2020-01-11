@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 
 namespace Bot3PG.Data.Structs
 {
-    [BsonIgnoreExtraElements]
     public class GuildUser
     {
         public static Action<GuildUser, Punishment> Muted;

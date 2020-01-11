@@ -40,36 +40,40 @@ namespace Bot3PG.Modules.Moderation
                         catch {}
                     }
                 }
-                user.Status.LastMessage = message.Content;
 
-                if (GetContentValidation(guild, message.Content) != null)
+                if (GetContentValidation(guild, message.Content, user) != null)
                 {
                     await PunishUser(guildAuthor, "Explicit message");
                     try { await message.DeleteAsync(); } // 404 - there may be other auto mod bots -> message already deleted
                     catch {}
                     finally { await user.XP.ExtendXPCooldown(); }
                 }
+                user.Status.LastMessage = message.Content;
                 await Users.Save(user);
             }
             catch (Exception ex) { await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Auto Moderation", ex.Message)); }
         }
         
-        public static FilterType? GetContentValidation(Guild guild, string content)
+        public static FilterType? GetContentValidation(Guild guild, string content, GuildUser user)
         {
             if (content is null) return null;
 
             var autoMod = guild.Moderation.Auto;
             bool HasFilter(FilterType filter) => autoMod.Filters.Any(f => f == filter);
             
-            bool hasHalfEmojis = content.Remove(0, content.Length / 2).All(c => char.IsSymbol(c));
-            const int maxAtSigns = 5;
-            
             if (HasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
             if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content, links: true)) return FilterType.BadLinks;
-            if (HasFilter(FilterType.AllCaps) && content.All(c => char.IsUpper(c))) return FilterType.AllCaps;
+
+            bool hasExcessiveCaps = content.All(c => char.IsUpper(c)) && content.Length > 5; 
+            if (HasFilter(FilterType.AllCaps) && hasExcessiveCaps) return FilterType.AllCaps;
             if (HasFilter(FilterType.DiscordInvites) && content.Contains("discord.gg")) return FilterType.DiscordInvites;
+
+            bool hasHalfEmojis = content.Remove(0, content.Length / 2).All(c => char.IsSymbol(c));
             if (HasFilter(FilterType.EmojiSpam) && hasHalfEmojis) return FilterType.EmojiSpam;
+
+            const int maxAtSigns = 5;
             if (HasFilter(FilterType.MassMention) && content.Count(c => c == '@') >= maxAtSigns) return FilterType.MassMention;
+            if (HasFilter(FilterType.DuplicateMessage) && content.ToLower() == user.Status.LastMessage) return FilterType.DuplicateMessage;
 
             return null;
         }
