@@ -58,7 +58,7 @@ namespace Bot3PG.Handlers
 
                     await bot.SetGameAsync(Global.Config.GameStatus);
 
-                    await new DatabaseManager().UpdateCommands(new CommandHelp());
+                    await new DatabaseManager(Global.DatabaseConfig).UpdateCommands(new CommandHelp());
                 }
                 catch (Exception ex) { await Debug.LogCriticalAsync(ex.Source, ex.Message); }
             };

@@ -21,9 +21,7 @@ namespace Bot3PG.Modules.Moderation
                 var guild = await Guilds.GetAsync(guildAuthor.Guild);
                 var autoMod = guild.Moderation.Auto;
 
-                var exemptRoles = autoMod.ExemptRoles.Select(id => guildAuthor.Guild.GetRole(id));
-                bool userIsExempt = exemptRoles.Any(role => guildAuthor.Roles.Any(r => r.Id == role.Id));
-                if (userIsExempt) return;
+                ValidateUserNotExempt(guildAuthor, guild);
 
                 if (autoMod.SpamNotification)
                 {
@@ -53,7 +51,15 @@ namespace Bot3PG.Modules.Moderation
             }
             catch (Exception ex) { await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Auto Moderation", ex.Message)); }
         }
-        
+
+        private static void ValidateUserNotExempt(SocketGuildUser guildAuthor, Guild guild)
+        {
+            var exemptRoles = guild.Moderation.Auto.ExemptRoles.Select(id => guildAuthor.Guild.GetRole(id));
+            bool userIsExempt = exemptRoles.Any(role => guildAuthor.Roles.Any(r => r.Id == role.Id));
+            if (userIsExempt) 
+                throw new InvalidOperationException("User is exempt from auto moderation.");
+        }
+
         public static FilterType? GetContentValidation(Guild guild, string content, GuildUser user)
         {
             if (content is null) return null;
@@ -94,34 +100,33 @@ namespace Bot3PG.Modules.Moderation
             string lowerCaseContent = content.ToLower();
             var words = content.ToLower().Split(" ");
 
-            var isExplicit = banWords.Any(w => words.Contains(w)) || links && banLinks.Any(l => content.Contains(l));
-            return isExplicit;
+            return banWords.Any(w => words.Contains(w)) || links && banLinks.Any(l => content.Contains(l));
         }
 
         public static async Task ValidateUsername(Guild guild, SocketGuildUser oldUser)
         {
-            var socketGuildUser = oldUser.Guild.GetUser(oldUser.Id);
-            
-            if (ContentIsExplicit(guild, socketGuildUser.Nickname) || ContentIsExplicit(guild, socketGuildUser.Username))
+            try
             {
-                var user = await Users.GetAsync(socketGuildUser);
+                var guildUser = oldUser.Guild.GetUser(oldUser.Id);
+                if (!ContentIsExplicit(guild, guildUser.Nickname) && !ContentIsExplicit(guild, guildUser.Username)) return;
 
+                var user = await Users.GetAsync(guildUser);
                 if (guild.Moderation.Auto.ResetNickname)
                 {
-                    try { await socketGuildUser.ModifyAsync(u => u.Nickname = socketGuildUser.Username); }
-                    catch {}
+                    try { await guildUser.ModifyAsync(u => u.Nickname = guildUser.Username); }
+                    catch { }
                 }
 
-                var dmChannel = await socketGuildUser.GetOrCreateDMChannelAsync();
+                var dmChannel = await guildUser.GetOrCreateDMChannelAsync();
                 switch (guild.Moderation.Auto.ExplicitUsernamePunishment)
                 {
                     case PunishmentType.Ban:
                         await user.BanAsync(TimeSpan.MaxValue, "Explicit display name", Global.Client.CurrentUser);
-                        return;                        
+                        return;
                     case PunishmentType.Kick:
                         await user.KickAsync("Explicit display name", Global.Client.CurrentUser);
                         return;
-                    case PunishmentType.Mute:                  
+                    case PunishmentType.Mute:
                         await user.MuteAsync(TimeSpan.MaxValue, "Explicit display name", Global.Client.CurrentUser);
                         return;
                     case PunishmentType.Warn:
@@ -129,10 +134,11 @@ namespace Bot3PG.Modules.Moderation
                         return;
                 }
                 await user.WarnAsync("Explicit display name", Global.Client.CurrentUser);
-                await dmChannel.SendMessageAsync(embed: await EmbedHandler.CreateSimpleEmbed($"`{socketGuildUser.Guild.Name}` - Explicit Display Name Detected",
-                $"Explicit content has been detected in your display name.\n" +
-                $"Please change your display name to continue using {socketGuildUser.Guild.Name}", Color.Red)); // TODO - config    
+                await dmChannel.SendMessageAsync(embed: await EmbedHandler.CreateSimpleEmbed($"`{guildUser.Guild.Name}` - Explicit Display Name Detected",
+                    $"Explicit content has been detected in your display name.\n" +
+                    $"Please change your display name to continue using {guildUser.Guild.Name}", Color.Red)); // TODO - config                
             }
+            catch (Exception) {}
         }
 
         public static async Task PunishUser(SocketGuildUser socketGuildUser, string reason)

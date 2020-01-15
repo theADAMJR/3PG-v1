@@ -9,7 +9,7 @@ using NUnit.Framework;
 
 namespace Bot3PG.Testing
 {
-    public class GuildTests
+    public class DataTests
     {
         // MethodName_StateUnderTest_ExpectedBehavior
         // e.g. WithdrawMoney_InvalidAccount_ExceptionThrown
@@ -57,5 +57,15 @@ namespace Bot3PG.Testing
             AsyncTestDelegate test = async() => await Leveling.ValidateCanEarnEXP(null, null);
             Assert.CatchAsync(test);
         }
+
+        /*[Test]
+        public void GetOldLevelRole_Exists_OldLevelRoleReturned()
+        {
+            var guild = new Guild(null);
+            guild.XP.RoleRewards.LevelRoles["1"] = 534406824997158943;
+
+            var result = Leveling.GetOldLevelRole(guild, 2);
+            Assert.AreNotEqual(null, result);
+        }*/
     }
 }

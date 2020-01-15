@@ -17,24 +17,6 @@ namespace Bot3PG.Modules.Admin
         internal override string ModuleName => "Admin 🔒";
         internal override Color ModuleColour => Color.Purple;
 
-        [Command("Announce")]
-        [Summary("Send a direct message to all users in a server")]
-        public async Task Announce([Remainder] string message)
-        {
-            var guildUsers = Context.Guild.Users;
-            int count = 0;
-            foreach (var guildUser in guildUsers.Where(u => !u.IsBot))
-            {
-                try
-                {                    
-                    await guildUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed($"`{Context.Guild.Name}` - Announcement", message, Color.DarkTeal));                    
-                    count++;
-                }
-                catch {}
-            }
-            await ReplyAsync(EmbedHandler.CreateSimpleEmbed(ModuleName, $"Message sent to `{count}` users", Color.Green));
-        }
-
         [Command("Embed")]
         [Summary("Create a custom embed. Separate Title, Description, and Image URL with '|' (vertical bar) ")]
         public async Task Embed([Remainder] string details)

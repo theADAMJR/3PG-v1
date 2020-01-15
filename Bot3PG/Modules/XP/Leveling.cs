@@ -70,7 +70,8 @@ namespace Bot3PG.Modules.XP
             bool newRoleGiven = await ValidateNewXPRoleAsync(socketGuildUser, guild, oldLevel, newLevel);
             if (newRoleGiven && guild.XP.Messages.Method != MessageMethod.DM)
             {
-                embed.AddField("PROMOTION", $"**New:** {guild.XP.RoleRewards[newLevel]?.Mention}");
+                embed.AddField("PROMOTION", $"**Old**: {GetOldLevelRole(guild, oldLevel)?.Mention ?? "N/A"}\n" +
+                            $"**New**: {GetLevelRole(guild, newLevel)?.Mention}");
                 embed.WithFooter(socketGuildUser.Guild.Name);
             }
             else if (newRoleGiven)
@@ -102,25 +103,38 @@ namespace Bot3PG.Modules.XP
             }
         }
 
-        public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser socketGuildUser, Guild guild, int oldLevel, int newLevel)
+        public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser guildAuthor, Guild guild, int oldLevel, int newLevel)
         {
-            if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist || !NewRoleRequired(socketGuildUser, guild, newLevel)) return false;
+            var levelRole = GetLevelRole(guild, newLevel);
+            if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist || levelRole is null) return false;
             if (!guild.XP.RoleRewards.StackRoles)
             {
-                var oldXPRole = guild.XP.RoleRewards[oldLevel];
-                await socketGuildUser.RemoveRoleAsync(oldXPRole);
+                var oldLevelRole = GetOldLevelRole(guild, oldLevel);
+                if (oldLevelRole != null)
+                    await guildAuthor.RemoveRoleAsync(oldLevelRole);
             }
-            var newXPRole = guild.XP.RoleRewards[newLevel];
-            if (newXPRole is null) return false;
-            
-            await socketGuildUser.AddRoleAsync(newXPRole);
+            if (levelRole is null) return false;
+
+            try { await guildAuthor.AddRoleAsync(levelRole); }
+            catch (Exception ex) { await Debug.LogErrorAsync("leveling", "Tried to add role but could not.", ex); }
             return true;
         }
 
-        public static bool NewRoleRequired(SocketGuildUser user, Guild guild, int newLevel)
+        public static SocketRole GetLevelRole(Guild guild, int newLevel)
         {
-            ulong? levelRoleId = guild.XP.RoleRewards[newLevel]?.Id;
-            return !user.Roles.Any(r => r.Id == levelRoleId);
+            var socketGuild = Global.Client.GetGuild(guild.ID);
+            guild.XP.RoleRewards.LevelRoles.TryGetValue($"{newLevel}", out var levelRoleId);
+            return socketGuild.Roles.FirstOrDefault(r => r.Id == levelRoleId);
+        }
+
+        public static SocketRole GetOldLevelRole(Guild guild, int oldLevel)
+        {
+            for (int i = oldLevel - 1; i >= 0 ; i--)
+            {
+                var levelRole = GetLevelRole(guild, oldLevel);
+                if (levelRole != null) return levelRole;
+            }
+            return null;
         }
     }
 }

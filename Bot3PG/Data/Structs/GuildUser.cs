@@ -44,45 +44,46 @@ namespace Bot3PG.Data.Structs
 
         public async Task BanAsync(TimeSpan duration, string reason, SocketUser instigator)
         {
-            var end = (duration.TotalDays >= TimeSpan.MaxValue.TotalDays) ? DateTime.MaxValue : DateTime.Now.Add(duration);
-            Status.Punishments.Add(new Punishment(PunishmentType.Ban, reason, instigator, DateTime.Now, end));
+            var ban = new Punishment(PunishmentType.Ban, reason, instigator, DateTime.Now, GetEnd(duration));
+            Status.Punishments.Add(ban);
 
-            await DiscordUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
-            if (DiscordUser.IsBot)
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been banned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
+            try
+            {
+                var guild = await GetGuild();
+                if (guild.Moderation.ResetBannedUsers) 
+                    await Users.ResetAsync(DiscordUser);
 
-            var guild = await GetGuild();
-            if (guild.Moderation.ResetBannedUsers) 
-                await Users.ResetAsync(DiscordUser);
+                await DiscordUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
 
-            await Users.Save(this);
+                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                        $"You have been banned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));              
+            }
+            catch (Exception) {}
+            finally { await Users.Save(this); }
         }
 
         public async Task MuteAsync(TimeSpan duration, string reason, SocketUser instigator)
         {
-            var end = (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);
-            var punishment = new Punishment(PunishmentType.Mute, reason, instigator, DateTime.Now, end);
-            Status.Punishments.Add(punishment);
+            var end = GetEnd(duration);
+            var ban = new Punishment(PunishmentType.Mute, reason, instigator, DateTime.Now, end);
+            Status.Punishments.Add(ban);
 
-            var socketGuild = DiscordUser.Guild;
-            var guild = await Guilds.GetAsync(socketGuild);
+            try
+            {
+                var guild = await Guilds.GetAsync(DiscordUser.Guild);
+                var mutedRole = await GetOrCreateMutedRole(DiscordUser.Guild, guild);
 
-            var mutedRole = socketGuild.Roles.FirstOrDefault(r => r.Name == guild.Moderation.MutedRoleName);
-            if (mutedRole is null)
-            {
-                await socketGuild.CreateRoleAsync(guild.Moderation.MutedRoleName, GuildPermissions.None);
-            }
-            if (!DiscordUser.IsBot)
-            {
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been muted from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
-            }
-            if (mutedRole != null) 
-            {
-                await DiscordUser.AddRoleAsync(mutedRole);
-            }
-            if (Muted != null) Muted(this, punishment);
+                if (mutedRole != null)
+                    await DiscordUser.AddRoleAsync(mutedRole);
 
-            await Users.Save(this);
+                if (Muted != null)
+                    Muted(this, ban);
+
+                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation",
+                    $"You have been muted from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
+            }
+            catch (Exception) { }
+            finally { await Users.Save(this); }
         }
 
         public async Task UnmuteAsync(string reason, SocketUser instigator)
@@ -92,40 +93,62 @@ namespace Bot3PG.Data.Structs
             var guild = await Guilds.GetAsync(DiscordUser.Guild);
             var mutedRole = DiscordUser.Guild.Roles.FirstOrDefault(r => r.Name == guild.Moderation.MutedRoleName);
 
-            if (!DiscordUser.IsBot)
+            try
             {
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been unmuted from {DiscordUser.Guild.Name} for '{reason}'", Color.Green));
-            }
-            await DiscordUser.RemoveRoleAsync(mutedRole);
-            if (Muted != null) Unmuted(this, null);
+                await DiscordUser.RemoveRoleAsync(mutedRole);
 
-            await Users.Save(this);
+                if (Muted != null) 
+                    Unmuted(this, null);
+
+                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                    $"You have been unmuted from {DiscordUser.Guild.Name} for '{reason}'", Color.Green));
+            }
+            catch (Exception) {}
+            finally { await Users.Save(this); }
         }
 
         public async Task KickAsync(string reason, SocketUser instigator)
         {
-            Status.Punishments.Add(new Punishment(PunishmentType.Kick, reason, instigator, DateTime.Now, DateTime.Now));
+            var kick = new Punishment(PunishmentType.Kick, reason, instigator, DateTime.Now, DateTime.Now);
+            Status.Punishments.Add(kick);
 
-            if (!DiscordUser.IsBot)
-            {
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been kicked from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
+            try 
+            { 
+                if (!DiscordUser.IsBot)
+                    await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                        $"You have been kicked from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
+
+                await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });
             }
-            try { await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });}
-            catch {}
-            await Users.Save(this);
+            catch (Exception) {}
+            finally { await Users.Save(this); }
         }
 
         public async Task WarnAsync(string reason, SocketUser instigator)
         {
-            var punishment = new Punishment(PunishmentType.Warn, reason, instigator, DateTime.Now, DateTime.Now);
-            Status.Punishments.Add(punishment);
-            if (!DiscordUser.IsBot)
-            {
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
-            }
-            if (Muted != null) Warned(this, punishment);
+            var warn = new Punishment(PunishmentType.Warn, reason, instigator, DateTime.Now, DateTime.Now);
+            Status.Punishments.Add(warn);
 
-            await Users.Save(this);
+            try
+            {
+                if (Muted != null) 
+                    Warned(this, warn); 
+                    
+                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                    $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));               
+            }
+            catch (Exception) {}
+            finally { await Users.Save(this); }
+        }
+
+        private static DateTime GetEnd(TimeSpan duration) => (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);
+
+        private static async Task<SocketRole> GetOrCreateMutedRole(SocketGuild socketGuild, Guild guild)
+        {
+            var mutedRole = socketGuild.Roles.FirstOrDefault(r => r.Name == guild.Moderation.MutedRoleName);
+            if (mutedRole is null)
+                await socketGuild.CreateRoleAsync(guild.Moderation.MutedRoleName, GuildPermissions.None);
+            return mutedRole;
         }
 
         public class Leveling

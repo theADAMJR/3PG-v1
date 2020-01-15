@@ -2,7 +2,7 @@ using Discord;
 
 namespace Bot3PG.Data.Structs
 {
-    public class CommandConfigModule : ConfigModule
+    public class CommandConfigModule : ConfigModule, IAppearsOnWebapp
     {
         public CommandsSubModule Commands { get; set; } = new CommandsSubModule();
 

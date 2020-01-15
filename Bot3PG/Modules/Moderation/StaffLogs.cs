@@ -15,192 +15,199 @@ namespace Bot3PG.Modules.Moderation
     {
         public static async Task LogBan(SocketUser socketUser, SocketGuild socketGuild)
         {
-            var guild = await Guilds.GetAsync(socketGuild);
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuild.GetTextChannel(logChannelId);
+            try
+            {
+                if (socketUser is null) return;
 
-            var user = await Users.GetAsync(socketUser as SocketGuildUser);
-            var ban = user.Status.Bans.LastOrDefault();
+                var user = await Users.GetAsync(socketUser as SocketGuildUser);
+                var guild = await Guilds.GetAsync(socketGuild);
+                var logChannel = ValidateLogChannel(guild, socketGuild);
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Banned");
-            embed.AddField("User", socketUser.Mention, true);
-            embed.AddField("Reason", ban.Reason, true);
-            embed.AddField("Start", ban.Start.ToTimestamp());
-            embed.AddField("End", ban.End.ToTimestamp());
-            embed.WithColor(Color.DarkPurple);
-            
-            await logChannel.SendMessageAsync(embed: embed.Build());
+                var ban = user.Status.Bans.LastOrDefault();
+
+                var embed = new EmbedBuilder()
+                    .WithTitle($"Banned")
+                    .AddField("User", socketUser.Mention, true)
+                    .AddField("Reason", ban.Reason, true)
+                    .AddField("Start", ban.Start.ToTimestamp())
+                    .AddField("End", ban.End.ToTimestamp())
+                    .WithColor(Color.DarkPurple);
+                
+                await logChannel.SendMessageAsync(embed: embed.Build());                
+            }
+            catch (Exception) {}
         }
 
         public static async Task LogUserUnban(SocketUser socketUser, SocketGuild socketGuild)
         {
-            var socketGuildUser = socketUser as SocketGuildUser;
-            if (socketGuildUser is null) return;
-
-            var user = await Users.GetAsync(socketGuildUser);
-            var guild = await Guilds.GetAsync(socketGuild);
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuild.GetTextChannel(logChannelId);
-
-            if (logChannel is null)
+            try
             {
-                // await socketGuild.DefaultChannel.SendMessageAsync("", embed: await EmbedHandler.CreateBasicEmbed("Staff Logs - User Unbanned", "To use `Staff Logs` please set a **Staff Log Channel** with `/config`", Color.Red));
+                var discordUser = socketUser as SocketGuildUser;
+                if (discordUser is null) return;
+
+                var user = await Users.GetAsync(discordUser);
+                var guild = await Guilds.GetAsync(socketGuild);
+                var logChannel = ValidateLogChannel(guild, socketGuild);
+
+                var embed = new EmbedBuilder()
+                    .WithTitle($"User Banned")
+                    .AddField("User", discordUser.Mention, true)
+                    .WithColor(Color.DarkPurple);
+
+                await logChannel.SendMessageAsync(embed: embed.Build());
             }
-
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"User Banned");
-            embed.AddField("User", socketGuildUser.Mention, true);
-            embed.WithColor(Color.DarkPurple);
-
-            await logChannel.SendMessageAsync(embed: embed.Build());
+            catch (Exception) {}
         }
 
-        public static async Task LogKick(SocketGuildUser socketGuildUser)
+        public static async Task LogKick(SocketGuildUser discordUser)
         {
-            var user = await Users.GetAsync(socketGuildUser as SocketGuildUser);
+            try
+            {
+                var user = await Users.GetAsync(discordUser as SocketGuildUser);
 
-            var kick = user?.Status.Kicks.LastOrDefault();
-            if (kick is null) return;
+                var kick = user?.Status.Kicks.LastOrDefault();
+                if (kick is null) return;
 
-            var socketGuild = socketGuildUser.Guild;
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuild.GetTextChannel(logChannelId);
-            var instigator = socketGuild.GetUser(kick.InstigatorID);
+                var socketGuild = discordUser.Guild;
+                var guild = await Guilds.GetAsync(discordUser.Guild);
+                var logChannel = ValidateLogChannel(guild, socketGuild);
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Kicked");
-            embed.AddField("User", socketGuildUser.Mention, true);
-            embed.AddField("Reason", kick.Reason);
-            embed.AddField("By", instigator.Mention ?? "N/A");
-            embed.WithColor(Color.DarkPurple);
-
-            await logChannel.SendMessageAsync(embed: embed.Build());
+                var embed = GetPunishmentEmbed(kick, discordUser);
+                await logChannel.SendMessageAsync(embed: embed);
+            }
+            catch (Exception) {}
         }
 
         public static async Task LogMessageDeletion(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel)
         {
-            if (!message.HasValue) return;
-
-            var guildAuthor = message.Value.Author as SocketGuildUser;
-            if (guildAuthor is null || guildAuthor.IsBot) return;
-
-            var socketGuild = guildAuthor.Guild;
-            var guild = await Guilds.GetAsync(socketGuild);
-            if (guild.General.RemoveCommandMessages) return;
-
-            var user = await Users.GetAsync(guildAuthor);
-
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuild.GetTextChannel(logChannelId);
-
-            if (logChannel is null)
+            try
             {
-                // await channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Staff Logs - Message Deleted", "To use `Staff Logs` please set a **Staff Log Channel** with `/config`", Color.Red));
-                return;
+                if (!message.HasValue) return;
+
+                var guildAuthor = message.Value.Author as SocketGuildUser;
+                if (guildAuthor is null || guildAuthor.IsBot) return;
+
+                var socketGuild = guildAuthor.Guild;
+                var guild = await Guilds.GetAsync(socketGuild);
+                if (guild.General.RemoveCommandMessages/* || messageIsACommand*/) return;
+
+                var user = await Users.GetAsync(guildAuthor);
+                var logChannel = ValidateLogChannel(guild, socketGuild);
+
+                string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString(), user).ToString();
+                string reason = string.IsNullOrEmpty(validation) ? "User Removed" : validation.ToSentenceCase();
+
+                var embed = GetMessageDeletedEmbed(message, channel, reason);
+                await logChannel.SendMessageAsync(embed: embed);
             }
-            var embed = new EmbedBuilder();
-
-            string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString(), user).ToString();
-            
-            embed.WithTitle("Message Deleted");
-            embed.AddField("User", message.Value.Author.Mention, true);
-            embed.AddField("Message", $"{message.Value.Content.ToString()}", true);
-            embed.AddField("Reason", $"{(string.IsNullOrEmpty(validation) ? "User Removed" : validation.ToSentenceCase())}", true);   
-            embed.AddField("Channel", $"{(channel as SocketTextChannel).Mention}", true);
-            embed.WithFooter($"Message ID: {message.Value.Id}");
-            embed.WithColor(Color.DarkPurple);
-            embed.WithCurrentTimestamp();
-
-            await logChannel.SendMessageAsync(embed: embed.Build());
+            catch (Exception) {}
         }
-        
+
         public static async Task LogBulkMessageDeletion(IReadOnlyCollection<Cacheable<IMessage, ulong>> messages, ISocketMessageChannel channel)
         {
-            var textChannel = channel as SocketTextChannel;
-            var socketGuild = textChannel?.Guild;
-            if (socketGuild is null) return;
-
-            var guild = await Guilds.GetAsync(socketGuild);
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuild.GetTextChannel(logChannelId);
-
-            if (logChannel is null)
+            try
             {
-                //await channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Staff Logs - Message Deleted", "To use `Staff Logs` please set a **Staff Log Channel** with `/config`", Color.Red));
-                return;
+                var textChannel = channel as SocketTextChannel;
+                var socketGuild = textChannel?.Guild;
+                if (socketGuild is null) return;
+
+                var guild = await Guilds.GetAsync(socketGuild);
+                var logChannel = ValidateLogChannel(guild, socketGuild);
+
+                var embed = new EmbedBuilder()
+                    .WithTitle("Messages Deleted")
+                    .AddField("Count", messages.Count)
+                    .AddField("Channel", $"{textChannel.Mention}", true)
+                    .WithColor(Color.DarkPurple);
+
+                await logChannel.SendMessageAsync(embed: embed.Build());
             }
-            var embed = new EmbedBuilder();
-
-            embed.WithTitle("Messages Deleted");
-            embed.AddField("Count", messages.Count);
-            embed.AddField("Channel", $"{textChannel.Mention}", true);
-            embed.WithColor(Color.DarkPurple);
-
-            await logChannel.SendMessageAsync(embed: embed.Build());
+            catch (Exception) {}
         }
 
         public static async Task LogMute(GuildUser user, Punishment punishment)
         {
-            var socketGuild = Global.Client.GetGuild(user.GuildID);
-            var socketGuildUser = socketGuild.GetUser(user.ID);
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            try
+            {
+                var socketGuild = Global.Client.GetGuild(user.GuildID);
+                var discordUser = socketGuild.GetUser(user.ID);
+                var guild = await Guilds.GetAsync(discordUser.Guild);
 
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuildUser.Guild.GetTextChannel(logChannelId);
-            if (logChannel is null) return;
+                var logChannel = ValidateLogChannel(guild, socketGuild);
 
-            var instigator = socketGuildUser.Guild.GetUser(punishment.InstigatorID);
-
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Mute");
-            embed.AddField("User", socketGuildUser.Mention, true);
-            embed.AddField("Reason", punishment.Reason);
-            embed.AddField("By", instigator.Mention ?? "N/A");
-            embed.WithColor(Color.DarkPurple);
-
-            await logChannel.SendMessageAsync(embed: embed.Build());
+                var embed = GetPunishmentEmbed(punishment, discordUser);
+                await logChannel.SendMessageAsync(embed: embed);
+            }
+            catch (Exception) {}
         }
 
         public static async Task LogUnmute(GuildUser user, Punishment punishment)
         {
-            var socketGuild = Global.Client.GetGuild(user.GuildID);
-            var socketGuildUser = socketGuild.GetUser(user.ID);
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            try
+            {
+                var socketGuild = Global.Client.GetGuild(user.GuildID);
+                var discordUser = socketGuild.GetUser(user.ID);
+                var guild = await Guilds.GetAsync(discordUser.Guild);
 
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuildUser.Guild.GetTextChannel(logChannelId);
-            if (logChannel is null) return;
-            
-            var instigator = socketGuildUser.Guild.GetUser(punishment?.InstigatorID ?? 0);
+                var logChannel = ValidateLogChannel(guild, socketGuild);            
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Unmute");
-            embed.AddField("User", socketGuildUser.Mention);
-            embed.AddField("Reason", punishment.Reason);
-            embed.AddField("By", instigator?.Mention ?? "N/A");
-            embed.WithColor(Color.DarkPurple);
+                var instigator = discordUser.Guild.GetUser(punishment?.InstigatorID ?? 0);
+                var embed = GetPunishmentEmbed(punishment, discordUser);                    
+                await logChannel.SendMessageAsync(embed: embed);
+            }
+            catch (Exception) {}
         }
 
         public static async Task LogWarn(GuildUser user, Punishment punishment)
         {
-            var socketGuild = Global.Client.GetGuild(user.GuildID);
-            var socketGuildUser = socketGuild.GetUser(user.ID);
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            try
+            {
+                var socketGuild = Global.Client.GetGuild(user.GuildID);
+                var discordUser = socketGuild.GetUser(user.ID);
+                var guild = await Guilds.GetAsync(discordUser.Guild);
 
+                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var embed = GetPunishmentEmbed(punishment, discordUser);
+                await logChannel.SendMessageAsync(embed: embed);
+            }
+            catch (Exception) {}
+        }
+
+        private static SocketTextChannel ValidateLogChannel(Guild guild, SocketGuild socketGuild)
+        {           
             var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuildUser.Guild.GetTextChannel(logChannelId);
-            if (logChannel is null) return;
-            
-            var instigator = socketGuildUser.Guild.GetUser(punishment.InstigatorID);
+            var logChannel = socketGuild.GetTextChannel(logChannelId);
+            if (logChannel is null) 
+                throw new InvalidOperationException("Log channel cannot be null.");
 
-            var embed = new EmbedBuilder();
-            embed.WithTitle($"Warn");
-            embed.AddField("User", socketGuildUser.Mention, true);
-            embed.AddField("Reason", punishment.Reason);
-            embed.AddField("By", instigator.Mention ?? "N/A");
-            embed.WithColor(Color.DarkPurple);
+            return logChannel;
+        }
+
+        private static Embed GetPunishmentEmbed(Punishment punishment, SocketGuildUser discordUser)
+        {
+            var instigator = discordUser.Guild.GetUser(punishment.InstigatorID);
+
+            return new EmbedBuilder()
+                .WithTitle(punishment.Type.ToString().ToSentenceCase())
+                .AddField("User", discordUser.Mention, true)
+                .AddField("Reason", punishment.Reason, true)
+                .AddField("By", instigator.Mention ?? "N/A")
+                .WithColor(Color.DarkPurple)
+                .Build();
+        }
+
+        private static Embed GetMessageDeletedEmbed(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel, string reason)
+        {
+            return new EmbedBuilder()
+                .WithTitle("Message Deleted")
+                .AddField("User", message.Value.Author.Mention, true)
+                .AddField("Message", $"{message.Value.Content.ToString()}", true)
+                .AddField("Reason", $"{reason}", true)
+                .AddField("Channel", $"{(channel as SocketTextChannel).Mention}", true)
+                .WithFooter($"Message ID: {message.Value.Id}")
+                .WithColor(Color.DarkPurple)
+                .WithCurrentTimestamp()
+                .Build();
         }
     }
 }

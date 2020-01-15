@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using Discord.Rest;
 using System.Collections.Generic;
+using System;
 
 namespace Bot3PG.Modules.Moderation
 {
@@ -23,14 +24,16 @@ namespace Bot3PG.Modules.Moderation
         [RequireUserPermission(GuildPermission.KickMembers), RequireBotPermission(GuildPermission.KickMembers)]
         public async Task KickUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
         {
-            var user = await Users.GetAsync(target);
-            if (target.GuildPermissions.Administrator)
+            try
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Admins can't be kicked.", Color.Red));
-                return;
+                var user = await Users.GetAsync(target);
+                if (target.GuildPermissions.Administrator)
+                    throw new InvalidOperationException($"Admins can't be kicked.");
+                
+                await user.KickAsync(reason, Context.User);
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Kicked {target.Mention} - `{reason}`.", Color.Orange));                
             }
-            await user.KickAsync(reason, Context.User);
-            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Kicked {target.Mention} - `{reason}`.", Color.Orange));
+            catch (Exception) {}
         }
 
         [Command("Ban")]
@@ -81,14 +84,13 @@ namespace Bot3PG.Modules.Moderation
             await Context.Guild.RemoveBanAsync(targetId);
             await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Unbanned {restBan.User.Mention} - `{reason}`.", Color.Orange));
             if (!restBan.User.IsBot)
-            {
-                await restBan.User.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed(ModuleName, $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
-            }
+                await restBan.User.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed(ModuleName, 
+                    $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
         }
 
         [Command("Mute")]
         [RequireUserPermission(GuildPermission.MuteMembers), RequireBotPermission(GuildPermission.MuteMembers)]
-        [Summary("Mute a user's voice and chat [with reason] ")]
+        [Summary("Mute a user's voice and chat [with reason]")]
         public async Task MuteUser(SocketGuildUser target, string duration = "1d", [Remainder] string reason = "No reason provided.")
         {
             var user = await Users.GetAsync(target) ?? new GuildUser(target);
@@ -152,51 +154,52 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Display target user details"), Remarks("Actions: reset")]
         public async Task Account(SocketGuildUser target = null, [Remainder] string action = "")
         {
-            target ??= Context.User as SocketGuildUser;
-
-            var user = await Users.GetAsync(target);
-            if (action == "reset")
+            try
             {
-                if (target is null)
+                target ??= Context.User as SocketGuildUser;
+
+                var user = await Users.GetAsync(target);
+                if (action == "reset")
                 {
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User not found", Color.Red));
-                    return;
+                    if (target is null)
+                        throw new InvalidOperationException("User not found");
+                    else
+                    {
+                        await Users.ResetAsync(target);
+                        await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
+                        return;
+                    }
                 }
-                else
+                
+                var embed = new EmbedBuilder();
+                embed.ThumbnailUrl = target.GetAvatarUrl();
+                embed.Color = Color.Orange;
+                embed.WithTitle($"**{target.Username}**");
+                embed.AddField("Warnings", user.Status.WarningsCount, inline: true);
+
+                embed.AddField("Is Banned", user.Status.IsBanned, inline: true);
+                if (user.Status.IsBanned)
                 {
-                    await Users.ResetAsync(target);
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
-                    return;
+                    var ban = user.Status.Bans.Last();
+                    embed.AddField("Ban Reason", ban.Reason, inline: true);
+                    embed.AddField("Start of Ban", ban.Start, inline: true);
+                    embed.AddField("End of Ban", ban.End, inline: true);
                 }
-            }
-            
-            var embed = new EmbedBuilder();
-            embed.ThumbnailUrl = target.GetAvatarUrl();
-            embed.Color = Color.Orange;
-            embed.WithTitle($"**{target.Username}**");
-            embed.AddField("Warnings", user.Status.WarningsCount, inline: true);
 
-            embed.AddField("Is Banned", user.Status.IsBanned, inline: true);
-            if (user.Status.IsBanned)
-            {
-                var ban = user.Status.Bans.Last();
-                embed.AddField("Ban Reason", ban.Reason, inline: true);
-                embed.AddField("Start of Ban", ban.Start, inline: true);
-                embed.AddField("End of Ban", ban.End, inline: true);
-            }
+                embed.AddField("Is Muted", user.Status.IsMuted, inline: true);
+                if (user.Status.IsMuted)
+                {
+                    var mute = user.Status.Mutes.Last();
+                    embed.AddField("Mute Reason", mute.Reason, inline: true);
+                    embed.AddField("Start of Mute", mute.Start, inline: true);
+                    embed.AddField("End of Mute", mute.End, inline: true);
+                }
 
-            embed.AddField("Is Muted", user.Status.IsMuted, inline: true);
-            if (user.Status.IsMuted)
-            {
-                var mute = user.Status.Mutes.Last();
-                embed.AddField("Mute Reason", mute.Reason, inline: true);
-                embed.AddField("Start of Mute", mute.Start, inline: true);
-                embed.AddField("End of Mute", mute.End, inline: true);
+                var userInCooldown = await user.XP.GetXPCooldown();
+                embed.AddField("In XP Cooldown", userInCooldown, inline: true);
+                await ReplyAsync(embed);                
             }
-
-            var userInCooldown = await user.XP.GetXPCooldown();
-            embed.AddField("In XP Cooldown", userInCooldown, inline: true);
-            await ReplyAsync(embed);
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Clear"), Alias("Purge")]

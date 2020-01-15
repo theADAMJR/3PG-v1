@@ -15,7 +15,7 @@ namespace Bot3PG.Data
 
         static Guilds()
         {
-            db = new DatabaseManager();
+            db = new DatabaseManager(Global.DatabaseConfig);
 
             var collections = db.Database.ListCollectionNames().ToList();
             if (!collections.Any(c => c == guildCollection))

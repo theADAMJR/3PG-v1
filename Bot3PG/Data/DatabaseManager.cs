@@ -21,13 +21,11 @@ namespace Bot3PG.Data
         public MongoClient MongoClient { get; private set; }
         public IMongoDatabase Database { get; private set; }
 
-        public DatabaseManager() => InitializeDB();
+        public DatabaseManager(Config.DatabaseConfig db) => InitializeDB(db);
 
-        private void InitializeDB()
+        private void InitializeDB(Config.DatabaseConfig db)
         {
-            var db = Global.DatabaseConfig;
-
-            MongoClient = new MongoClient(/*"mongodb+srv://admin:ezYU12citiKAd6Du@test-xqwhj.azure.mongodb.net/test?retryWrites=true&w=majority"*/$"mongodb://{db.User}:{db.Password}@{db.Server}:{db.Port}/{db.AuthDatabase}");
+            MongoClient = new MongoClient($"mongodb://{db.User}:{db.Password}@{db.Server}:{db.Port}/{db.AuthDatabase}");
             Database = MongoClient.GetDatabase(db.Database);
 
             bool connected = Database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait(1000);
@@ -137,7 +135,7 @@ namespace Bot3PG.Data
             {
                 commandMirror["Commands"] = commandHelp.ToBsonDocument();
 
-                var configModules = typeof(Guild).GetProperties().Where(p => p.PropertyType.BaseType == typeof(CommandConfigModule));
+                var configModules = typeof(Guild).GetProperties().Where(p => p.PropertyType.GetInterface(nameof(IAppearsOnWebapp)) != null);
                 commandMirror["Modules"] = new BsonArray(configModules.Select(p => p.Name));
             }
             catch (Exception err) { await Debug.LogAsync("database", LogSeverity.Error, err); }

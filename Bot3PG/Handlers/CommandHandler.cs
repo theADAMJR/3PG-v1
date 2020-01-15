@@ -55,7 +55,7 @@ namespace Bot3PG.Handlers
             int position = 0;
             bool isCommand = message.HasStringPrefix(prefix, ref position);
 
-            bool userCanEarnEXP = guild.XP.Enabled || message.Author.IsBot && guild.XP.BotsCanEarnEXP;
+            bool userCanEarnEXP = guild.XP.Enabled && !message.Author.IsBot;
             if (!isCommand && userCanEarnEXP)
             {
                 Leveling.ValidateForEXPAsync(socketMessage as SocketUserMessage, guild);

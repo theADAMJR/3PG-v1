@@ -36,7 +36,7 @@ namespace Bot3PG.Data.Structs
         public SocialModule Social { get; private set; } = new SocialModule();
 
         [Config("Earn EXP and reward user's activity ✨")]
-        public XPModule XP { get; private set; } = new XPModule();
+        public XPModule XP { get; internal set; } = new XPModule();
 
         [Config("Configure your server's dashboard ⚙")]
         public SettingsModule Settings { get; private set; } = new SettingsModule();
@@ -45,8 +45,8 @@ namespace Bot3PG.Data.Structs
 
         public Guild(SocketGuild socketGuild) 
         {
-            if (socketGuild is null) 
-                throw new ArgumentNullException($"{nameof(socketGuild)} cannot be null!");
+            if (socketGuild is null)
+                throw new ArgumentNullException(nameof(socketGuild));
             
             _id = socketGuild.Id; 
             ID = socketGuild.Id; 
@@ -236,7 +236,7 @@ namespace Bot3PG.Data.Structs
             // public SkipType SkipTrackType { get; private set; }
         }
 
-        public class SocialModule : CommandConfigModule
+        public class SocialModule : ConfigModule, IAppearsOnWebapp
         {
             public override bool Enabled { get; set; } = false;
             //[Config("Know when your favourite YouTuber's post new content")]
@@ -281,9 +281,6 @@ namespace Bot3PG.Data.Structs
             
             [Config("A cooldown given to users after being muted")]
             public int MuteCooldown { get; set; } = 300;
-
-            [Config("Whether bots can earn EXP")]
-            public bool BotsCanEarnEXP { get; set; }
 
             [Config("Text channels where EXP cannot be earned"), List(typeof(SocketTextChannel))]
             [BsonRepresentation(BsonType.String)]
@@ -346,7 +343,7 @@ namespace Bot3PG.Data.Structs
                 public bool IsLeaderboardPublic { get; set; } = true;
 
                 [Config("Whether this server appears on the global leaderboard")]
-                public bool AppearOnGlobalLeaderboard { get; set; } = false;
+                public bool AppearOnGlobalLeaderboard { get; set; } = true;
             }
         }
     }
