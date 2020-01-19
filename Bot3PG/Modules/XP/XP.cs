@@ -5,7 +5,9 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using System;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.XP
@@ -53,7 +55,7 @@ namespace Bot3PG.Modules.XP
         }
 
         [Command("Leaderboard")]
-        [Summary("Display the user's with the highest EXP in a server")]
+        [Summary("Display the users with the highest EXP in a server")]
         [RequireUserPermission(GuildPermission.SendMessages)]
         public async Task Leaderboard(int page = 1)
         {
@@ -94,6 +96,29 @@ namespace Bot3PG.Modules.XP
                 await ReplyAsync(embed);
             }
             catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+        }
+
+        [Command("Profile"), Alias("GXP")]
+        [Summary("Display a user's global XP card")]
+        [RequireUserPermission(GuildPermission.SendMessages)]
+        public async Task GlobalProfile(SocketUser target = null)
+        {
+            target ??= Context.User;
+            string imageURL = $"{Global.Config.WebappLink}/api/users/{target.Id}/xp-card";
+
+            var stream = DownloadData(imageURL);
+            await Context.Channel.SendFileAsync(stream, "xp-card.png");
+        }
+
+        private Stream DownloadData(string url)
+        {
+            try
+            {
+                var req = WebRequest.Create(url);
+                var res = req.GetResponse();
+                return res.GetResponseStream();
+            }
+            catch (Exception) { throw new Exception("There was a problem downloading the image file."); }
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Bot3PG.Data
 
         static Users()
         {
-            db = new Lazy<DatabaseManager>().Value;
+            db = new DatabaseManager(Global.Config.DB);
 
             var collections = db.Database.ListCollectionNames().ToList();
             

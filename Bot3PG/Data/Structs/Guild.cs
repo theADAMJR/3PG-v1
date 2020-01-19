@@ -200,6 +200,7 @@ namespace Bot3PG.Data.Structs
                 public bool SpamNotification { get; set; } = true;
 
                 [Config("The message content that 3PG should disallow"), List(typeof(FilterType))]
+                [BsonRepresentation(BsonType.String)]
                 public FilterType[] Filters { get; set; } = { FilterType.BadWords, FilterType.BadLinks, FilterType.MassMention, FilterType.DuplicateMessage };
                 
                 [Config("Roles that are not affected by auto moderation"), List(typeof(SocketRole))]

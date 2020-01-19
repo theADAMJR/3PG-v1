@@ -30,7 +30,7 @@ namespace Bot3PG.Testing
             await Bot.LoginAsync(TokenType.Bot, GlobalConfig.Config.Token);
             await Task.Delay(1000); // wait for bot to login*/
 
-            DiscordGuild = Global.Client.GetGuild(53//1196495584821314);
+            // DiscordGuild = Global.Client.GetGuild(531196495584821314);
             // System.Console.WriteLine(Bot.Guilds.Count);
             // DiscordUser = DiscordGuild.CurrentUser;
 

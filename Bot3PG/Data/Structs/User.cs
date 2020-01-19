@@ -12,7 +12,6 @@ namespace Bot3PG.Data.Structs
         [BsonRepresentation(BsonType.String)]
         [BsonId] public ulong ID { get; private set; }
 
-        public string BannerURL { get; set; } = "";
         public int MessageCount { get; set; }
 
         public User(SocketUser socketUser) { _id = socketUser.Id; ID = socketUser.Id; }
