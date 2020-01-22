@@ -13,10 +13,12 @@ The Creator
 ### ⚙ Modular Dashboard
 
 Customize your own easy to use dashboard to meet your specific needs.
+![Dashboard](https://3pg.xyz/img/dashboard.png "Dashboard")
 
 ### 🎵 High Quality Music
 
 Search YouTube for music to play, with lots of music commands on Discord!
+![Music](https://3pg.xyz/img/music.gif "Music")
 
 ### ✨ Levels and XP
 
@@ -26,22 +28,23 @@ Level up your Discord server, with 3PG's XP system! Customize your own global XP
 ### ⏺ Live Leaderboards
 
 Compete against other servers or all players for the highest spot in your server or in all servers!
+![Leaderboards](https://3pg.xyz/img/leaderboard.gif "Leaderboards")
 
 ### 🔨 Ban Panel
 
 View a log of all punishments on your server. See every ban, kick, mute, warn and more!
+![Leaderboards](https://3pg.xyz/img/banPanel.png "Leaderboards")
 
 #### 🤖 More to come
 
 That's not all! Suggest features at -> [Support](https://3pg.xyz) and help 3PG become the best bot it can be
 
 ***Useful Links***
-[Webapp](https://3pg.xyz)
-[Commands](https://3pg.xyz/commands)
-[Dashboard](https://3pg.xyz/dashboard)
-[Global Leaderboard](https://3pg.xyz/leaderboard)
-[Support](https://3pg.xyz/support)
-[Invite Link](https://3pg.xyz/invite)
-[Edit XP Card](https://3pg.xyz/profile)
 
-![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
+- [Webapp](https://3pg.xyz)
+- [Commands](https://3pg.xyz/commands)
+- [Dashboard](https://3pg.xyz/dashboard)
+- [Global Leaderboard](https://3pg.xyz/leaderboard)
+- [Support](https://3pg.xyz/support)
+- [Invite Link](https://3pg.xyz/invite)
+- [Edit XP Card](https://3pg.xyz/profile)
