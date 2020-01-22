@@ -13,26 +13,31 @@ The Creator
 ### ⚙ Modular Dashboard
 
 Customize your own easy to use dashboard to meet your specific needs.
+
 ![Dashboard](https://3pg.xyz/img/dashboard.png "Dashboard")
 
 ### 🎵 High Quality Music
 
 Search YouTube for music to play, with lots of music commands on Discord!
+
 ![Music](https://3pg.xyz/img/music.gif "Music")
 
 ### ✨ Levels and XP
 
 Level up your Discord server, with 3PG's XP system! Customize your own global XP Card, with millions of unique combinations.
+
 ![XP Cards](https://im7.ezgif.com/tmp/ezgif-7-5cbf92d6a7c8.gif "XP Cards")
 
 ### ⏺ Live Leaderboards
 
 Compete against other servers or all players for the highest spot in your server or in all servers!
+
 ![Leaderboards](https://3pg.xyz/img/leaderboard.gif "Leaderboards")
 
 ### 🔨 Ban Panel
 
 View a log of all punishments on your server. See every ban, kick, mute, warn and more!
+
 ![Leaderboards](https://3pg.xyz/img/banPanel.png "Leaderboards")
 
 #### 🤖 More to come
