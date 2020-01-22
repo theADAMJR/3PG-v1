@@ -161,6 +161,9 @@ namespace Bot3PG.Data.Structs
             [Config("Reset all user data on this server if they get banned")]
             public bool ResetBannedUsers { get; private set; }
 
+            [Config("Whether to message users when they are punished")]
+            public bool DMPunishedUsers { get; private set; }
+
             public class AutoModerationSubModule : Submodule
             {
                 [Config("Use a list of predefined explicit words for auto detection")]

@@ -55,7 +55,8 @@ namespace Bot3PG.Data.Structs
 
                 await DiscordUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
 
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                if (guild.Moderation.DMPunishedUsers)
+                    await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
                         $"You have been banned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));              
             }
             catch (Exception) {}
@@ -79,8 +80,9 @@ namespace Bot3PG.Data.Structs
                 if (Muted != null)
                     Muted(this, ban);
 
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation",
-                    $"You have been muted from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
+                if (guild.Moderation.DMPunishedUsers)
+                    await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation",
+                        $"You have been muted from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
             catch (Exception) { }
             finally { await Users.Save(this); }
@@ -100,7 +102,8 @@ namespace Bot3PG.Data.Structs
                 if (Muted != null) 
                     Unmuted(this, null);
 
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                if (guild.Moderation.DMPunishedUsers)
+                    await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
                     $"You have been unmuted from {DiscordUser.Guild.Name} for '{reason}'", Color.Green));
             }
             catch (Exception) {}
@@ -114,7 +117,8 @@ namespace Bot3PG.Data.Structs
 
             try 
             { 
-                if (!DiscordUser.IsBot)
+                var guild = await Guilds.GetAsync(DiscordUser.Guild);
+                if (guild.Moderation.DMPunishedUsers)
                     await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
                         $"You have been kicked from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
 
@@ -132,10 +136,12 @@ namespace Bot3PG.Data.Structs
             try
             {
                 if (Muted != null) 
-                    Warned(this, warn); 
+                   Warned(this, warn); 
                     
-                await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
-                    $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));               
+                var guild = await Guilds.GetAsync(DiscordUser.Guild);
+                if (guild.Moderation.DMPunishedUsers)
+                    await DiscordUser.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Moderation", 
+                        $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));               
             }
             catch (Exception) {}
             finally { await Users.Save(this); }

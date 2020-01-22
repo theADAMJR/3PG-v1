@@ -14,6 +14,16 @@ namespace Bot3PG.Data.Structs
 
         public int MessageCount { get; set; }
 
+        public XPCardSettings XPCard { get; set; } = new XPCardSettings();
+
+        public class XPCardSettings
+        {
+            public string BackgroundURL { get; set; }
+            public string UsernameColour { get; set; }
+            public string EXPColour { get; set; }
+            public string RankColour { get; set; }
+        }
+
         public User(SocketUser socketUser) { _id = socketUser.Id; ID = socketUser.Id; }
     }
 }

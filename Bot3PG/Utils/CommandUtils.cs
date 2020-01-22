@@ -6,24 +6,24 @@ namespace Bot3PG.Utils
 {
     public static class CommandUtils
     {
-        public static TimeSpan ParseDuration(string duration)
+        public static TimeSpan ParseDuration(string str)
         {
-            if (string.IsNullOrEmpty(duration) || duration == "-1" || duration.ToLower() == "forever") return TimeSpan.MaxValue;
+            if (string.IsNullOrEmpty(str) || str == "-1" || str.ToLower() == "forever") return TimeSpan.MaxValue;
 
-            var allLetters = duration.Where(c => char.IsLetter(c));
+            var allLetters = str.Where(c => char.IsLetter(c));
             string letters = string.Concat(allLetters);
 
-            var allNumbers = duration.Where(c => char.IsNumber(c));
-            string numberString = string.Concat(allNumbers);
+            var allNumbers = str.Where(c => char.IsNumber(c));
+            string numbers = string.Concat(allNumbers);
 
-            int.TryParse(numberString, out int time);
+            int.TryParse(numbers, out int time);
 
             switch (letters)
             {
                 case string word when (word == "y" || word == "year"):
                     return TimeSpan.FromDays(365 * time);
                 case string word when (word == "mo" || word == "month"):
-                    return TimeSpan.FromDays(28 * time);
+                    return TimeSpan.FromDays(30 * time);
                 case string word when (word == "w" || word == "week"):
                     return TimeSpan.FromDays(7 * time);
                 case string word when (word == "d" || word == "day"):
@@ -40,6 +40,9 @@ namespace Bot3PG.Utils
 
         public static string SetGuildVariables(string text, SocketGuildUser socketGuildUser)
         {
+            if (socketGuildUser is null)
+                throw new ArgumentNullException(nameof(socketGuildUser));
+
             text = text.Replace("[NICKNAME]", socketGuildUser.Nickname);
             text = text.Replace("[OWNER]", $"{socketGuildUser.Guild.Owner}");
             text = text.Replace("[USER]", socketGuildUser.Mention);

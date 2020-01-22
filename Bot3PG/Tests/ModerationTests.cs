@@ -5,13 +5,14 @@ using Bot3PG.Modules.Moderation;
 using Discord;
 using Discord.WebSocket;
 using NUnit.Framework;
+using Moq;
 
-namespace Bot3PG.Testing
+namespace Bot3PG.Tests
 {
     // MethodName_StateUnderTest_ExpectedBehavior
     // e.g. WithdrawMoney_InvalidAccount_ExceptionThrown
 
-    public class AutoTests
+    public class AutoTests : TestModule
     {
         public GuildUser CurrentUser { get; private set; }
         public Guild CurrentGuild { get; private set; }
@@ -38,7 +39,7 @@ namespace Bot3PG.Testing
             CurrentGuild = await Guilds.GetAsync(DiscordGuild);
         }
 
-        [Test]
+        // [Test]
         public void GlobalConfig_Initialize_ReadsFromFile()
         {
             Assert.AreNotEqual(GlobalConfig.Config?.Token, null);
@@ -50,7 +51,7 @@ namespace Bot3PG.Testing
             Assert.AreEqual(531196495584821314, DiscordGuild.Id);
         }
 
-        [Test]
+        // [Test]
         public void GetContentValidation_Explicit_Invalidated()
         {
             var validation = Auto.GetContentValidation(CurrentGuild, "nig", CurrentUser);
@@ -65,7 +66,7 @@ namespace Bot3PG.Testing
             
         }
 
-        [Test]
+        // [Test]
         public async Task ValidateLogChannel_Null_ExceptionThrown()
         {
             // await Validate
