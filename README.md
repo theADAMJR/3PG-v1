@@ -1,9 +1,9 @@
-# Bot3PG
+# Bot 3PG
 The Creator
 
-# 3PG
-
 ## The highly customizable Discord bot
+
+... now with over 41 customizable commands!
 
 **Level up your server with Music Commands, Twitch Alerts, Staff Logs**
 **Ban Panel, Live Leaderboards, EXP Levels, Auto-moderation, Ruleboxes… and much more!**
@@ -21,6 +21,7 @@ Search YouTube for music to play, with lots of music commands on Discord!
 ### ✨ Levels and XP
 
 Level up your Discord server, with 3PG's XP system! Customize your own global XP Card, with millions of unique combinations.
+![XP Cards](https://im7.ezgif.com/tmp/ezgif-7-5cbf92d6a7c8.gif "XP Cards")
 
 ### ⏺ Live Leaderboards
 
@@ -42,3 +43,5 @@ That's not all! Suggest features at -> [Support](https://3pg.xyz) and help 3PG b
 [Support](https://3pg.xyz/support)
 [Invite Link](https://3pg.xyz/invite)
 [Edit XP Card](https://3pg.xyz/profile)
+
+![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
