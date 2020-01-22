@@ -1,9 +1,12 @@
 # Bot 3PG
 The Creator
 
+# 3PG
+
 ## The highly customizable Discord bot
 
 ... now with over 41 customizable commands!
+Type */help* to get started ...
 
 **Level up your server with Music Commands, Twitch Alerts, Staff Logs**
 **Ban Panel, Live Leaderboards, EXP Levels, Auto-moderation, Ruleboxes… and much more!**
