@@ -1,9 +1,7 @@
 # Bot 3PG
 The Creator
 
-# 3PG
-
-## The highly customizable Discord bot
+# 3PG- The highly customizable Discord bot
 
 ... now with over 41 customizable commands!
 Type */help* to get started ...
@@ -13,37 +11,37 @@ Type */help* to get started ...
 
 *Your Customizable Dashboard*: [Webapp link](https://3pg.xyz)
 
-### ⚙ Modular Dashboard
+## ⚙ Modular Dashboard
 
 Customize your own easy to use dashboard to meet your specific needs.
 
 ![Dashboard](https://3pg.xyz/img/dashboard.png "Dashboard")
 
-### 🎵 High Quality Music
+## 🎵 High Quality Music
 
 Search YouTube for music to play, with lots of music commands on Discord!
 
 ![Music](https://3pg.xyz/img/music.gif "Music")
 
-### ✨ Levels and XP
+## ✨ Levels and XP
 
 Level up your Discord server, with 3PG's XP system! Customize your own global XP Card, with millions of unique combinations.
 
-![XP Cards](https://im7.ezgif.com/tmp/ezgif-7-5cbf92d6a7c8.gif "XP Cards")
+![XP Cards](https://3pg.xyz/img/xpCards.gif "XP Cards")
 
-### ⏺ Live Leaderboards
+## ⏺ Live Leaderboards
 
 Compete against other servers or all players for the highest spot in your server or in all servers!
 
 ![Leaderboards](https://3pg.xyz/img/leaderboard.gif "Leaderboards")
 
-### 🔨 Ban Panel
+## 🔨 Ban Panel
 
 View a log of all punishments on your server. See every ban, kick, mute, warn and more!
 
 ![Leaderboards](https://3pg.xyz/img/banPanel.png "Leaderboards")
 
-#### 🤖 More to come
+### 🤖 More to come
 
 That's not all! Suggest features at -> [Support](https://3pg.xyz) and help 3PG become the best bot it can be
 
