@@ -1,7 +1,7 @@
 # Bot 3PG
 The Creator
 
-# 3PG- The highly customizable Discord bot
+# 3PG - The highly customizable Discord bot
 
 ... now with over 41 customizable commands!
 Type */help* to get started ...
@@ -39,7 +39,7 @@ Compete against other servers or all players for the highest spot in your server
 
 View a log of all punishments on your server. See every ban, kick, mute, warn and more!
 
-![Leaderboards](https://3pg.xyz/img/banPanel.png "Leaderboards")
+![Ban Panel](https://3pg.xyz/img/banPanel.png "Ban Panel")
 
 ### 🤖 More to come
 
