@@ -12,6 +12,6 @@ namespace Bot3PG.Modules
         public byte B => Color.B;
 
         public ColorAttribute(byte r, byte g, byte b) => Color = new Color(r, g, b);
-        public ColorAttribute(Color color) => Color = new Color(color.R, color.G, color.B);
+        public ColorAttribute(uint hexColor) => Color = new Color(hexColor);
     }
 }

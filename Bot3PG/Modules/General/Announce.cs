@@ -9,53 +9,40 @@ namespace Bot3PG.Modules.General
 {
     public static class Announce
     {
-        public static async Task AnnounceUserJoin(SocketGuildUser socketGuildUser)
+        public static async Task AnnounceUserJoin(SocketGuildUser guildUser)
         {
-            if (socketGuildUser.IsBot) return;
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
+            if (guildUser.IsBot) return;
 
-            var random = new Random();
+            var guild = await Guilds.GetAsync(guildUser.Guild);
             var announce = guild.General.Announce;
-
-            int randomIndex = random.Next(0, announce.WelcomeMessages.Length);
 
             var embed = new EmbedBuilder();
 
-            string initializedMessage = CommandUtils.SetGuildVariables(announce.WelcomeMessages[randomIndex], socketGuildUser);
-            embed.AddField($"**Welcome**", initializedMessage);
-            embed.WithColor(Color.DarkGreen);
+            var socketGuild = guildUser.Guild;
+            var channel = socketGuild.GetTextChannel(announce.Welcomes.Channel) ?? socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
 
-            var socketGuild = socketGuildUser.Guild;
-            var channel = socketGuild.GetTextChannel(announce.Channel) ?? socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-            if (channel != null && !guild.General.Announce.DMNewUsers)
-                await channel.SendMessageAsync(embed: embed.Build());
-            else if (guild.General.Announce.DMNewUsers)
-                await socketGuildUser.SendMessageAsync(embed: embed.Build());
+            string imageURL = $"{Global.Config.WebappLink}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/welcome";
+            var stream = CommandUtils.DownloadData(imageURL);
+            
+            if (channel != null && !announce.DMNewUsers)
+                await (channel as ISocketMessageChannel).SendFileAsync(stream, "welcome.png");
+            else if (announce.DMNewUsers)
+                await guildUser.SendFileAsync(stream, "welcome.png");
         }
 
-        public static async Task AnnounceUserLeft(SocketGuildUser socketGuildUser)
+        public static async Task AnnounceUserLeft(SocketGuildUser guildUser)
         {
-            var user = await Users.GetAsync(socketGuildUser);
-            if (socketGuildUser as SocketUser == Global.Client.CurrentUser || user.Status.IsBanned) return;
+            var user = await Users.GetAsync(guildUser);
+            if (guildUser as SocketUser == Global.Client.CurrentUser || user.Status.IsBanned) return;
 
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var announce = guild.General.Announce;
+            var guild = await Guilds.GetAsync(guildUser.Guild);
 
-            var random = new Random();
-            int randomIndex = random.Next(0, announce.GoodbyeMessages.Length);
+            string imageURL = $"{Global.Config.WebappLink}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/goodbye";
+            var stream = CommandUtils.DownloadData(imageURL);
 
-            var embed = new EmbedBuilder();
-
-            string initializedMessage = CommandUtils.SetGuildVariables(announce.GoodbyeMessages[randomIndex], socketGuildUser);
-            embed.AddField($"**Goodbye**", initializedMessage);            
-            embed.WithColor(Color.DarkRed);
-
-            var socketGuild = socketGuildUser.Guild;
-            var channel = socketGuild.GetTextChannel(announce.Channel) ?? socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
+            var channel = guildUser.Guild.GetTextChannel( guild.General.Announce.Goodbyes.Channel) ?? guildUser.Guild.SystemChannel ?? guildUser.Guild.DefaultChannel;
             if (channel != null)
-            {
-                await channel.SendMessageAsync("", embed: embed.Build());
-            }
+                await guildUser.SendFileAsync(stream, "goodbye.png");
         }
     }
 }

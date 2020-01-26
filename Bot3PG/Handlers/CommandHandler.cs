@@ -35,10 +35,9 @@ namespace Bot3PG.Handlers
             commandHelp = new CommandHelp();
         }
 
-
         public async Task HandleCommandAsync(SocketMessage socketMessage)
         {
-            if (!(socketMessage is SocketUserMessage message)  || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
+            if (!(socketMessage is SocketUserMessage message) || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
 
             var guildAuthor = socketMessage.Author as SocketGuildUser;
             if (guildAuthor is null) return;
@@ -47,7 +46,7 @@ namespace Bot3PG.Handlers
             try { guild = await Guilds.GetAsync(guildAuthor.Guild); }
             catch
             {
-                await socketMessage.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Database", "Server configuration corrupted. Please type /reset to reset it."));
+                await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Database", "Server configuration corrupted. Please type /reset to reset it."));
                 return;
             }
             var prefix = guild?.General.CommandPrefix ?? "/";
@@ -58,61 +57,73 @@ namespace Bot3PG.Handlers
             bool userCanEarnEXP = guild.XP.Enabled && !message.Author.IsBot;
             if (!isCommand && userCanEarnEXP)
             {
-                Leveling.ValidateForEXPAsync(socketMessage as SocketUserMessage, guild);
+                Leveling.ValidateForEXPAsync(message, guild);
                 return;
             }
             if (message.Author.IsBot) return;
-            
-            var context = new SocketCommandContext(Global.Client, socketMessage as SocketUserMessage);
-            
-            var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(id => id == message.Channel.Id);
-            if (channelIsBlacklisted) return;
-            
-            CommandInfo command;
-            try { command = commands.Search(context, position).Commands.FirstOrDefault().Command; }
-            catch (ArgumentNullException) { return; }
 
-            try { ValidateCommand(command, guild, guildAuthor); }
-            catch (InvalidOperationException ex) 
-            { 
+            var context = new CustomCommandContext(Global.Client, message);
+            context.CurrentGuild = guild;
+
+            CommandValidation validation;
+            try { validation = ValidateCommandExists(position, context); }
+            catch (ArgumentNullException) { return; }
+            var command = validation.Command;
+
+            try { ValidateCommand(command, guild, message); }
+            catch (InvalidOperationException ex)
+            {
                 await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Commands", ex.Message));
                 return;
             }
 
-            var execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best);
-            if (!execution.Result.IsSuccess)
+            Task<IResult> execution = default;
+            try { execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best); }
+            catch (Exception) { await HandleFailedExecution(message, prefix, execution); } 
+        }
+
+        private CommandValidation ValidateCommandExists(int position, SocketCommandContext context)
+        {
+            var searchResult = commands.Search(context, position);
+            var command = searchResult.Commands.FirstOrDefault().Command;
+            return new CommandValidation { Search = searchResult, Command = command };
+        }
+
+        private async Task HandleFailedExecution(SocketUserMessage message, string prefix, Task<IResult> execution)
+        {
+            switch (execution.Result.Error)
             {
-                switch (execution.Result.Error)
-                {
-                    case CommandError.BadArgCount:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❌ Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
-                        break;
-                    case CommandError.Exception:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🤔 Something went wrong", $"{execution.Result.ErrorReason}"));
-                        break;
-                    case CommandError.ParseFailed:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("🚫 Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
-                        break;
-                    case CommandError.UnknownCommand:
-                        var errorMessage = CorrectCommandUsage(message, prefix) != null ? 
-                            $"**Did you mean** " + CorrectCommandUsage(message, prefix) + "?" : $"No similar commands found. Type `{prefix}help` for a list of commands.";
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❓ Unknown command", errorMessage, Color.Red));
-                        break;
-                    case CommandError.ObjectNotFound:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("👀 Not found", $"{execution.Result.ErrorReason}"));
-                        break;
-                    case CommandError.UnmetPrecondition:
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🔒 Insufficient permissions", $"**Required permissions:** {RequiredPermissions(message)}"));
-                        break;
-                    default: // TODO - if in debug mode
-                        await context.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Error", $"{execution.Exception.Message} \n**Source**: {execution.Exception.StackTrace}"));
-                        break;
-                }
+                case CommandError.BadArgCount:
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❌ Incorrect usage", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
+                    break;
+                case CommandError.Exception:
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🤔 Something went wrong", $"{execution.Result.ErrorReason}"));
+                    break;
+                case CommandError.ParseFailed:
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("🚫 Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
+                    break;
+                case CommandError.UnknownCommand:
+                    var errorMessage = CorrectCommandUsage(message, prefix) != null ?
+                        $"**Did you mean** " + CorrectCommandUsage(message, prefix) + "?" : $"No similar commands found. Type `{prefix}help` for a list of commands.";
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❓ Unknown command", errorMessage, Color.Red));
+                    break;
+                case CommandError.ObjectNotFound:
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("👀 Not found", $"{execution.Result.ErrorReason}"));
+                    break;
+                case CommandError.UnmetPrecondition:
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🔒 Insufficient permissions", $"**Required permissions:** {RequiredPermissions(message)}"));
+                    break;
+                default: // TODO - if in debug mode
+                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Error", $"{execution.Exception.Message} \n**Source**: {execution.Exception.StackTrace}"));
+                    break;
             }
         }
 
-        protected void ValidateCommand(CommandInfo command, Guild guild, SocketGuildUser instigator)
+        protected void ValidateCommand(CommandInfo command, Guild guild, SocketUserMessage message)
         {
+            var channelIsBlacklisted = guild.General.BlacklistedChannels.Any(id => id == message.Channel.Id);
+            if (channelIsBlacklisted) return;
+
             var module = guild.GetType().GetProperty(command.Module.Name)?.GetValue(guild) as CommandConfigModule;
             if (module is null) return;
             else if (!module.Enabled) 
@@ -122,7 +133,8 @@ namespace Bot3PG.Handlers
             if (commandOverride != null && !commandOverride.Enabled)
                 throw new InvalidOperationException("Command is disabled.");
             
-            bool isAuthorized = commandOverride is null || instigator.GuildPermissions.Has(commandOverride.Permission);
+            var guildAuthor = message.Author as SocketGuildUser;
+            bool isAuthorized = commandOverride is null || guildAuthor.GuildPermissions.Has(commandOverride.Permission);
             if (!isAuthorized) 
                 throw new InvalidOperationException("Insufficient permissions.");
         }

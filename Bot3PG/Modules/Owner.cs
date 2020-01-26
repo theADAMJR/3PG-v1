@@ -56,10 +56,10 @@ namespace Bot3PG.CommandModules
             await message.AddReactionsAsync(new []{ new Emoji("✅"), new Emoji("❌")});
         }
 
-        [Command("Update")]
+        [Command("Update Guilds")]
         [Summary("Update all server documents to the latest version")]
         [RequireOwner]
-        public async Task Update()
+        public async Task UpdateGuilds()
         {
             int count = 0;
             int failedCount = 0;
@@ -76,6 +76,31 @@ namespace Bot3PG.CommandModules
                 catch (Exception) { failedCount++; }
             }
             await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated `{count}`/`{count + failedCount}` servers to the latest version!", Color.Purple));
+        }
+
+        [Command("Update Users")]
+        [Summary("Update all server documents to the latest version")]
+        [RequireOwner]
+        public async Task UpdateUsers()
+        {
+            int count = 0;
+            int failedCount = 0;
+            var allGuildUsers = Context.Client.Guilds.Select(g => g.Users);
+            foreach (var guildUsers in allGuildUsers)
+            {
+                foreach (var guildUser in guildUsers)
+                {
+                    try
+                    {
+                        var user = await Users.GetAsync(guildUser as SocketUser);
+                        user.Reinitialize();
+                        await Users.Save(user);
+                        count++;           
+                    }
+                    catch (Exception) { failedCount++; }
+                }
+            }
+            await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated `{count}`/`{count + failedCount}` users!", Color.Purple));
         }
 
     }

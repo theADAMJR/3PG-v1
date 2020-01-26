@@ -1,10 +1,12 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
+using Bot3PG.Utils;
 using Discord;
 using Discord.WebSocket;
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Bot3PG.Modules.Moderation
@@ -24,24 +26,13 @@ namespace Bot3PG.Modules.Moderation
                 ValidateUserNotExempt(guildAuthor, guild);
 
                 if (autoMod.SpamNotification)
-                {
-                    var messages = await message.Channel.GetMessagesAsync(25).FirstOrDefault();
-                    var userMessages = messages.Where(m => m.Author == guildAuthor && m.Content == message.Content);
-                    int messageCount = userMessages.Count(m => DateTime.Now - m.CreatedAt < TimeSpan.FromSeconds(60));
+                    await SendSpamNotification(message, guildAuthor, guild);
 
-                    if (autoMod.SpamThreshold > 0 && messageCount >= autoMod.SpamThreshold)
-                    {
-                        var reminder = await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Slow down...", 
-                            $"{message.Author.Mention}, you are sending messages too fast!", Color.Orange));
-                        await Task.Delay(4000);
-                        try { await reminder.DeleteAsync(); } // 404 => user may delete the reminder
-                        catch {}
-                    }
-                }
-
-                if (GetContentValidation(guild, message.Content, user) != null)
+                var messageValidation = GetContentValidation(guild, message.Content, user);
+                if (messageValidation != null)
                 {
-                    await PunishUser(guildAuthor, "Explicit message");
+                    var filter = guild.Moderation.Auto.Filters.FirstOrDefault(f => f.Filter == messageValidation);
+                    await PunishUser(filter.Punishment, user, messageValidation.ToString().ToSentenceCase());
                     try { await message.DeleteAsync(); } // 404 - there may be other auto mod bots -> message already deleted
                     catch {}
                     finally { await user.XP.ExtendXPCooldown(); }
@@ -50,6 +41,23 @@ namespace Bot3PG.Modules.Moderation
                 await Users.Save(user);
             }
             catch (Exception ex) { await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Auto Moderation", ex.Message)); }
+        }
+
+        private static async Task SendSpamNotification(SocketMessage message, SocketGuildUser guildAuthor, Guild guild)
+        {
+            var autoMod = guild.Moderation.Auto;
+            var messages = await message.Channel.GetMessagesAsync(25).FirstOrDefault();
+            var userMessages = messages.Where(m => m.Author == guildAuthor && m.Content == message.Content);
+            int messageCount = userMessages.Count(m => DateTime.Now - m.CreatedAt < TimeSpan.FromSeconds(60));
+
+            if (autoMod.SpamThreshold > 0 && messageCount >= autoMod.SpamThreshold)
+            {
+                var reminder = await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("Slow down...",
+                    $"{message.Author.Mention}, you are sending messages too fast!", Color.Orange));
+                await Task.Delay(4000);
+                try { await reminder.DeleteAsync(); } // 404 => user may delete the reminder
+                catch {}
+            }
         }
 
         private static void ValidateUserNotExempt(SocketGuildUser guildAuthor, Guild guild)
@@ -62,10 +70,10 @@ namespace Bot3PG.Modules.Moderation
 
         public static FilterType? GetContentValidation(Guild guild, string content, GuildUser user)
         {
-            if (content is null) return null;
+            if (string.IsNullOrEmpty(content)) return null;
 
             var autoMod = guild.Moderation.Auto;
-            bool HasFilter(FilterType filter) => autoMod.Filters.Any(f => f == filter);
+            Func<FilterType, bool> HasFilter = (FilterType filter) => autoMod.Filters.FirstOrDefault(f => f.Filter == filter) != null;
             
             if (HasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
             if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content, links: true)) return FilterType.BadLinks;
@@ -79,14 +87,17 @@ namespace Bot3PG.Modules.Moderation
 
             const int maxAtSigns = 5;
             if (HasFilter(FilterType.MassMention) && content.Count(c => c == '@') >= maxAtSigns) return FilterType.MassMention;
-            if (HasFilter(FilterType.DuplicateMessage) && content.ToLower() == user.Status.LastMessage) return FilterType.DuplicateMessage;
+            if (HasFilter(FilterType.DuplicateMessage) && content.ToLower() == user.Status.LastMessage && !string.IsNullOrEmpty(content)) return FilterType.DuplicateMessage;
+            
+            bool containsZalgo = Regex.IsMatch(content, @"([^\u0009-\u02b7\u2000-\u20bf\u2122\u0308]|(?![^aeiouy])\u0308)", RegexOptions.Multiline);
+            if (HasFilter(FilterType.Zalgo) && containsZalgo) return FilterType.Zalgo;
 
             return null;
         }
 
         public static bool ContentIsExplicit(Guild guild, string content, bool links = false)
-        {           
-            if (content is null) return false;        
+        {
+            if (string.IsNullOrEmpty(content)) return false;
 
             var autoMod = guild.Moderation.Auto;
             var badWords = BannedWords.Words;
@@ -114,49 +125,33 @@ namespace Bot3PG.Modules.Moderation
                 if (guild.Moderation.Auto.ResetNickname)
                 {
                     try { await guildUser.ModifyAsync(u => u.Nickname = guildUser.Username); }
-                    catch { }
+                    catch {}
                 }
-
                 var dmChannel = await guildUser.GetOrCreateDMChannelAsync();
-                switch (guild.Moderation.Auto.ExplicitUsernamePunishment)
-                {
-                    case PunishmentType.Ban:
-                        await user.BanAsync(TimeSpan.MaxValue, "Explicit display name", Global.Client.CurrentUser);
-                        return;
-                    case PunishmentType.Kick:
-                        await user.KickAsync("Explicit display name", Global.Client.CurrentUser);
-                        return;
-                    case PunishmentType.Mute:
-                        await user.MuteAsync(TimeSpan.MaxValue, "Explicit display name", Global.Client.CurrentUser);
-                        return;
-                    case PunishmentType.Warn:
-                        await user.WarnAsync("Explicit display name", Global.Client.CurrentUser);
-                        return;
-                }
-                await user.WarnAsync("Explicit display name", Global.Client.CurrentUser);
-                await dmChannel.SendMessageAsync(embed: await EmbedHandler.CreateSimpleEmbed($"`{guildUser.Guild.Name}` - Explicit Display Name Detected",
-                    $"Explicit content has been detected in your display name.\n" +
-                    $"Please change your display name to continue using {guildUser.Guild.Name}", Color.Red)); // TODO - config                
+
+                await PunishUser(guild.Moderation.Auto.ExplicitUsernamePunishment, user, "Explicit display name");                
+                await user.WarnAsync("Explicit display name", Global.Client.CurrentUser);            
             }
             catch (Exception) {}
         }
 
-        public static async Task PunishUser(SocketGuildUser socketGuildUser, string reason)
+        public static async Task PunishUser(PunishmentType punishment, GuildUser user, string reason = null)
         {
-            var guild = await Guilds.GetAsync(socketGuildUser.Guild);
-            var autoMod = guild.Moderation.Auto;
-
-            if (socketGuildUser.GuildPermissions.Administrator) return;
-
-            var user = await Users.GetAsync(socketGuildUser);
-            int warnings = user.Status.WarningsCount;
-
-            if (warnings >= autoMod.WarningsForBan && autoMod.WarningsForBan > 0)
-                await user.BanAsync(TimeSpan.FromDays(-1), reason, Global.Client.CurrentUser);                
-            else if (warnings >= autoMod.WarningsForKick && autoMod.WarningsForKick > 0)
-                await user.KickAsync(reason, Global.Client.CurrentUser);
-            else
-                await user.WarnAsync(reason, Global.Client.CurrentUser);
+            switch (punishment)
+            {
+                case PunishmentType.Ban:
+                    await user.BanAsync(TimeSpan.MaxValue, reason, Global.Client.CurrentUser);
+                    return;
+                case PunishmentType.Kick:
+                    await user.KickAsync(reason, Global.Client.CurrentUser);
+                    return;
+                case PunishmentType.Mute:
+                    await user.MuteAsync(TimeSpan.MaxValue, reason, Global.Client.CurrentUser);
+                    return;
+                case PunishmentType.Warn:
+                    await user.WarnAsync(reason, Global.Client.CurrentUser);
+                    return;
+            }
         }
     }
 }

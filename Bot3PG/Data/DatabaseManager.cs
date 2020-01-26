@@ -102,15 +102,27 @@ namespace Bot3PG.Data
                         guildMirror[module][modProp.Name][submodProp.Name]["Config"] = GetConfig(submodProp);
                         guildMirror[module][modProp.Name][submodProp.Name]["Type"] = submodProp.PropertyType.ToString();
                         guildMirror[module][modProp.Name][submodProp.Name]["SpecialType"] = GetSpecialType(submodProp);
-                        if (!submodProp.PropertyType.IsArray) continue;
 
-                        var arrayTypeProps = submodProp.PropertyType.GetElementType().GetProperties();
-                        foreach (var arrayProp in arrayTypeProps)
+                        if (submodProp.PropertyType.IsArray)
                         {
-                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name] = new BsonDocument();
-                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Config"] = GetConfig(arrayProp);
-                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Type"] = arrayProp.PropertyType.ToString();
-                            guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);
+                            var arrayTypeProps = submodProp.PropertyType.GetElementType().GetProperties();
+                            foreach (var arrayProp in arrayTypeProps)
+                            {
+                                guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name] = new BsonDocument();
+                                guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Config"] = GetConfig(arrayProp);
+                                guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["Type"] = arrayProp.PropertyType.ToString();
+                                guildMirror[module][modProp.Name][submodProp.Name][arrayProp.Name]["SpecialType"] = GetSpecialType(arrayProp);
+                            }
+                        }
+                        else if (submodProp.PropertyType.IsClass)
+                        {
+                            foreach (var subname in submodProp.PropertyType.GetProperties())
+                            {
+                                guildMirror[module][modProp.Name][submodProp.Name][subname.Name] = new BsonDocument();
+                                guildMirror[module][modProp.Name][submodProp.Name][subname.Name]["Config"] = GetConfig(subname);
+                                guildMirror[module][modProp.Name][submodProp.Name][subname.Name]["Type"] = subname.PropertyType.ToString();
+                                guildMirror[module][modProp.Name][submodProp.Name][subname.Name]["SpecialType"] = GetSpecialType(subname);
+                            }
                         }
                     }
                 }

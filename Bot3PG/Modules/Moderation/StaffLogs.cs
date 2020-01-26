@@ -13,6 +13,12 @@ namespace Bot3PG.Modules.Moderation
 {
     public static class StaffLogs
     {
+        private class StaffLog
+        {
+            public SocketTextChannel Channel { get; set; }
+            public string Colour { get; set; }
+        }
+
         public static async Task LogBan(SocketUser socketUser, SocketGuild socketGuild)
         {
             try
@@ -21,7 +27,7 @@ namespace Bot3PG.Modules.Moderation
 
                 var user = await Users.GetAsync(socketUser as SocketGuildUser);
                 var guild = await Guilds.GetAsync(socketGuild);
-                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var log = ValidateLog(guild, socketGuild, LogEvent.Ban);
 
                 var ban = user.Status.Bans.LastOrDefault();
 
@@ -33,7 +39,7 @@ namespace Bot3PG.Modules.Moderation
                     .AddField("End", ban.End.ToTimestamp())
                     .WithColor(Color.DarkPurple);
                 
-                await logChannel.SendMessageAsync(embed: embed.Build());                
+                await log.Channel.SendMessageAsync(embed: embed.Build());                
             }
             catch (Exception) {}
         }
@@ -47,14 +53,14 @@ namespace Bot3PG.Modules.Moderation
 
                 var user = await Users.GetAsync(discordUser);
                 var guild = await Guilds.GetAsync(socketGuild);
-                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var log = ValidateLog(guild, socketGuild, LogEvent.Unban);
 
                 var embed = new EmbedBuilder()
                     .WithTitle($"User Banned")
                     .AddField("User", discordUser.Mention, true)
                     .WithColor(Color.DarkPurple);
 
-                await logChannel.SendMessageAsync(embed: embed.Build());
+                await log.Channel.SendMessageAsync(embed: embed.Build());
             }
             catch (Exception) {}
         }
@@ -70,10 +76,10 @@ namespace Bot3PG.Modules.Moderation
 
                 var socketGuild = discordUser.Guild;
                 var guild = await Guilds.GetAsync(discordUser.Guild);
-                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var log = ValidateLog(guild, socketGuild, LogEvent.Kick);
 
-                var embed = GetPunishmentEmbed(kick, discordUser);
-                await logChannel.SendMessageAsync(embed: embed);
+                var embed = GetPunishmentEmbed(kick, discordUser, log.Colour);
+                await log.Channel.SendMessageAsync(embed: embed);
             }
             catch (Exception) {}
         }
@@ -92,13 +98,13 @@ namespace Bot3PG.Modules.Moderation
                 if (guild.General.RemoveCommandMessages/* || messageIsACommand*/) return;
 
                 var user = await Users.GetAsync(guildAuthor);
-                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var log = ValidateLog(guild, socketGuild, LogEvent.MessageDeleted);
 
                 string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString(), user).ToString();
                 string reason = string.IsNullOrEmpty(validation) ? "User Removed" : validation.ToSentenceCase();
 
-                var embed = GetMessageDeletedEmbed(message, channel, reason);
-                await logChannel.SendMessageAsync(embed: embed);
+                var embed = GetMessageDeletedEmbed(message, channel, reason, log.Colour);
+                await log.Channel.SendMessageAsync(embed: embed);
             }
             catch (Exception) {}
         }
@@ -112,7 +118,7 @@ namespace Bot3PG.Modules.Moderation
                 if (socketGuild is null) return;
 
                 var guild = await Guilds.GetAsync(socketGuild);
-                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var log = ValidateLog(guild, socketGuild, LogEvent.MessageBulkDeleted);
 
                 var embed = new EmbedBuilder()
                     .WithTitle("Messages Deleted")
@@ -120,7 +126,7 @@ namespace Bot3PG.Modules.Moderation
                     .AddField("Channel", $"{textChannel.Mention}", true)
                     .WithColor(Color.DarkPurple);
 
-                await logChannel.SendMessageAsync(embed: embed.Build());
+                await log.Channel.SendMessageAsync(embed: embed.Build());
             }
             catch (Exception) {}
         }
@@ -133,10 +139,10 @@ namespace Bot3PG.Modules.Moderation
                 var discordUser = socketGuild.GetUser(user.ID);
                 var guild = await Guilds.GetAsync(discordUser.Guild);
 
-                var logChannel = ValidateLogChannel(guild, socketGuild);
+                var log = ValidateLog(guild, socketGuild, LogEvent.Mute);
 
-                var embed = GetPunishmentEmbed(punishment, discordUser);
-                await logChannel.SendMessageAsync(embed: embed);
+                var embed = GetPunishmentEmbed(punishment, discordUser, log.Colour);
+                await log.Channel.SendMessageAsync(embed: embed);
             }
             catch (Exception) {}
         }
@@ -149,11 +155,11 @@ namespace Bot3PG.Modules.Moderation
                 var discordUser = socketGuild.GetUser(user.ID);
                 var guild = await Guilds.GetAsync(discordUser.Guild);
 
-                var logChannel = ValidateLogChannel(guild, socketGuild);            
+                var log = ValidateLog(guild, socketGuild, LogEvent.Unmute);            
 
                 var instigator = discordUser.Guild.GetUser(punishment?.InstigatorID ?? 0);
-                var embed = GetPunishmentEmbed(punishment, discordUser);                    
-                await logChannel.SendMessageAsync(embed: embed);
+                var embed = GetPunishmentEmbed(punishment, discordUser, log.Colour);                    
+                await log.Channel.SendMessageAsync(embed: embed);
             }
             catch (Exception) {}
         }
@@ -166,38 +172,47 @@ namespace Bot3PG.Modules.Moderation
                 var discordUser = socketGuild.GetUser(user.ID);
                 var guild = await Guilds.GetAsync(discordUser.Guild);
 
-                var logChannel = ValidateLogChannel(guild, socketGuild);
-                var embed = GetPunishmentEmbed(punishment, discordUser);
-                await logChannel.SendMessageAsync(embed: embed);
+                var log = ValidateLog(guild, socketGuild, LogEvent.Warn);
+                var embed = GetPunishmentEmbed(punishment, discordUser, log.Colour);
+                await log.Channel.SendMessageAsync(embed: embed);
             }
             catch (Exception) {}
         }
 
-        private static SocketTextChannel ValidateLogChannel(Guild guild, SocketGuild socketGuild)
+        private static StaffLog ValidateLog(Guild guild, SocketGuild socketGuild, LogEvent logEvent)
         {           
-            var logChannelId = guild.Moderation.StaffLogs.Channel;
-            var logChannel = socketGuild.GetTextChannel(logChannelId);
+            var log = guild.Moderation.StaffLogs.LogEvents.First(l => l.LogEvent == logEvent);
+            var logChannel = socketGuild.GetTextChannel(log.Channel);
             if (logChannel is null) 
                 throw new InvalidOperationException("Log channel cannot be null.");
 
-            return logChannel;
+            return new StaffLog { Channel = logChannel, Colour = log.Colour };
         }
 
-        private static Embed GetPunishmentEmbed(Punishment punishment, SocketGuildUser discordUser)
+        private static Embed GetPunishmentEmbed(Punishment punishment, SocketGuildUser discordUser, string colour)
         {
             var instigator = discordUser.Guild.GetUser(punishment.InstigatorID);
+            var logColour = StringToColor(colour);
 
             return new EmbedBuilder()
                 .WithTitle(punishment.Type.ToString().ToSentenceCase())
                 .AddField("User", discordUser.Mention, true)
                 .AddField("Reason", punishment.Reason, true)
                 .AddField("By", instigator.Mention ?? "N/A")
-                .WithColor(Color.DarkPurple)
+                .WithColor(logColour)
                 .Build();
         }
 
-        private static Embed GetMessageDeletedEmbed(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel, string reason)
+        private static Color StringToColor(string colour)
         {
+            var colourObject = (System.Drawing.Color)new System.Drawing.ColorConverter().ConvertFromString(colour.ToUpper());
+            return new Color(colourObject.R, colourObject.G, colourObject.B);
+        }
+
+        private static Embed GetMessageDeletedEmbed(Cacheable<IMessage, ulong> message, ISocketMessageChannel channel, string reason, string colour)
+        {
+            var logColour = StringToColor(colour);
+
             return new EmbedBuilder()
                 .WithTitle("Message Deleted")
                 .AddField("User", message.Value.Author.Mention, true)
@@ -205,7 +220,7 @@ namespace Bot3PG.Modules.Moderation
                 .AddField("Reason", $"{reason}", true)
                 .AddField("Channel", $"{(channel as SocketTextChannel).Mention}", true)
                 .WithFooter($"Message ID: {message.Value.Id}")
-                .WithColor(Color.DarkPurple)
+                .WithColor(logColour)
                 .WithCurrentTimestamp()
                 .Build();
         }

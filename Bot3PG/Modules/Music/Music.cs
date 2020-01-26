@@ -31,7 +31,7 @@ namespace Bot3PG.Modules.Music
         [Summary("Get bot to join your voice channel")]
         [RequireUserPermission(GuildPermission.Connect)]
         [RequireBotPermission(GuildPermission.Connect)]
-        public async Task JoinAndPlay()
+        public async Task Join()
         {
             try
             {

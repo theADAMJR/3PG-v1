@@ -51,7 +51,7 @@ namespace Bot3PG.Tests
             Assert.AreEqual(531196495584821314, DiscordGuild.Id);
         }
 
-        // [Test]
+        [Test]
         public void GetContentValidation_Explicit_Invalidated()
         {
             var validation = Auto.GetContentValidation(CurrentGuild, "nig", CurrentUser);
@@ -64,12 +64,6 @@ namespace Bot3PG.Tests
         public StaffLogsTests()
         {
             
-        }
-
-        // [Test]
-        public async Task ValidateLogChannel_Null_ExceptionThrown()
-        {
-            // await Validate
         }
     }
 }

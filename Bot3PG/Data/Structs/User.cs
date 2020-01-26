@@ -13,6 +13,8 @@ namespace Bot3PG.Data.Structs
         [BsonId] public ulong ID { get; private set; }
 
         public int MessageCount { get; set; }
+        public int Reputation { get; set; }
+        public bool IsPrivate { get; set; }
 
         public XPCardSettings XPCard { get; set; } = new XPCardSettings();
 
@@ -25,5 +27,6 @@ namespace Bot3PG.Data.Structs
         }
 
         public User(SocketUser socketUser) { _id = socketUser.Id; ID = socketUser.Id; }
+        public void Reinitialize() => XPCard ??= new XPCardSettings();
     }
 }

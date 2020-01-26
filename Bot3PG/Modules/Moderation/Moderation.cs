@@ -207,28 +207,25 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Remove a specified amount of messages from a channel")]
         public async Task ClearMessages(int amount = 100)
         {
-            const int max = 100;
-            if (amount < 0 || amount > max)
+            try
             {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Messages to remove must be between 0 and 100"));
-                return;
-            }
-            var messages = amount == -1 ? Context.Channel.GetMessagesAsync().FlattenAsync().Result : Context.Channel.GetMessagesAsync(amount).FlattenAsync().Result;
-            var channel = Context.Channel as SocketTextChannel;
+                const int max = 100;
+                if (amount <= 0 || amount > max)
+                    throw new ArgumentException("Messages to remove must be between 1 and 100");
+                
+                var messages = amount == -1 ? Context.Channel.GetMessagesAsync().FlattenAsync().Result : Context.Channel.GetMessagesAsync(amount).FlattenAsync().Result;
+                var channel = Context.Channel as SocketTextChannel;
 
-            try { await channel.DeleteMessagesAsync(messages); }
-            catch
-            { 
-                foreach (var message in messages)
-                {
-                    await Task.Delay(350);
-                    await message.DeleteAsync();
-                }
-            }
-            var reply = await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Clear", $"Cleared `{messages.Count()}` messages from {channel.Mention}", Color.Blue));
+                try { await channel.DeleteMessagesAsync(messages); }
+                catch (Exception ex) { throw new InvalidOperationException(ex.Message); }
 
-            await Task.Delay(4000);
-            await reply.DeleteAsync();
+                var reply = await ReplyAsync(await EmbedHandler.CreateSimpleEmbed("Clear", $"Cleared `{messages.Count()}` messages from {channel.Mention}", Color.Blue));
+
+                await Task.Delay(4000);
+                await reply.DeleteAsync();
+            }
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Freeze"), Alias("Lock")]

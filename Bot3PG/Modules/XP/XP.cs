@@ -1,6 +1,7 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Handlers;
 using Bot3PG.Modules.General;
+using Bot3PG.Utils;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -104,21 +105,10 @@ namespace Bot3PG.Modules.XP
         public async Task GlobalProfile(SocketUser target = null)
         {
             target ??= Context.User;
+            
             string imageURL = $"{Global.Config.WebappLink}/api/users/{target.Id}/xp-card";
-
-            var stream = DownloadData(imageURL);
+            var stream = CommandUtils.DownloadData(imageURL);
             await Context.Channel.SendFileAsync(stream, "xp-card.png");
-        }
-
-        private Stream DownloadData(string url)
-        {
-            try
-            {
-                var req = WebRequest.Create(url);
-                var res = req.GetResponse();
-                return res.GetResponseStream();
-            }
-            catch (Exception) { throw new Exception("There was a problem downloading the image file."); }
         }
     }
 }

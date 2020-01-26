@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
+using System.Net;
 using Discord.WebSocket;
 
 namespace Bot3PG.Utils
@@ -50,6 +52,17 @@ namespace Bot3PG.Utils
             text = text.Replace("[USERNAME]", socketGuildUser.Username);
             text = text.Replace("[SERVER]", socketGuildUser.Guild.Name);
             return text;
+        }
+
+        public static Stream DownloadData(string url)
+        {
+            try
+            {
+                var req = WebRequest.Create(url);
+                var res = req.GetResponse();
+                return res.GetResponseStream();
+            }
+            catch (Exception) { throw new Exception("There was a problem downloading the image file."); }
         }
     }
 }

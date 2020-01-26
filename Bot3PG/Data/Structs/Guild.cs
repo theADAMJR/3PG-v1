@@ -52,10 +52,7 @@ namespace Bot3PG.Data.Structs
             ID = socketGuild.Id; 
         }
 
-        public void InitializeModules()
-        {
-            Social ??= new SocialModule();
-        }
+        public void InitializeModules() => Social ??= new SocialModule();
 
         public class AdminModule : CommandConfigModule
         {
@@ -99,8 +96,8 @@ namespace Bot3PG.Data.Structs
         public class GeneralModule : CommandConfigModule
         {
             [Config("Send messages to users when they join or leave.", 
-            extraInfo: "Variables: \n[NICKNAME] - user nickname \n[OWNER] - mention the server owner \n[USER] - mention the user \n"
-            + "[USER_COUNT] - user count in server \n[USERNAME] - user nickname \n[SERVER] - server name")]
+            extraInfo: "Variables: \n[TAG] - full user tag \n[OWNER] - server owner username \n"
+            + "[USER_COUNT] - user count in server \n[USER] - username \n[SERVER] - server name")]
             public AnnounceSubModule Announce { get; private set; } = new AnnounceSubModule();
 
             [Config("The character that is typed before commands")]
@@ -128,22 +125,43 @@ namespace Bot3PG.Data.Structs
                 [Config("Whether to directly send welcome messages to new users")]
                 public bool DMNewUsers { get; set; } = false;
 
-                [Config("Send welcome messages when a user has joined")]
-                public bool Welcomes { get; set; } = true;
+                [Config("Send welcome messages when a user has joined"), SpecialType(typeof(WelcomeMessages))]
+                public WelcomeMessages Welcomes { get; set; } = new WelcomeMessages();
 
-                [Config("Send goodbye messages when a user has left")]
-                public bool Goodbyes { get; set; } = true;
+                [Config("Send goodbye messages when a user has left"), SpecialType(typeof(GoodbyeMessages))]
+                public GoodbyeMessages Goodbyes { get; set; } = new GoodbyeMessages();
 
-                [Config("Welcome messages for new users")]
-                //[ExtraInfo("**Placeholders:** `[GUILD]` or `[SERVER]` - Discord server name\n `[USER]` - Mention target server user\n")]
-                public string[] WelcomeMessages { get; set; } = { "Welcome to [SERVER], [USER]!", "Welcome [USER] to [SERVER]!", "Hey [USER]! Welcome to [SERVER]!" };
+                public class WelcomeMessages : Submodule
+                {                    
+                    [Config("Welcome messages for new users")]
+                    public string[] Messages { get; set; } = { "Welcome to [SERVER], [USER]!", "Welcome [USER], to [SERVER]!" };
 
-                [Config("Goodbye messages for users")]
-                public string[] GoodbyeMessages { get; set; } = { "[USER] left the server.", "It's sad to see you go... [USER].", "Bye [USER]!" };
+                    [Config("Channel for the message"), SpecialType(typeof(SocketTextChannel))]
+                    [BsonRepresentation(BsonType.String)]
+                    public ulong Channel { get; set; }
 
-                [Config("Channel for server welcome announcements"), SpecialType(typeof(SocketTextChannel))]
-                [BsonRepresentation(BsonType.String)]
-                public ulong Channel { get; set; }
+                    [Config("Background for the message"), SpecialType(typeof(Uri))]
+                    public string BackgroundURL { get; set; } = "";
+
+                    [Config("Colour of the text"), SpecialType(typeof(Color))]
+                    public string TextColour { get; set; } = "";
+                }
+
+                public class GoodbyeMessages : Submodule
+                {                    
+                    [Config("Goodbye messages for users")]
+                    public string[] Messages { get; set; } = { "[USER] left the server.", "It's sad to see you go... [USER]." };
+
+                    [Config("Channel for the message"), SpecialType(typeof(SocketTextChannel))]
+                    [BsonRepresentation(BsonType.String)]
+                    public ulong Channel { get; set; }
+
+                    [Config("Background for the message"), SpecialType(typeof(Uri))]
+                    public string BackgroundURL { get; set; } = "";
+
+                    [Config("Colour of the text"), SpecialType(typeof(Color))]
+                    public string TextColour { get; set; } = "";
+                }
             }
         }
 
@@ -166,11 +184,14 @@ namespace Bot3PG.Data.Structs
 
             public class AutoModerationSubModule : Submodule
             {
+                [Config("Messages sent in one minute until the user is notified")]
+                public int SpamThreshold { get; set; } = 10;
+
+                [Config("Inform users that are spamming chat")]
+                public bool SpamNotification { get; set; } = true;
+
                 [Config("Use a list of predefined explicit words for auto detection")]
                 public bool UseDefaultBanWords { get; set; } = false;
-
-                [Config("Maximum amount of messages that can be sent in a minute by a user")]
-                public int SpamThreshold { get; set; } = 10;
 
                 [Config("Use a list of predefined explicit links for auto detection")]
                 public bool UseDefaultBanLinks { get; set; } = false;
@@ -181,30 +202,14 @@ namespace Bot3PG.Data.Structs
                 [Config("Use your own or additional ban links")]
                 public string[] CustomBanLinks { get; set; } = {};
 
-                [Config("Warnings required to auto-kick the offender"), Range(-1, 50)]
-                public int WarningsForKick { get; set; } = -1;
-
-                [Config("Warnings required to auto-ban the offender"), Range(-1, 50)]
-                public int WarningsForBan { get; set; } = -1;
-
-                [Config("Length of time to auto-mute the offender")]
-                public int AutoMuteSeconds { get; set; } = -1;
-
-                [Config("Prevent user access if they have an explicit username/nickname")]
-                public bool NicknameFilter { get; set; } = true;
+                [Config("Punishment to users who have an explicit username"), Dropdown(typeof(PunishmentType))]
+                public PunishmentType ExplicitUsernamePunishment { get; set; } = PunishmentType.None;
 
                 [Config("Automatically reset explicit usernames")]
                 public bool ResetNickname { get; set; } = true;
 
-                [Config("Punishment to users who have an explicit username"), Dropdown(typeof(PunishmentType))]
-                public PunishmentType ExplicitUsernamePunishment { get; set; } = PunishmentType.Warn;
-
-                [Config("Inform users that are spamming chat")]
-                public bool SpamNotification { get; set; } = true;
-
-                [Config("The message content that 3PG should disallow"), List(typeof(FilterType))]
-                [BsonRepresentation(BsonType.String)]
-                public FilterType[] Filters { get; set; } = { FilterType.BadWords, FilterType.BadLinks, FilterType.MassMention, FilterType.DuplicateMessage };
+                [Config("Custom filters for messages that 3PG should not allow")]
+                public FilterProperties[] Filters { get; set; } = { new FilterProperties{ Filter = FilterType.MassMention }};
                 
                 [Config("Roles that are not affected by auto moderation"), List(typeof(SocketRole))]
                 [BsonRepresentation(BsonType.String)]
@@ -213,13 +218,8 @@ namespace Bot3PG.Data.Structs
 
             public class StaffLogsSubModule : Submodule
             {
-                [Config("Channel for logs")]
-                [BsonRepresentation(BsonType.String), SpecialType(typeof(SocketTextChannel))]
-                public ulong Channel { get; set; }
-
-                [Config("The events to log"), List(typeof(LogEvent))]
-                [BsonRepresentation(BsonType.String)]
-                public LogEvent[] LogEvents { get; set; } = { LogEvent.Ban, LogEvent.Unban, LogEvent.Mute, LogEvent.Unmute, LogEvent.Kick, LogEvent.Warn, LogEvent.MessageDeleted };
+                [Config("Custom filters for messages that 3PG should not allow")]
+                public LogEventProperties[] LogEvents { get; set; } = { new LogEventProperties{ Colour = "#000000" }};
             }
         }
 
@@ -377,11 +377,5 @@ namespace Bot3PG.Data.Structs
 
         [Config("The Twitch notification message")]
         public override string Message { get; set; } = "**[STREAMER]** is live - **Viewers**: `[VIEWERS]`";
-
-        // [Config("Whether to notify @everyone")]
-        // public bool PingEveryone { get; set; } = true;
-
-        // [Config("Whether have the stream thumbnail with the notification embed")]
-        // public bool IncludeThumbnail { get; set; } = true;
     }
 }

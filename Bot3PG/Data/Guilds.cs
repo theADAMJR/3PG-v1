@@ -60,21 +60,9 @@ namespace Bot3PG.Data
         {
             foreach (var textChannel in socketGuild.TextChannels)
             {
-                if (textChannel.Name.ToLower().Contains("logs"))
-                    guild.Moderation.StaffLogs.Channel = textChannel.Id;                    
-                if (textChannel.Name.ToLower().Contains("general"))
-                    guild.General.Announce.Channel = textChannel.Id;
-                else
-                {
-                    var announceChannel = socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
-                    guild.General.Announce.Channel = announceChannel.Id;
-
-                    var agreeRole = socketGuild.Roles.FirstOrDefault(r => r.Name == "Member");
-                    if (agreeRole != null)
-                    {
-                        guild.Admin.Rulebox.Role = agreeRole.Id;
-                    }
-                }
+                var agreeRole = socketGuild.Roles.FirstOrDefault(r => r.Name == "Member");
+                if (agreeRole != null)
+                    guild.Admin.Rulebox.Role = agreeRole.Id;
             }
             await Save(guild);
         }

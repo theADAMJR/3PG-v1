@@ -64,8 +64,9 @@ namespace Bot3PG.Modules.General
         public async Task Ping()
         {
             var ping = new Ping();
-            var reply = ping.Send(Global.DatabaseConfig.Server, 1000);
-            var embed = await EmbedHandler.CreateSimpleEmbed("Pong! 🏓", $"**Database:** {reply.RoundtripTime}ms\n **Latency:** {Global.Client.Latency}ms", Color.Magenta);
+            var dbPing = ping.Send(Global.DatabaseConfig.Server, 1000);
+            var embed = await EmbedHandler.CreateSimpleEmbed("Pong! 🏓", $"**Database:** {dbPing.RoundtripTime}ms\n" +
+                $"**Latency:** {Global.Client.Latency}ms\n", Color.Magenta);
             await ReplyAsync(embed);
         }
 

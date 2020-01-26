@@ -10,14 +10,14 @@ using Discord.WebSocket;
 
 namespace Bot3PG.Modules
 {
-    public abstract class CommandBase : ModuleBase<SocketCommandContext>
+    public abstract class CommandBase : ModuleBase<CustomCommandContext>
     {
         internal Guild CurrentGuild { get; set; }
 
         internal abstract string ModuleName { get; }
         internal abstract Color ModuleColour { get; }
 
-        protected async override void BeforeExecute(CommandInfo command) => CurrentGuild = await Guilds.GetAsync(Context.Guild);
+        protected async override void BeforeExecute(CommandInfo command) => CurrentGuild = Context.CurrentGuild ?? await Guilds.GetAsync(Context.Guild);
 
         protected async override void AfterExecute(CommandInfo command)
         {
@@ -42,7 +42,7 @@ namespace Bot3PG.Modules
         public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, EmbedBuilder embed)
         {
             if (!embed.Color.HasValue)
-                embed.WithColor(74, 48, 80);
+                embed.WithColor(new Color(0x2C2F33));
             return await target.SendMessageAsync(embed: embed.Build());
         }
         public async Task<IUserMessage> ReplyToUserAsync(SocketUser target, Task<Embed> embed) => await ReplyToUserAsync(target, await embed);
