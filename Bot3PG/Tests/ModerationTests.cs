@@ -25,16 +25,7 @@ namespace Bot3PG.Tests
         public async Task Initialize()
         {
             new DiscordService();
-            /*new Global(Bot, null, GlobalConfig.Config, null);
-            new DatabaseManager(GlobalConfig.Config.DB);
-
-            await Bot.LoginAsync(TokenType.Bot, GlobalConfig.Config.Token);
-            await Task.Delay(1000); // wait for bot to login*/
-
-            // DiscordGuild = Global.Client.GetGuild(531196495584821314);
-            // System.Console.WriteLine(Bot.Guilds.Count);
-            // DiscordUser = DiscordGuild.CurrentUser;
-
+            
             CurrentUser = await Users.GetAsync(DiscordUser);
             CurrentGuild = await Guilds.GetAsync(DiscordGuild);
         }

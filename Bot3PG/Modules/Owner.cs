@@ -1,7 +1,9 @@
 using Bot3PG.Data;
+using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
 using Bot3PG.Modules;
 using Bot3PG.Modules.General;
+using Bot3PG.Modules.Moderation;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -84,8 +86,20 @@ namespace Bot3PG.CommandModules
 
         [Command("Test")]
         public async Task Test()
-        {
+        {            
+            var user = await Users.GetAsync(Context.User as SocketGuildUser);
+
             string details = "";
+            details += TestAnnounce(details);
+            // details += TestStaffLogs(details, user);
+            details += TestAutoMod(details, user);
+
+            await ReplyAsync(details);
+        }
+
+        private string TestAnnounce(string details)
+        {
+            details += "`Announce`\n";
 
             var announceUserJoined = Announce.AnnounceUserJoin(Context.User as SocketGuildUser);
             details += $"{nameof(announceUserJoined)}: {GetResultEmote(!announceUserJoined.IsFaulted)}\n";
@@ -93,9 +107,41 @@ namespace Bot3PG.CommandModules
             var announceUserLeft = Announce.AnnounceUserLeft(Context.User as SocketGuildUser);
             details += $"{nameof(announceUserLeft)}: {GetResultEmote(!announceUserLeft.IsFaulted)}\n";
 
-            await ReplyAsync(details);
+            return details + "\n";
         }
-        public IEmote GetResultEmote(bool result) => result ? new Emoji("✅") : new Emoji("❌");
 
+        private string TestStaffLogs(string details, GuildUser user)
+        {
+            Punishment createPunishment(PunishmentType punishment) => new Punishment(punishment, "Test", Context.User, DateTime.Now, DateTime.Now);
+
+            details += "`Staff Logs`\n";
+            details += Test("Log ban, successful", StaffLogs.LogBan(Context.User, Context.Guild, createPunishment(PunishmentType.Ban)));
+            details += Test("Log unban, successful", StaffLogs.LogUnban(Context.User, Context.Guild));
+            details += Test("Log mute, successful", StaffLogs.LogMute(user, createPunishment(PunishmentType.Mute)));
+            details += Test("Log unmute, successful", StaffLogs.LogUnmute(user, createPunishment(PunishmentType.Mute)));
+            details += Test("Log kick, successful", StaffLogs.LogKick(Context.User as SocketGuildUser, createPunishment(PunishmentType.Kick)));
+            details += Test("Log messages deleted, null message, successful", StaffLogs.LogMessageDeletion(default, Context.Channel));
+            details += Test("Log messages bulk deleted, successful", StaffLogs.LogBulkMessageDeletion(default, Context.Channel));
+            return details + "\n";
+        }
+
+        public string TestAutoMod(string details, GuildUser user)
+        {
+            details += "`Auto Mod`\n";
+            details += Test("Filter valid message, null returned", Auto.GetContentValidation(CurrentGuild, "", user) == null);
+            details += Test("Filter all caps, filter returned", Auto.GetContentValidation(CurrentGuild, "WTF YOU SAY TO ME?!?!?!?", user) == FilterType.AllCaps);
+            details += Test("Filter ban links, filter returned", Auto.GetContentValidation(CurrentGuild, ".xxx", user) == FilterType.BadLinks);
+            details += Test("Filter bad words, filter returned", Auto.GetContentValidation(CurrentGuild, "ass", user) == FilterType.BadWords);
+            details += Test("Filter discord links, filter returned", Auto.GetContentValidation(CurrentGuild, "discord.gg", user) == FilterType.DiscordInvites);
+            details += Test("Filter duplicate message, filter returned", Auto.GetContentValidation(CurrentGuild, user.Status.LastMessage, user) == FilterType.DuplicateMessage);
+            details += Test("Filter emoji spam, filter returned", Auto.GetContentValidation(CurrentGuild, "😂😂😂😂😂😂😂😂😂", user) == FilterType.EmojiSpam);
+            details += Test("Filter mass mention, filter returned", Auto.GetContentValidation(CurrentGuild, "<@!><@!><@!><@!><@!><@!>", user) == FilterType.MassMention);
+            details += Test("Filter zalgo, filter returned", Auto.GetContentValidation(CurrentGuild, "Mͭͭͬu̔ͨ͊tͣ̃̚eͨͭ͐ ҉̴̴̢", user) == FilterType.Zalgo);
+            return details + "\n";
+        }
+
+        public string Test(string label, Task task, bool? result = null) => $"{label}: {GetResultEmote(result ?? !task.IsFaulted)}\n";
+        public string Test(string label, bool result) => $"{label}: {GetResultEmote(result)}\n";
+        public IEmote GetResultEmote(bool result) => new Emoji(result ? "✅" : "❌");
     }
 }

@@ -207,7 +207,7 @@ namespace Bot3PG.Handlers
                 if (guild is null) return;
 
                 if (ShouldLog(LogEvent.Unban, guild)) 
-                    await StaffLogs.LogUserUnban(socketUser, socketGuild);
+                    await StaffLogs.LogUnban(socketUser, socketGuild);
             };
 
             GuildUser.Muted += async (GuildUser guildUser, Punishment punishment) =>

@@ -88,9 +88,10 @@ namespace Bot3PG.Data.Structs
             finally { await Users.Save(this); }
         }
 
-        public async Task UnmuteAsync(string reason, SocketUser instigator)
+        public async Task UnmuteAsync(string reason, SocketUser discharger)
         {
             Status.Mutes.LastOrDefault().End = DateTime.Now;
+            Status.Mutes.LastOrDefault().Reason += $"\nUnmuted by {discharger}: {reason}";
 
             var guild = await Guilds.GetAsync(DiscordUser.Guild);
             var mutedRole = DiscordUser.Guild.Roles.FirstOrDefault(r => r.Name == guild.Moderation.MutedRoleName);

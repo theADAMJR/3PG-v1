@@ -32,7 +32,6 @@ namespace Bot3PG.Modules.General
 
         public static async Task AnnounceUserLeft(SocketGuildUser guildUser)
         {
-            throw new Exception();
             var user = await Users.GetAsync(guildUser);
             if (guildUser as SocketUser == Global.Client.CurrentUser || user.Status.IsBanned) return;
 

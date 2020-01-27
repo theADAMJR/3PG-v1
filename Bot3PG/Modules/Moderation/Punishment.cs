@@ -14,7 +14,7 @@ namespace Bot3PG.Modules.Moderation
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime End { get; set; }
 
-        public string Reason { get; private set; }
+        public string Reason { get; set; }
 
         public ulong InstigatorID { get; private set; }
 

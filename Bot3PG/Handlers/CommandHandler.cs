@@ -105,7 +105,7 @@ namespace Bot3PG.Handlers
                 case CommandError.UnmetPrecondition:
                     await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("🔒 Insufficient permissions", $"**Required permissions:** {RequiredPermissions(message)}"));
                     break;
-                default: // TODO - if in debug mode
+                default:
                     await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Error", $"{execution.Exception.Message} \n**Source**: {execution.Exception.StackTrace}"));
                     break;
             }

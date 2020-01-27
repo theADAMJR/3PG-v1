@@ -1,6 +1,7 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
+using Bot3PG.Services;
 using Bot3PG.Utils;
 using Discord;
 using Discord.WebSocket;
@@ -31,6 +32,9 @@ namespace Bot3PG.Modules.Moderation
                 var messageValidation = GetContentValidation(guild, message.Content, user);
                 if (messageValidation != null)
                 {
+                    ValidateChannelNotExempt((FilterType)messageValidation, guildAuthor.Guild, guild);
+                    ValidateRoleNotExempt((FilterType)messageValidation, guildAuthor, guild);
+
                     var filter = guild.Moderation.Auto.Filters.FirstOrDefault(f => f.Filter == messageValidation);
                     await PunishUser(filter.Punishment, user, messageValidation.ToString().ToSentenceCase());
                     try { await message.DeleteAsync(); } // 404 - there may be other auto mod bots -> message already deleted
@@ -40,7 +44,8 @@ namespace Bot3PG.Modules.Moderation
                 user.Status.LastMessage = message.Content;
                 await Users.Save(user);
             }
-            catch (Exception ex) { await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Auto Moderation", ex.Message)); }
+            catch (InvalidOperationException) {}
+            catch (Exception) {}//{ await Debug.LogAsync("auto", LogSeverity.Error, ex); }
         }
 
         private static async Task SendSpamNotification(SocketMessage message, SocketGuildUser guildAuthor, Guild guild)
@@ -62,10 +67,26 @@ namespace Bot3PG.Modules.Moderation
 
         private static void ValidateUserNotExempt(SocketGuildUser guildAuthor, Guild guild)
         {
-            var exemptRoles = guild.Moderation.Auto.ExemptRoles.Select(id => guildAuthor.Guild.GetRole(id));
-            bool userIsExempt = exemptRoles.Any(role => guildAuthor.Roles.Any(r => r.Id == role.Id));
+            var exemptRoles = guild.Moderation.Auto.ExemptRoles;
+            bool userIsExempt = exemptRoles.Any(id => guildAuthor.Roles.Any(r => r.Id == id));;
             if (userIsExempt) 
                 throw new InvalidOperationException("User is exempt from auto moderation.");
+        }
+
+        private static void ValidateRoleNotExempt(FilterType filterType, SocketGuildUser guildAuthor, Guild guild)
+        {
+            var exemptRoles = guild.Moderation.Auto.Filters.FirstOrDefault(f => f.Filter == filterType).ExemptRoles;
+            bool roleIsExempt = exemptRoles?.Any(id => guildAuthor.Roles.Any(r => r.Id == id)) ?? false;
+            if (roleIsExempt) 
+                throw new InvalidOperationException("Role is exempt from auto moderation.");
+        }
+
+        private static void ValidateChannelNotExempt(FilterType filterType, SocketGuild socketGuild, Guild guild)
+        {
+            var filterProperties = guild.Moderation.Auto.Filters.FirstOrDefault(f => f.Filter == filterType);
+            bool channelIsExempt = filterProperties.ExemptChannels.Any(id => socketGuild.GetTextChannel(id) != null);
+            if (channelIsExempt) 
+                throw new InvalidOperationException("Channel is exempt from auto moderation.");
         }
 
         public static FilterType? GetContentValidation(Guild guild, string content, GuildUser user)
@@ -78,15 +99,16 @@ namespace Bot3PG.Modules.Moderation
             if (HasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
             if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content, links: true)) return FilterType.BadLinks;
 
-            bool hasExcessiveCaps = content.All(c => char.IsUpper(c)) && content.Length > 5; 
+            bool hasExcessiveCaps = content.Where(c => char.IsUpper(c) && !char.IsSymbol(c)).Count() > 5; 
             if (HasFilter(FilterType.AllCaps) && hasExcessiveCaps) return FilterType.AllCaps;
             if (HasFilter(FilterType.DiscordInvites) && content.Contains("discord.gg")) return FilterType.DiscordInvites;
 
-            bool hasHalfEmojis = content.Remove(0, content.Length / 2).All(c => char.IsSymbol(c));
-            if (HasFilter(FilterType.EmojiSpam) && hasHalfEmojis) return FilterType.EmojiSpam;
+            const int maxEmojis = 8;
+            string containsEmojis = @"(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])";
+            if (HasFilter(FilterType.EmojiSpam) && Regex.Matches(content, containsEmojis, RegexOptions.Multiline).Count > maxEmojis) return FilterType.EmojiSpam;
 
-            const int maxAtSigns = 5;
-            if (HasFilter(FilterType.MassMention) && content.Count(c => c == '@') >= maxAtSigns) return FilterType.MassMention;
+            const int maxMentions = 6;
+            if (HasFilter(FilterType.MassMention) && Regex.Matches(content, "<@!").Count >= maxMentions) return FilterType.MassMention;
             if (HasFilter(FilterType.DuplicateMessage) && content.ToLower() == user.Status.LastMessage && !string.IsNullOrEmpty(content)) return FilterType.DuplicateMessage;
             
             bool containsZalgo = Regex.IsMatch(content, @"([^\u0009-\u02b7\u2000-\u20bf\u2122\u0308]|(?![^aeiouy])\u0308)", RegexOptions.Multiline);
