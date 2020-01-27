@@ -32,6 +32,7 @@ namespace Bot3PG.Modules.General
 
         public static async Task AnnounceUserLeft(SocketGuildUser guildUser)
         {
+            throw new Exception();
             var user = await Users.GetAsync(guildUser);
             if (guildUser as SocketUser == Global.Client.CurrentUser || user.Status.IsBanned) return;
 
@@ -42,7 +43,7 @@ namespace Bot3PG.Modules.General
 
             var channel = guildUser.Guild.GetTextChannel( guild.General.Announce.Goodbyes.Channel) ?? guildUser.Guild.SystemChannel ?? guildUser.Guild.DefaultChannel;
             if (channel != null)
-                await guildUser.SendFileAsync(stream, "goodbye.png");
+                await (channel as ISocketMessageChannel).SendFileAsync(stream, "goodbye.png");
         }
     }
 }

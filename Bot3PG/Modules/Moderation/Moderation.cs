@@ -33,7 +33,7 @@ namespace Bot3PG.Modules.Moderation
                 await user.KickAsync(reason, Context.User);
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Kicked {target.Mention} - `{reason}`.", Color.Orange));                
             }
-            catch (Exception) {}
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Ban")]
@@ -42,30 +42,26 @@ namespace Bot3PG.Modules.Moderation
         [Remarks("**Accepted Values:** s/sec m/min h/hour d/day w/week mo/month y/year")]
         public async Task BanUser(SocketGuildUser target, string duration = "1d", [Remainder] string reason = "No reason provided.")
         {
-            var user = await Users.GetAsync(target);
-            var banDuration = CommandUtils.ParseDuration(duration);
+            try
+            {
+                var user = await Users.GetAsync(target);
+                var banDuration = CommandUtils.ParseDuration(duration);
 
-            if (user.Status.IsBanned)
-            {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User already banned.", Color.Red));
-                return;
-            }
-            else
-            {
+                if (user.Status.IsBanned)
+                    throw new InvalidOperationException($"User is banned");
+
                 var targetHighest = target.Hierarchy;
                 var senderHighest = (Context.Message.Author as SocketGuildUser).Hierarchy;
 
-                if (targetHighest < senderHighest)
+                if (targetHighest >= senderHighest)
+                    throw new InvalidOperationException($"Higher rank user cannot be banned");
+                else
                 {
                     await user.BanAsync(banDuration, reason, Context.User);
                     await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Banned {target.Mention} for `{duration}` - `{reason}`.", Color.Orange));
                 }
-                else
-                {
-                    await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Higher rank user cannot be banned.", Color.Red));
-                    return;
-                }
             }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Unban")]
@@ -73,19 +69,19 @@ namespace Bot3PG.Modules.Moderation
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
         public async Task UnbanUser(ulong targetId, [Remainder] string reason = "No reason provided.")
         {
-            RestBan restBan = null;
-            try { restBan = await Context.Guild.GetBanAsync(targetId); }
-            catch 
+            try
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User not currently banned.", Color.Red));
-                return;
-            }
+                RestBan restBan = null;
+                try { restBan = await Context.Guild.GetBanAsync(targetId); }
+                catch { throw new InvalidOperationException($"User is not banned"); }
 
-            await Context.Guild.RemoveBanAsync(targetId);
-            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Unbanned {restBan.User.Mention} - `{reason}`.", Color.Orange));
-            if (!restBan.User.IsBot)
-                await restBan.User.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed(ModuleName, 
-                    $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
+                await Context.Guild.RemoveBanAsync(targetId);
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Unbanned {restBan.User.Mention} - `{reason}`.", Color.Orange));
+                if (!restBan.User.IsBot)
+                    await restBan.User.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed(ModuleName, 
+                        $"You have been unbanned from {Context.Guild.Name} for '{reason}'", Color.Green));
+            }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Mute")]
@@ -93,24 +89,21 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Mute a user's voice and chat [with reason]")]
         public async Task MuteUser(SocketGuildUser target, string duration = "1d", [Remainder] string reason = "No reason provided.")
         {
-            var user = await Users.GetAsync(target) ?? new GuildUser(target);
-            var muteDuration = CommandUtils.ParseDuration(duration);
-
-            if (target.GuildPermissions.Administrator)
+            try
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Admins can't be muted.", Color.Red));
-                return;
-            }
+                var user = await Users.GetAsync(target) ?? new GuildUser(target);
+                var muteDuration = CommandUtils.ParseDuration(duration);
 
-            if (!user.Status.IsMuted)
-            {
+                if (target.GuildPermissions.Administrator)
+                    throw new InvalidOperationException($"Admins cannot be muted");
+
+                if (!user.Status.IsMuted)
+                    throw new InvalidOperationException($"User is not muted");
+
                 await user.MuteAsync(muteDuration, reason, Context.User);
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Muted {target.Mention} for `{duration}` - `{reason}`", Color.Green));
             }
-            else
-            {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User is already muted.", Color.Red));
-            }
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Unmute")]
@@ -118,14 +111,16 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Unmute a user's voice and chat [with reason]")]
         public async Task UnmuteUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
         {
-            var user = await Users.GetAsync(target);
-            if (user.Status.IsMuted)
+            try
             {
+                var user = await Users.GetAsync(target);
+                if (!user.Status.IsMuted)
+                    throw new InvalidOperationException($"User is not muted");
+
                 await user.UnmuteAsync(reason, Context.User);
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Unmuted {target.Mention} - `{reason}`.", Color.Orange));
-                return;
             }
-            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"User account not found.", Color.Red));
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Warn")]
@@ -133,26 +128,25 @@ namespace Bot3PG.Modules.Moderation
         [Summary("Warn a user [with reason] and add a warning to their account")]
         public async Task WarnUser(SocketGuildUser target, [Remainder] string reason = "No reason provided.")
         {
-            if (target.IsBot)
+            try
             {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Bots cannot be warned.", Color.Red));
-                return;
-            }
+                if (target.IsBot)
+                    throw new InvalidOperationException($"Bots cannot be warned");
 
-            var user = await Users.GetAsync(target);
-            if (target.GuildPermissions.Administrator)
-            {
-                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Admins can't be warned.", Color.Red));
-                return;
+                var user = await Users.GetAsync(target);
+                if (target.GuildPermissions.Administrator)
+                    throw new InvalidOperationException($"Admins can't be warned");
+
+                await user.WarnAsync(reason, Context.User);
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Warned {target.Mention} - `{reason}`.", Color.Orange));                
             }
-            await user.WarnAsync(reason, Context.User);
-            await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, $"Warned {target.Mention} - `{reason}`.", Color.Orange));
+            catch (InvalidOperationException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("User")]
         [RequireUserPermission(GuildPermission.BanMembers), RequireBotPermission(GuildPermission.BanMembers)]
         [Summary("Display target user details"), Remarks("Actions: reset")]
-        public async Task Account(SocketGuildUser target = null, [Remainder] string action = "")
+        public async Task User(SocketGuildUser target = null, [Remainder] string action = "")
         {
             try
             {
@@ -160,22 +154,13 @@ namespace Bot3PG.Modules.Moderation
 
                 var user = await Users.GetAsync(target);
                 if (action == "reset")
-                {
-                    if (target is null)
-                        throw new InvalidOperationException("User not found");
-                    else
-                    {
-                        await Users.ResetAsync(target);
-                        await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
-                        return;
-                    }
-                }
-                
-                var embed = new EmbedBuilder();
-                embed.ThumbnailUrl = target.GetAvatarUrl();
-                embed.Color = Color.Orange;
-                embed.WithTitle($"**{target.Username}**");
-                embed.AddField("Warnings", user.Status.WarningsCount, inline: true);
+                    await ResetUser(target);
+
+                var embed = new EmbedBuilder()
+                    .WithThumbnailUrl(target.GetAvatarUrl())
+                    .WithColor(Color.Orange)
+                    .WithTitle($"**{target.Username}**")
+                    .AddField("Warnings", user.Status.WarningsCount, inline: true);
 
                 embed.AddField("Is Banned", user.Status.IsBanned, inline: true);
                 if (user.Status.IsBanned)
@@ -200,6 +185,18 @@ namespace Bot3PG.Modules.Moderation
                 await ReplyAsync(embed);                
             }
             catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
+        }
+
+        private async Task ResetUser(SocketGuildUser target)
+        {
+            if (target is null)
+                throw new InvalidOperationException("User not found");
+            else
+            {
+                await Users.ResetAsync(target);
+                await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
+                return;
+            }
         }
 
         [Command("Clear"), Alias("Purge")]

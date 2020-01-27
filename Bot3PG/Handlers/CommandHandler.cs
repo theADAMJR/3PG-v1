@@ -38,9 +38,7 @@ namespace Bot3PG.Handlers
         public async Task HandleCommandAsync(SocketMessage socketMessage)
         {
             if (!(socketMessage is SocketUserMessage message) || message.Author.IsWebhook || message.Channel is IPrivateChannel) return;
-
-            var guildAuthor = socketMessage.Author as SocketGuildUser;
-            if (guildAuthor is null) return;
+            if (!(socketMessage.Author is SocketGuildUser guildAuthor)) return;
 
             Guild guild = null;
             try { guild = await Guilds.GetAsync(guildAuthor.Guild); }
@@ -62,8 +60,7 @@ namespace Bot3PG.Handlers
             }
             if (message.Author.IsBot) return;
 
-            var context = new CustomCommandContext(Global.Client, message);
-            context.CurrentGuild = guild;
+            var context = new CustomCommandContext(Global.Client, message) { CurrentGuild = guild };
 
             CommandValidation validation;
             try { validation = ValidateCommandExists(position, context); }
@@ -77,9 +74,9 @@ namespace Bot3PG.Handlers
                 return;
             }
 
-            Task<IResult> execution = default;
-            try { execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best); }
-            catch (Exception) { await HandleFailedExecution(message, prefix, execution); } 
+            var execution = commands.ExecuteAsync(context, position, services, MultiMatchHandling.Best);
+            if (!execution.Result.IsSuccess)
+                await HandleFailedExecution(message, prefix, execution);
         }
 
         private CommandValidation ValidateCommandExists(int position, SocketCommandContext context)
@@ -101,11 +98,6 @@ namespace Bot3PG.Handlers
                     break;
                 case CommandError.ParseFailed:
                     await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("🚫 Invalid arguments", $"**Correct usage:** {CorrectCommandUsage(message, prefix)}", Color.Red));
-                    break;
-                case CommandError.UnknownCommand:
-                    var errorMessage = CorrectCommandUsage(message, prefix) != null ?
-                        $"**Did you mean** " + CorrectCommandUsage(message, prefix) + "?" : $"No similar commands found. Type `{prefix}help` for a list of commands.";
-                    await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateBasicEmbed("❓ Unknown command", errorMessage, Color.Red));
                     break;
                 case CommandError.ObjectNotFound:
                     await message.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("👀 Not found", $"{execution.Result.ErrorReason}"));
@@ -146,12 +138,10 @@ namespace Bot3PG.Handlers
             
             string usedAlias = null;
             foreach (var command in commandHelp)
-            {
                 foreach (var alias in command.Value.Alias)
-                {
-                    if (message.Content.Split(" ")[0].Contains(alias)) usedAlias = alias;
-                }
-            }
+                    if (message.Content.Split(" ")[0].Contains(alias)) 
+                        usedAlias = alias;
+
             var discordCommand = Global.CommandService.Commands.FirstOrDefault(c => c.Name.ToLower() == similarCommand || c.Aliases.Contains(usedAlias));
             return discordCommand != null ? $"`{prefix}{CommandHelp.GetUsage(discordCommand, similarCommand ?? usedAlias)}`" : null;
         }
@@ -164,9 +154,7 @@ namespace Bot3PG.Handlers
                 {
                     var preconditions = new List<string>();
                     foreach (var precondition in commandHelp[command.Key].Preconditions)
-                    {
                         preconditions.Add(precondition.ToString());
-                    }
                     return $"`{preconditions[0]}`";
                 } 
             }

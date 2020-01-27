@@ -1,6 +1,7 @@
 using Bot3PG.Data;
 using Bot3PG.Handlers;
 using Bot3PG.Modules;
+using Bot3PG.Modules.General;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -32,28 +33,6 @@ namespace Bot3PG.CommandModules
             var socketGuildUser = Context.User as SocketGuildUser;
             var adminRole = Context.Guild.Roles.First(r => r.Name == role);
             await socketGuildUser.AddRoleAsync(adminRole);
-        }
-
-        [Command("Test")]
-        [Summary("Create a test embed with reactions")]
-        public async Task Test([Remainder] string details)
-        {
-            var features = details.Split("|");
-            const int maxLength = 2;
-            if (features.Length <= 1 || features.Length > maxLength)
-            {
-                await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, "Please separate Title and Expected with | (vertical bar)"));
-                return;
-            }
-            await Context.Message.DeleteAsync();
-
-            var embed = new EmbedBuilder()
-                .WithTitle($"`TEST` {features[0]}")
-                .WithDescription(features[1])
-                .WithColor(ModuleColour);
-            
-            var message = await ReplyAsync(embed);
-            await message.AddReactionsAsync(new []{ new Emoji("✅"), new Emoji("❌")});
         }
 
         [Command("Update Guilds")]
@@ -102,6 +81,21 @@ namespace Bot3PG.CommandModules
             }
             await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated `{count}`/`{count + failedCount}` users!", Color.Purple));
         }
+
+        [Command("Test")]
+        public async Task Test()
+        {
+            string details = "";
+
+            var announceUserJoined = Announce.AnnounceUserJoin(Context.User as SocketGuildUser);
+            details += $"{nameof(announceUserJoined)}: {GetResultEmote(!announceUserJoined.IsFaulted)}\n";
+
+            var announceUserLeft = Announce.AnnounceUserLeft(Context.User as SocketGuildUser);
+            details += $"{nameof(announceUserLeft)}: {GetResultEmote(!announceUserLeft.IsFaulted)}\n";
+
+            await ReplyAsync(details);
+        }
+        public IEmote GetResultEmote(bool result) => result ? new Emoji("✅") : new Emoji("❌");
 
     }
 }
