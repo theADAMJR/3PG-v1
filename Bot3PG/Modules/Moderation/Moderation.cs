@@ -154,7 +154,10 @@ namespace Bot3PG.Modules.Moderation
 
                 var user = await Users.GetAsync(target);
                 if (action == "reset")
+                {
                     await ResetUser(target);
+                    return;
+                }
 
                 var embed = new EmbedBuilder()
                     .WithThumbnailUrl(target.GetAvatarUrl())
@@ -195,7 +198,6 @@ namespace Bot3PG.Modules.Moderation
             {
                 await Users.ResetAsync(target);
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
-                return;
             }
         }
 

@@ -59,7 +59,7 @@ namespace Bot3PG.Utils
             try
             {
                 var req = WebRequest.Create(url);
-                var res = req.GetResponse();
+                var res = req.GetResponse(); // TODO: make async
                 return res.GetResponseStream();
             }
             catch (Exception) { throw new Exception("There was a problem downloading the image file."); }

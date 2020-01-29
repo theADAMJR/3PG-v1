@@ -59,8 +59,8 @@ namespace Bot3PG.Data.Structs
             [Config("Make members have to agree to the rules to use your server")]
             public RuleboxSubModule Rulebox { get; private set; } = new RuleboxSubModule();
 
-            //[Config("Automatically send messages to specific channels between intervals")]
-            //public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
+            // [Config("Automatically send messages to specific channels between intervals")]
+            // public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
 
             public class RuleboxSubModule : Submodule
             {
@@ -84,12 +84,18 @@ namespace Bot3PG.Data.Structs
 
                 [Config("Set the message in the rulebox embed")]
                 public string Message { get; set; } = "Do you agree to the rules?";
+
+                [Config("Whether to kick the user if they disagree")]
+                public bool KickOnDisagree { get; }
+
+                [Config("Whether to remove all user roles if they disagree")]
+                public bool RemoveRolesOnDisagree { get; } = true;
             }
 
             public class AutoMessagesSubmodule : Submodule
             {
                 [Config("The messages that are automatically sent after intervals")]
-                public AutoMessage[] Messages { get; set; }
+                public AutoMessage[] Messages { get; set; } = { new AutoMessage() };
             }
         }
 
@@ -144,7 +150,7 @@ namespace Bot3PG.Data.Structs
                     public string BackgroundURL { get; set; } = "";
 
                     [Config("Colour of the text"), SpecialType(typeof(Color))]
-                    public string TextColour { get; set; } = "";
+                    public string TextColour { get; set; } = "#FFFFFF";
                 }
 
                 public class GoodbyeMessages : Submodule
@@ -160,7 +166,7 @@ namespace Bot3PG.Data.Structs
                     public string BackgroundURL { get; set; } = "";
 
                     [Config("Colour of the text"), SpecialType(typeof(Color))]
-                    public string TextColour { get; set; } = "";
+                    public string TextColour { get; set; } = "#FFFFFF";
                 }
             }
         }
@@ -243,8 +249,9 @@ namespace Bot3PG.Data.Structs
         public class SocialModule : ConfigModule, IAppearsOnWebapp
         {
             public override bool Enabled { get; set; } = false;
-            //[Config("Know when your favourite YouTuber's post new content")]
-            //public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
+
+            // [Config("Know when your favourite YouTuber's post new content")]
+            // public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
 
             [Config("Alerts for when specific Twitch streamers are live",
             extraInfo: "Variables: \n[STREAMER] - name of streamer \n[TITLE] - title of stream \n[URL] - url of stream \n"
@@ -254,13 +261,13 @@ namespace Bot3PG.Data.Structs
             public class YouTubeSubmodule : Submodule
             {
                 [Config("Get notifications when YouTuber's upload")]
-                public YouTubeWebhook[] Hooks { get; private set; } = { new YouTubeWebhook{ Channel = "tseries", TextChannel = 662275583400607774 }};
+                public YouTubeWebhook[] Hooks { get; private set; } = { new YouTubeWebhook() };
             }
 
             public class TwitchSubmodule : Submodule
             {
                 [Config("Get notifications when Twitch streamer's upload")]
-                public TwitchWebhook[] Hooks { get; set; } = { new TwitchWebhook()};
+                public TwitchWebhook[] Hooks { get; set; } = { new TwitchWebhook() };
             }
         }
 
@@ -367,7 +374,7 @@ namespace Bot3PG.Data.Structs
         public string Channel { get; set; } = "";
 
         [Config("The YouTube notification message")]
-        public override string Message { get; set; } = "[AUTHOR] just uploaded a new video: [TITLE] at [URL]";
+        public override string Message { get; set; } = "[CHANNEL] just uploaded a new video: [TITLE] at [URL]";
     }
 
     public class TwitchWebhook : Webhook

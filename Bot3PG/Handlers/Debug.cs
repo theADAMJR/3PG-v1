@@ -11,9 +11,8 @@ namespace Bot3PG.Services
         public static async Task LogAsync(string src, LogSeverity severity, string message, Exception exception = null)
         {
             if (severity.Equals(null))
-            {
                 severity = LogSeverity.Warning;
-            }
+            
             await Append($"[{GetTimestamp(DateTime.Now)}] ", ConsoleColor.White);
             await Append($"{GetSeverityString(severity)}", GetConsoleColor(severity));
             await Append($" [{SourceToString(src)}] ", ConsoleColor.DarkGray);
@@ -22,26 +21,19 @@ namespace Bot3PG.Services
             {
                 await Append($"{message}\n", ConsoleColor.White);
                 if (exception != null)
-                {
                     await Append($"Exception: {exception}", ConsoleColor.DarkYellow);
-                }
             }
             else if (exception is null)
-            {
                 await Append("Unknown Exception. Exception Returned Null.\n", ConsoleColor.DarkRed);
-            }
             else if (exception.Message is null)
-            {
                 await Append($"Unknown \n{exception.StackTrace}\n", GetConsoleColor(severity));
-            }
             else
-            {
                 await Append($"{exception.Message ?? "Unknown"}\n{exception.StackTrace ?? "Unknown"}\n", GetConsoleColor(severity));
-            }
         }
 
-        public static async Task LogCriticalAsync(string source, string message, Exception exc = null) => await LogAsync(source, LogSeverity.Critical, message, exc);
-        public static async Task LogErrorAsync(string source, string message, Exception exc = null) => await LogAsync(source, LogSeverity.Error, message, exc);
+        public static async Task LogCriticalAsync(string source, string message, Exception ex = null) => await LogAsync(source, LogSeverity.Critical, message, ex);
+        public static async Task LogErrorAsync(string source, string message, Exception ex = null) => await LogAsync(source, LogSeverity.Error, message, ex);
+        public static async Task LogErrorAsync(string source, Exception ex) => await LogAsync(source, LogSeverity.Error, ex.Message, ex);
         public static async Task LogInformationAsync(string source, string message) => await LogAsync(source, LogSeverity.Info, message);
 
         public static string GetTimestamp(DateTime value) => value.ToString("HH:mm:ss");

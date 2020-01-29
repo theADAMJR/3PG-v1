@@ -1,6 +1,7 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
+using Bot3PG.Services;
 using Discord;
 using Discord.WebSocket;
 using System;
@@ -15,8 +16,7 @@ namespace Bot3PG.Modules.Admin
         {
             try
             {
-                if (socketGuildUser is null || socketGuildUser.IsBot) return;
-                if (reaction.MessageId != guild.Admin.Rulebox.MessageId) return;
+                if (socketGuildUser is null || socketGuildUser.IsBot || reaction?.MessageId != guild.Admin.Rulebox.MessageId) return;
 
                 var user = await Users.GetAsync(socketGuildUser);
                 if (reaction.Emote.Name == guild.Admin.Rulebox.AgreeEmote)
@@ -30,15 +30,14 @@ namespace Bot3PG.Modules.Admin
                     roles.RemoveAt(0);
 
                     var bot = socketGuildUser.Guild.GetUser(Global.Client.CurrentUser.Id);
-                    if (socketGuildUser.Hierarchy <= bot.Hierarchy)
-                    {
-                        await socketGuildUser.RemoveRolesAsync(roles); 
+                    if (guild.Admin.Rulebox.RemoveRolesOnDisagree && socketGuildUser.Hierarchy <= bot.Hierarchy)
+                        await socketGuildUser.RemoveRolesAsync(roles);
+                    if (guild.Admin.Rulebox.KickOnDisagree && socketGuildUser.Hierarchy <= bot.Hierarchy)
                         await user.KickAsync($"Please agree to the rules to use `{socketGuildUser.Guild.Name}`.", Global.Client.CurrentUser);
-                    }
                 }
                 await Users.Save(user);
             }
-            catch (Exception ex) { await reaction.Channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message)); }
+            catch (Exception ex) { await Debug.LogErrorAsync("rulebox", ex.StackTrace); }
         }
 
         public static async Task OnReactionRemoved(Cacheable<IUserMessage, ulong> before, ISocketMessageChannel channel, SocketReaction reaction)
@@ -57,7 +56,7 @@ namespace Bot3PG.Modules.Admin
                 }
                 await Users.Save(user);                
             }
-            catch (Exception ex) { await channel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message)); }
+            catch (Exception ex) { await Debug.LogErrorAsync("rulebox", ex.StackTrace); }
         }
 
         public static async Task RemoveUserReaction(SocketGuildUser socketGuildUser)
@@ -76,7 +75,7 @@ namespace Bot3PG.Modules.Admin
                     await message.RemoveReactionAsync(agreeEmote, message.Author);
                 }                
             }
-            catch (Exception ex) { await socketGuildUser.Guild.DefaultChannel.SendMessageAsync(embed: await EmbedHandler.CreateErrorEmbed("Rulebox", ex.Message)); }
+            catch (Exception ex) { await Debug.LogErrorAsync("rulebox", ex.StackTrace); }
         }
     }
 }

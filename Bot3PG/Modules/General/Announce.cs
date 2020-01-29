@@ -40,7 +40,8 @@ namespace Bot3PG.Modules.General
             string imageURL = $"{Global.Config.WebappLink}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/goodbye";
             var stream = CommandUtils.DownloadData(imageURL);
 
-            var channel = guildUser.Guild.GetTextChannel( guild.General.Announce.Goodbyes.Channel) ?? guildUser.Guild.SystemChannel ?? guildUser.Guild.DefaultChannel;
+            var channel = guildUser.Guild.GetTextChannel(guild.General.Announce.Goodbyes.Channel) ?? guildUser.Guild.SystemChannel ?? guildUser.Guild.DefaultChannel;
+            System.Console.WriteLine(channel.Id);
             if (channel != null)
                 await (channel as ISocketMessageChannel).SendFileAsync(stream, "goodbye.png");
         }

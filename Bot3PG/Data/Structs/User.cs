@@ -20,10 +20,13 @@ namespace Bot3PG.Data.Structs
 
         public class XPCardSettings
         {
-            public string BackgroundURL { get; set; }
-            public string UsernameColour { get; set; }
-            public string EXPColour { get; set; }
-            public string RankColour { get; set; }
+            public string BackgroundURL { get; }
+            public string UsernameColour { get; }
+            public string DiscriminatorColour { get; }
+            public string EXPColour { get; }
+            public string RankColour { get; }
+            public string ForegroundColour { get; }
+            public string BackgroundColour { get; }
         }
 
         public User(SocketUser socketUser) { _id = socketUser.Id; ID = socketUser.Id; }

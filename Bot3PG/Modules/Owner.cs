@@ -2,6 +2,7 @@ using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Handlers;
 using Bot3PG.Modules;
+using Bot3PG.Modules.Admin;
 using Bot3PG.Modules.General;
 using Bot3PG.Modules.Moderation;
 using Discord;
@@ -91,7 +92,7 @@ namespace Bot3PG.CommandModules
 
             string details = "";
             details += TestAnnounce(details);
-            // details += TestStaffLogs(details, user);
+            details += TestStaffLogs(details, user);
             details += TestAutoMod(details, user);
 
             await ReplyAsync(details);
@@ -139,6 +140,29 @@ namespace Bot3PG.CommandModules
             details += Test("Filter zalgo, filter returned", Auto.GetContentValidation(CurrentGuild, "Mͭͭͬu̔ͨ͊tͣ̃̚eͨͭ͐ ҉̴̴̢", user) == FilterType.Zalgo);
             return details + "\n";
         }
+
+        public async Task<string> TestRulebox(string details, GuildUser user)
+        {
+            var ruleboxChannel = Context.Guild.GetTextChannel(CurrentGuild.Admin.Rulebox.Channel);
+            var rulebox = await ruleboxChannel.GetMessageAsync(CurrentGuild.Admin.Rulebox.MessageId) as IUserMessage;
+
+            var agreeReaction = rulebox.Reactions.First().Key as SocketReaction;
+            var disagreeReaction = rulebox.Reactions.Last().Key as SocketReaction;
+
+            details += "`Auto Mod`\n";
+            details += Test("Agree to rulebox, member added", Rulebox.CheckRuleAgreement(CurrentGuild, Context.User as SocketGuildUser, agreeReaction));
+            details += Test("Disagree to rulebox, roles removed", Rulebox.CheckRuleAgreement(CurrentGuild, Context.User as SocketGuildUser, disagreeReaction));
+            return details + "\n";
+        }
+
+        [Command("Test Announce")]
+        private async Task TestAnnounceModule() => await ReplyAsync(TestAnnounce(""));
+
+        [Command("Test Staff Logs")]
+        private async Task TestStaffLogsModule() => await ReplyAsync(TestStaffLogs("", await Users.GetAsync(Context.User as SocketGuildUser)));
+
+        [Command("Test Rulebox")]
+        private async Task TestRulebox() => await ReplyAsync(await TestRulebox("", await Users.GetAsync(Context.User as SocketGuildUser)));
 
         public string Test(string label, Task task, bool? result = null) => $"{label}: {GetResultEmote(result ?? !task.IsFaulted)}\n";
         public string Test(string label, bool result) => $"{label}: {GetResultEmote(result)}\n";
