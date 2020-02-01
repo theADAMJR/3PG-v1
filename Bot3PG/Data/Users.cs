@@ -1,4 +1,5 @@
 ﻿using Bot3PG.Data.Structs;
+using Discord;
 using Discord.WebSocket;
 using MongoDB.Driver;
 using System;
@@ -69,10 +70,39 @@ namespace Bot3PG.Data
         public static async Task<List<GuildUser>> GetGuildUsersAsync(SocketGuild socketGuild) 
             => socketGuild is null ? null : await db.GetManyAsync(u => u.GuildID == socketGuild.Id, guildUserCollection);
 
+        public async static Task<List<SocketGuildUser>> GetRankedGuildUsersAsync(SocketGuild socketGuild)
+        {
+            if (socketGuild is null)
+                throw new ArgumentNullException(nameof(socketGuild));
+
+            var guildUsers = await db.GetManyAsync(u => u.GuildID == socketGuild.Id, guildUserCollection);
+            return guildUsers.OrderByDescending(u => u.XP.EXP).Select(u => socketGuild.GetUser(u.ID)).Where(u => u != null && !u.IsBot).ToList();
+        }
+
         public static async Task ResetAsync(SocketGuildUser socketGuildUser)
         {
             await DeleteGuildUser(socketGuildUser);
             await CreateGuildUserAsync(socketGuildUser);
+        }
+
+        public static async Task CheckReputationAdded(SocketUserMessage message, SocketReaction reaction)
+        {
+            var guildAuthor = message.Author as SocketGuildUser;
+            if (guildAuthor is null || reaction.Emote.Name != "👍" || guildAuthor.Id == reaction.UserId) return;
+
+            var user = await GetAsync(guildAuthor as SocketUser);
+            user.Reputation++;
+            await Save(user);
+        }
+
+        public static async Task CheckReputationRemoved(SocketUserMessage message, SocketReaction reaction)
+        {
+            var guildAuthor = message.Author as SocketGuildUser;
+            if (guildAuthor is null || reaction.Emote.Name != "👍" || guildAuthor.Id == reaction.UserId) return;
+
+            var user = await GetAsync(guildAuthor as SocketUser);
+            user.Reputation--;
+            await Save(user);
         }
 
         public static async Task DeleteGuildUser(SocketUser socketUser) => await db.DeleteAsync(u => u.ID == socketUser.Id, userCollection);

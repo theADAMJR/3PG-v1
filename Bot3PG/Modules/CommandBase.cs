@@ -8,7 +8,7 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
-namespace Bot3PG.Modules
+namespace Bot3PG.Data
 {
     public abstract class CommandBase : ModuleBase<CustomCommandContext>
     {
@@ -26,7 +26,8 @@ namespace Bot3PG.Modules
             {
                 try { await Context.Message.DeleteAsync(); }
                 catch (Exception) {}
-            } 
+            }
+            await Stats.LogCommandAsync(command.Name, Context.User as SocketGuildUser);
         }
         
         public async Task<IUserMessage> ReplyAsync(EmbedBuilder embed)

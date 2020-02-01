@@ -87,15 +87,21 @@ namespace Bot3PG.Handlers
                 if (guild is null) return;
 
                 if (guild.Admin.Rulebox.Enabled) await Rulebox.CheckRuleAgreement(guild, socketGuildUser, reaction);
+
+                if (reaction.Message.IsSpecified && reaction.Message.Value != null)
+                    await Users.CheckReputationAdded(reaction.Message.Value, reaction);
             };
 
-            bot.ReactionRemoved += async (Cacheable<IUserMessage, ulong> cache, ISocketMessageChannel channel, SocketReaction reaction) =>
+            bot.ReactionRemoved += async (Cacheable<IUserMessage, ulong> before, ISocketMessageChannel channel, SocketReaction reaction) =>
             {
                 var socketGuild = (channel as SocketTextChannel)?.Guild;
                 var guild = await Guilds.GetAsync(socketGuild);
                 if (guild is null) return;
 
-                if (guild.Admin.Rulebox.Enabled) await Rulebox.OnReactionRemoved(cache, channel, reaction);
+                if (guild.Admin.Rulebox.Enabled) await Rulebox.OnReactionRemoved(before, channel, reaction);
+
+                if (reaction.Message.IsSpecified && reaction.Message.Value != null)
+                    await Users.CheckReputationRemoved(reaction.Message.Value, reaction);
             };
 
             bot.MessageReceived += async (SocketMessage message) =>

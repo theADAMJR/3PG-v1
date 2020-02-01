@@ -98,7 +98,7 @@ namespace Bot3PG.CommandModules
             await ReplyAsync(details);
         }
 
-        private string TestAnnounce(string details)
+        private string TestAnnounce(string details = "")
         {
             details += "`Announce`\n";
 
@@ -156,7 +156,7 @@ namespace Bot3PG.CommandModules
         }
 
         [Command("Test Announce")]
-        private async Task TestAnnounceModule() => await ReplyAsync(TestAnnounce(""));
+        private async Task TestAnnounceModule() => await ReplyAsync(TestAnnounce());
 
         [Command("Test Staff Logs")]
         private async Task TestStaffLogsModule() => await ReplyAsync(TestStaffLogs("", await Users.GetAsync(Context.User as SocketGuildUser)));

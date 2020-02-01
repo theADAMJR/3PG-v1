@@ -25,34 +25,36 @@ namespace Bot3PG.Modules.XP
         public async Task ShowEXP(SocketGuildUser target = null)
         {
             target ??= Context.User as SocketGuildUser;
+            
+            string imageURL = $"{Global.Config.WebappLink}/api/servers/{target.Guild.Id}/users/{target.Id}/xp-card";
+            System.Console.WriteLine(imageURL);
+            var stream = CommandUtils.DownloadData(imageURL);
+            await Context.Channel.SendFileAsync(stream, "server-xp-card.png");
+        }
 
-            var guild = await Guilds.GetAsync(Context.Guild);
-            var users = await Users.GetGuildUsersAsync(Context.Guild);
-            users = users.OrderByDescending(u => u.XP.EXP).ToList();
-
-            int rank = users.FindIndex(u => u.ID == target.Id) + 1;
-            var user = await Users.GetAsync(target);
-
-            var cardColour = Color.DarkGrey;
-            var roles = guild.XP.RoleRewards.LevelRoles.OrderBy(r => r.Key);
-
-            foreach (var role in roles)
+        [Command("XP"), Alias("EXP", "Rank")]
+        [Summary("Display a user's XP stats")]
+        [RequireUserPermission(GuildPermission.SendMessages)]
+        public async Task ShowRankEXP(int rank)
+        {
+            try
             {
-                int.TryParse(role.Key, out int boundary);
-                if (user.XP.Level >= boundary)
-                    cardColour = Context.Guild.GetRole(role.Value)?.Color ?? Color.Default;
+                if (rank <= 0)
+                    throw new ArgumentException("Rank cannot be less than 0");
+
+                var rankedUsers = await Users.GetRankedGuildUsersAsync(Context.Guild);
+                if (rank > rankedUsers.Count)
+                    throw new ArgumentException("Rank exceeds number of ranked users");
+
+                var target = rankedUsers[rank - 1];
+                if (target is null)
+                    throw new InvalidOperationException($"User at rank `{rank}` could not be found");
+
+                string imageURL = $"{Global.Config.WebappLink}/api/servers/{target.Guild.Id}/users/{target.Id}/xp-card";
+                var stream = CommandUtils.DownloadData(imageURL);
+                await Context.Channel.SendFileAsync(stream, "server-xp-card.png");                
             }
-
-            var embed = new EmbedBuilder();
-            embed.WithThumbnailUrl(target.GetAvatarUrl());
-            embed.AddField("User", target.Mention, true);
-            embed.AddField("EXP", user.XP.EXP, true);
-            embed.AddField("EXP for Next Level", user.XP.EXPForNextLevel, true);
-            embed.AddField("Level", user.XP.Level, true);
-            embed.AddField("Rank", $"#{rank}", false);
-            embed.WithColor(cardColour);
-
-            await ReplyAsync(embed);
+            catch (ArgumentException ex) { await ReplyAsync(EmbedHandler.CreateErrorEmbed(ModuleName, ex.Message)); }
         }
 
         [Command("Leaderboard")]

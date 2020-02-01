@@ -59,8 +59,8 @@ namespace Bot3PG.Data.Structs
             [Config("Make members have to agree to the rules to use your server")]
             public RuleboxSubModule Rulebox { get; private set; } = new RuleboxSubModule();
 
-            // [Config("Automatically send messages to specific channels between intervals")]
-            // public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
+            [Config("Automatically send messages to specific channels between intervals")]
+            public AutoMessagesSubmodule AutoMessages { get; set; } = new AutoMessagesSubmodule();
 
             public class RuleboxSubModule : Submodule
             {
@@ -241,17 +241,14 @@ namespace Bot3PG.Data.Structs
             
             [Config("Warn users if their ears may be under attack")]
             public bool HeadphoneWarning { get; private set; } = true;
-
-            // [Config("The voting system used for skipping tracks"), Dropdown(typeof(SkipType))]
-            // public SkipType SkipTrackType { get; private set; }
         }
 
         public class SocialModule : ConfigModule, IAppearsOnWebapp
         {
             public override bool Enabled { get; set; } = false;
 
-            // [Config("Know when your favourite YouTuber's post new content")]
-            // public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
+            [Config("Know when your favourite YouTuber's post new content")]
+            public YouTubeSubmodule YouTube { get; private set; } = new YouTubeSubmodule();
 
             [Config("Alerts for when specific Twitch streamers are live",
             extraInfo: "Variables: \n[STREAMER] - name of streamer \n[TITLE] - title of stream \n[URL] - url of stream \n"

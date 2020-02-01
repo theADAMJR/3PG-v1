@@ -159,10 +159,10 @@ namespace Bot3PG.Data
                 collection.ReplaceOne(d => d["_id"] == "Commands", commandMirror);
         }
 
-        public async Task InsertAsync<T>(T item, IMongoCollection<T> collection)
+        public async Task<T> InsertAsync<T>(T item, IMongoCollection<T> collection)
         {
-            try { await collection.InsertOneAsync(item); }
-            catch {}
+            try { await collection.InsertOneAsync(item); return item; }
+            catch { return default; }
         }
 
         public async Task<T> GetAsync<T>(Expression<Func<T, bool>> predicate, IMongoCollection<T> collection)

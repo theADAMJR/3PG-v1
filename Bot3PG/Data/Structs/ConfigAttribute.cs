@@ -65,10 +65,21 @@ namespace Bot3PG.Data.Structs
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
     public sealed class RangeAttribute : SpecialTypeAttribute
     {
+        public float Step { get; set; }
         public float Min { get; set; }
         public float Max { get; set; }
 
-        public RangeAttribute(int min, int max) { Min = min; Max = max; }
-        public RangeAttribute(float min, float max) { Min = min; Max = max; }
+        public RangeAttribute(int min, int max, int step = 1) { Min = min; Max = max; Step = Step; }
+        public RangeAttribute(float min, float max, float step = 1) { Min = min; Max = max; Step = step; }
+    }
+
+    [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    public sealed class MinMaxAttribute : SpecialTypeAttribute
+    {
+        public float Min { get; set; }
+        public float Max { get; set; }
+
+        public MinMaxAttribute(int min, int max) { Min = min; Max = max; }
+        public MinMaxAttribute(float min, float max) { Min = min; Max = max; }
     }
 }
