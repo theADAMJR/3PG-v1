@@ -10,7 +10,7 @@ namespace Bot3PG.Data
     { 
         private static readonly IMongoCollection<GuildStats> statsCollection;
 
-        private const string stats = "user";
+        private const string stats = "stats";
         
         private static readonly DatabaseManager db;
 
@@ -28,12 +28,16 @@ namespace Bot3PG.Data
         public static async Task LogCommandAsync(string name, SocketGuildUser instigator)
         {
             var stats = await Get(instigator.Guild);
-            stats.Commands.Append(new CommandStat{ Name = name, InstigatorID = instigator.Id });
+            stats.Reinitialize(instigator.Guild);
+            stats.Commands.Add(new CommandStat{ Name = name, InstigatorID = instigator.Id });
+            await Save(stats);
         }
+
+        public static async Task<GuildStats> Save(GuildStats stats) => await db.UpdateAsync(s => s.ID == stats.ID, stats, statsCollection);
 
         public static async Task<GuildStats> Get(SocketGuild guild) => await GetOrCreate(guild);
 
-        private static async Task<GuildStats> GetOrCreate(SocketGuild guild) => await db.GetAsync(g => g.ID == guild.Id, statsCollection) ?? await Create(guild);
+        private static async Task<GuildStats> GetOrCreate(SocketGuild guild) => await db.GetAsync(s => s.ID == guild.Id, statsCollection) ?? await Create(guild);
         private static async Task<GuildStats> Create(SocketGuild guild) => await db.InsertAsync(new GuildStats(guild), statsCollection);
     }
 }

@@ -17,8 +17,5 @@ namespace Bot3PG.Modules.Admin
 
         [Config("Time in minutes between each message"), MinMax(5, 10080)]
         public int Interval { get; set; }
-
-        [Config("Repeat the auto message")]
-        public bool Recurring { get; set; } = true;
     }
 }
