@@ -128,27 +128,8 @@ namespace Bot3PG.Modules.General
         public async Task SendSupportMessage() 
             => await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Support 💬", $"**3PG Discord Server**: {Global.Config.WebappLink}/support", Color.Purple));
             
-
-        /*[Command("Vote")]
-        [Summary("A great command! Vote for 3PG 🤖")]
-        public async Task Vote()
-        {
-            string creationDate = $"{Context.Client.CurrentUser.CreatedAt.Day}/{Context.Client.CurrentUser.CreatedAt.Month}/{Context.Client.CurrentUser.CreatedAt.Year}";
-
-            var embed = new EmbedBuilder()
-                .WithTitle($"{Context.Client.CurrentUser.Username} stats")
-                .AddField("Creator", Context.Client.GetUser(Global.CreatorID).Mention, true)
-                .AddField("Servers", Context.Client.Guilds.Count, true)
-                .AddField("Uptime", $"{Global.Uptime.Days}d {Global.Uptime.Hours}h {Global.Uptime.Minutes}m {Global.Uptime.Seconds}s", true)
-                .AddField("Creation Date", creationDate, true)
-                .AddField("DM Channels", Context.Client.DMChannels.Count, true)
-                .AddField("Processor Count", Environment.ProcessorCount, true)
-                .AddField("Page Size", $"{Environment.SystemPageSize} bytes", true)
-                .WithFooter($"Bot ID: {Context.Client.CurrentUser.Id}")
-                .WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl())
-                .WithColor(Color.DarkMagenta);
-
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed(ModuleName, "Vote for 3PG!\nhttps://3pg.xyz/vote!"));
-        }*/
+        [Command("Vote")]
+        [Summary("The easiest way to support 3PG! 🤖")]
+        public async Task Vote() => await ReplyAsync(EmbedHandler.CreateBasicEmbed("Vote for 3PG", "https://discordbotlist.com/bots/525935335918665760/upvote", ModuleColour));
     }
 }

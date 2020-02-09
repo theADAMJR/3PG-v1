@@ -26,6 +26,7 @@ namespace Bot3PG.Data
         private void InitializeDB(Config.DatabaseConfig db)
         {
             MongoClient = new MongoClient($"mongodb://{db.User}:{db.Password}@{db.Server}:{db.Port}/{db.AuthDatabase}");
+            // MongoClient = new MongoClient($"mongodb://{db.Server}:{db.Port}");
             Database = MongoClient.GetDatabase(db.Database);
 
             bool connected = Database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait(1000);

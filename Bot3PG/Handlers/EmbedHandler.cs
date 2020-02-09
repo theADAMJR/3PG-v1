@@ -13,6 +13,7 @@ namespace Bot3PG.Handlers
                 .WithColor(color).Build()));
             return embed;
         }
+        // TODO: change to synchronous
         public static async Task<Embed> CreateSimpleEmbed(string title, string description, Color color)
         {
             var embed = await Task.Run(() => (new EmbedBuilder()
