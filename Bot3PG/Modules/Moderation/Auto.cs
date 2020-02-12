@@ -94,25 +94,25 @@ namespace Bot3PG.Modules.Moderation
             if (string.IsNullOrEmpty(content)) return null;
 
             var autoMod = guild.Moderation.Auto;
-            Func<FilterType, bool> HasFilter = (FilterType filter) => autoMod.Filters.FirstOrDefault(f => f.Filter == filter) != null;
+            Func<FilterType, bool> hasFilter = (FilterType filter) => autoMod.Filters.FirstOrDefault(f => f.Filter == filter) != null;
             
-            if (HasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
-            if (HasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content, links: true)) return FilterType.BadLinks;
+            if (hasFilter(FilterType.BadWords) && ContentIsExplicit(guild, content)) return FilterType.BadWords;
+            if (hasFilter(FilterType.BadLinks) && ContentIsExplicit(guild, content, links: true)) return FilterType.BadLinks;
 
             bool hasExcessiveCaps = content.Where(c => char.IsUpper(c) && !char.IsSymbol(c)).Count() > 5; 
-            if (HasFilter(FilterType.AllCaps) && hasExcessiveCaps) return FilterType.AllCaps;
-            if (HasFilter(FilterType.DiscordInvites) && content.Contains("discord.gg")) return FilterType.DiscordInvites;
+            if (hasFilter(FilterType.AllCaps) && hasExcessiveCaps) return FilterType.AllCaps;
+            if (hasFilter(FilterType.DiscordInvites) && content.Contains("discord.gg")) return FilterType.DiscordInvites;
 
             const int maxEmojis = 8;
             string containsEmojis = @"(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])";
-            if (HasFilter(FilterType.EmojiSpam) && Regex.Matches(content, containsEmojis, RegexOptions.Multiline).Count > maxEmojis) return FilterType.EmojiSpam;
+            if (hasFilter(FilterType.EmojiSpam) && Regex.Matches(content, containsEmojis, RegexOptions.Multiline).Count > maxEmojis) return FilterType.EmojiSpam;
 
             const int maxMentions = 6;
-            if (HasFilter(FilterType.MassMention) && Regex.Matches(content, "<@!").Count >= maxMentions) return FilterType.MassMention;
-            if (HasFilter(FilterType.DuplicateMessage) && content.ToLower() == user.Status.LastMessage && !string.IsNullOrEmpty(content)) return FilterType.DuplicateMessage;
+            if (hasFilter(FilterType.MassMention) && Regex.Matches(content, "<@!").Count >= maxMentions) return FilterType.MassMention;
+            if (hasFilter(FilterType.DuplicateMessage) && content.ToLower() == user.Status.LastMessage && !string.IsNullOrEmpty(content)) return FilterType.DuplicateMessage;
             
             bool containsZalgo = Regex.IsMatch(content, @"([^\u0009-\u02b7\u2000-\u20bf\u2122\u0308]|(?![^aeiouy])\u0308)", RegexOptions.Multiline);
-            if (HasFilter(FilterType.Zalgo) && containsZalgo) return FilterType.Zalgo;
+            if (hasFilter(FilterType.Zalgo) && containsZalgo) return FilterType.Zalgo;
 
             return null;
         }

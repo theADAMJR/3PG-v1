@@ -43,7 +43,7 @@ namespace Bot3PG.Data.Structs
 
         [BsonIgnore] public static SocketGuild DiscordGuild => Global.Client.GetGuild(_id);
 
-        public Guild(SocketGuild socketGuild) 
+        public Guild(IGuild socketGuild) 
         {
             if (socketGuild is null)
                 throw new ArgumentNullException(nameof(socketGuild));

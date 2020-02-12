@@ -19,7 +19,7 @@ namespace Bot3PG.Tests
         // [Test]
         public async Task Join_NoChannel_ThrowsException()
         {
-            var user = CreateMockGuildUser("ADAMJR", "ADAMJR", "Exo");
+            var user = CreateMockGuildUser();
             var socketMessage = new Mock<IUserMessage>();
             socketMessage.Setup(m => m.Content).Returns("/music");
             socketMessage.Setup(m => m.Author).Returns(user as IUser);

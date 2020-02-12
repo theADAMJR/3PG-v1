@@ -6,14 +6,20 @@ namespace Bot3PG.Tests
 {
     public class TestModule
     {
-        internal static Mock<IGuildUser> CreateMockGuildUser(string nickname, string username, string guildName = "MyGuild", string userMention = "@User")
+        internal static IGuild CreateMockGuild()
+        {
+            var guild = new Mock<IGuild>();
+            guild.Setup(g => g.Name).Returns("Exo");
+            return guild.Object;
+        }
+
+        internal static IGuildUser CreateMockGuildUser()
         {
             var guildUser = new Mock<IGuildUser>();
-            guildUser.Setup(gUser => gUser.Nickname).Returns(nickname);
-            guildUser.Setup(gUser => gUser.Username).Returns(username);
-            guildUser.Setup(gUser => gUser.Mention).Returns(userMention);
-            guildUser.Setup(gUser => gUser.Guild.Name).Returns(guildName);
-            return guildUser;
+            guildUser.Setup(u => u.Nickname).Returns("Adam");
+            guildUser.Setup(u => u.Username).Returns("ADAMJR");
+            guildUser.Setup(u => u.Guild).Returns(CreateMockGuild());
+            return guildUser.Object;
         }
     }
 }

@@ -33,9 +33,9 @@ namespace Bot3PG.Data.Structs
         public Leveling XP { get; private set; } = new Leveling();
         public Moderation Status { get; private set; } = new Moderation();
 
-        public void Reinitialize(SocketGuildUser socketGuildUser) { _id = socketGuildUser.Id; _guildId = socketGuildUser.Guild.Id; }
+        public void Reinitialize(IGuildUser socketGuildUser) { _id = socketGuildUser.Id; _guildId = socketGuildUser.Guild.Id; }
 
-        public GuildUser(SocketGuildUser socketGuildUser)
+        public GuildUser(IGuildUser socketGuildUser)
         {
             Reinitialize(socketGuildUser);
             ID = socketGuildUser.Id;
