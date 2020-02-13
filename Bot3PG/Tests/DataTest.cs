@@ -54,8 +54,8 @@ namespace Bot3PG.Tests
         // [Test]
         public void MessageOrGuild_Null_ExceptionThrown()
         {
-            AsyncTestDelegate test = async() => await Leveling.ValidateCanEarnEXP(null, null);
-            Assert.CatchAsync(test);
+            // AsyncTestDelegate test = async() => await Leveling.ValidateCanEarnEXP(null, null);
+            // Assert.CatchAsync(test);
         }
 
         /*[Test]

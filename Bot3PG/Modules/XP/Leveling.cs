@@ -14,32 +14,27 @@ namespace Bot3PG.Modules.XP
     {
         public static async void ValidateForEXPAsync(SocketUserMessage message, Guild guild)
         {
-            try
-            {
-                var guildUser = await ValidateCanEarnEXP(message, guild);
-                var user = await Users.GetAsync(message.Author);
+            var guildUser = await ValidateCanEarnEXP(message, guild);
+            var user = await Users.GetAsync(message.Author);
 
-                guildUser.Status.LastMessage = message.Content;
-                guildUser.XP.LastXPMsg = DateTime.Now;
+            guildUser.Status.LastMessage = message.Content;
+            guildUser.XP.LastXPMsg = DateTime.Now;
 
-                int oldLevel = guildUser.XP.Level;
-                guildUser.XP.EXP += guild.XP.EXPPerMessage;
+            int oldLevel = guildUser.XP.Level;
+            guildUser.XP.EXP += guild.XP.EXPPerMessage;
 
-                int newLevel = guildUser.XP.Level;
-                guildUser.Status.MessageCount++;
-                user.MessageCount++;
+            int newLevel = guildUser.XP.Level;
+            guildUser.Status.MessageCount++;
+            user.MessageCount++;
 
-                await Users.Save(guildUser);
-                await Users.Save(user);
+            await Users.Save(guildUser);
+            await Users.Save(user);
 
-                if (oldLevel != newLevel)
-                    await SendLevelUpMessageAsync(message, guild, guildUser, oldLevel, newLevel);
-            }
-            catch (InvalidOperationException) {}
-            catch (Exception ex) { await Debug.LogCriticalAsync("Leveling", ex.Message, ex); }
+            if (oldLevel != newLevel)
+                await SendLevelUpMessageAsync(message, guild, guildUser, oldLevel, newLevel);
         }
 
-        public static async Task<GuildUser> ValidateCanEarnEXP(SocketUserMessage message, Guild guild)
+        private static async Task<GuildUser> ValidateCanEarnEXP(SocketUserMessage message, Guild guild)
         {
             if (message is null || guild is null || !(message.Author is SocketGuildUser guildAuthor))
                 throw new InvalidOperationException("Message author could not be found.");
@@ -103,7 +98,7 @@ namespace Bot3PG.Modules.XP
             }
         }
 
-        public static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser guildAuthor, Guild guild, int oldLevel, int newLevel)
+        private static async Task<bool> ValidateNewXPRoleAsync(SocketGuildUser guildAuthor, Guild guild, int oldLevel, int newLevel)
         {
             var levelRole = GetLevelRole(guild, newLevel);
             if (!guild.XP.RoleRewards.Enabled || !guild.XP.RoleRewards.RolesExist || levelRole is null) return false;
@@ -120,14 +115,14 @@ namespace Bot3PG.Modules.XP
             return true;
         }
 
-        public static SocketRole GetLevelRole(Guild guild, int newLevel)
+        private static SocketRole GetLevelRole(Guild guild, int newLevel)
         {
             var socketGuild = Global.Client.GetGuild(guild.ID);
             guild.XP.RoleRewards.LevelRoles.TryGetValue($"{newLevel}", out var levelRoleId);
             return socketGuild.Roles.FirstOrDefault(r => r.Id == levelRoleId);
         }
 
-        public static SocketRole GetOldLevelRole(Guild guild, int oldLevel)
+        private static SocketRole GetOldLevelRole(Guild guild, int oldLevel)
         {
             for (int i = oldLevel - 1; i >= 0 ; i--)
             {

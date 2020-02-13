@@ -55,7 +55,8 @@ namespace Bot3PG.Handlers
             bool userCanEarnEXP = guild.XP.Enabled && !message.Author.IsBot;
             if (!isCommand && userCanEarnEXP)
             {
-                Leveling.ValidateForEXPAsync(message, guild);
+                try { Leveling.ValidateForEXPAsync(message, guild); }
+                catch {}
                 return;
             }
             if (message.Author.IsBot) return;
