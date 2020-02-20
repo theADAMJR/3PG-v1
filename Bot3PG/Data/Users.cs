@@ -37,13 +37,13 @@ namespace Bot3PG.Data
         public static async Task Save(User user) => await db.UpdateAsync(u => u.ID == user.ID, user, userCollection);
         public static async Task Save(GuildUser guildUser) => await db.UpdateAsync(u => u.ID == guildUser.ID && u.GuildID == guildUser.GuildID, guildUser, guildUserCollection);
 
-        public static async Task<User> GetAsync(SocketUser socketUser) => await GetOrCreateAsync(socketUser);
-        public static async Task<GuildUser> GetAsync(SocketGuildUser socketGuildUser) => await GetOrCreateAsync(socketGuildUser);
+        public static async Task<User> GetAsync(IUser socketUser) => await GetOrCreateAsync(socketUser);
+        public static async Task<GuildUser> GetAsync(IGuildUser socketGuildUser) => await GetOrCreateAsync(socketGuildUser);
 
-        private static async Task<User> GetOrCreateAsync(SocketUser socketUser) 
+        private static async Task<User> GetOrCreateAsync(IUser socketUser) 
             => socketUser is null ? null : await db.GetAsync(u => u.ID == socketUser.Id, userCollection) ?? await CreateUserAsync(socketUser);
 
-        private static async Task<GuildUser> GetOrCreateAsync(SocketGuildUser socketGuildUser)
+        private static async Task<GuildUser> GetOrCreateAsync(IGuildUser socketGuildUser)
         {
             if (socketGuildUser is null) return null;
 
@@ -54,13 +54,13 @@ namespace Bot3PG.Data
             return guildUser ?? await CreateGuildUserAsync(socketGuildUser);
         }
 
-        private static async Task<User> CreateUserAsync(SocketUser socketUser)
+        private static async Task<User> CreateUserAsync(IUser socketUser)
         {
             var user = new User(socketUser);
             await db.InsertAsync(user, userCollection);
             return user;
         }
-        private static async Task<GuildUser> CreateGuildUserAsync(SocketGuildUser socketGuildUser)
+        private static async Task<GuildUser> CreateGuildUserAsync(IGuildUser socketGuildUser)
         {
             var guildUser = new GuildUser(socketGuildUser);
             await db.InsertAsync(guildUser, guildUserCollection);

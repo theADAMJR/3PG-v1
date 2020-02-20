@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Bot3PG.Data;
 using Bot3PG.Data.Structs;
 using Bot3PG.Modules;
@@ -32,6 +34,30 @@ namespace Bot3PG.Handlers
             HookEvents();
         }
 
+        private void UpdateBotStats()
+        {   
+            new Task(async() =>
+            {
+                using var client = new HttpClient();
+                var startup = DateTime.Now - Global.Uptime;
+                var values = new Dictionary<string, string>
+                {
+                    { "latency", bot.Latency.ToString() }, 
+                    { "startup", startup.ToString() }
+                };
+                var body = new FormUrlEncodedContent(values);
+                try 
+                {
+                    await client.PostAsync($"http://localhost:3000/api/bot-stats?token=123", body);
+                    await Debug.LogAsync("events", LogSeverity.Verbose, "Updated bot stats");
+                }
+                catch { await Debug.LogErrorAsync("events", "Failed to update bot stats"); }
+                await Task.Delay(60 * 1000);
+
+                UpdateBotStats();
+            }).Start();
+        }
+
         public void HookEvents()
         {
             HookLogEvents();
@@ -58,6 +84,7 @@ namespace Bot3PG.Handlers
 
                     await bot.SetGameAsync(Global.Config.GameStatus);
 
+                    UpdateBotStats();
                     await new DatabaseManager(Global.DatabaseConfig).UpdateCommands(new CommandHelp());
                 }
                 catch (Exception ex) { await Debug.LogCriticalAsync(ex.Source, ex.Message); }
@@ -70,9 +97,9 @@ namespace Bot3PG.Handlers
 
                 var embed = new EmbedBuilder();
                 embed.WithTitle($"Hi, I'm {bot.CurrentUser.Username}!");
-                embed.AddField("⚙️ Config", $"Customize me to your server's needs at {Global.Config.WebappLink}/servers/{socketGuild.Id}", inline: true);
+                embed.AddField("⚙️ Config", $"Customize me to your server's needs at {Global.Config.WebappURL}/servers/{socketGuild.Id}", inline: true);
                 embed.AddField("📜 Commands", $"Type {newGuild.General.CommandPrefix}help for a list of commands.", inline: true);
-                embed.AddField("❔ Support", $"Need help with {bot.CurrentUser.Username}? Join our Discord for more support: {Global.Config.WebappLink}/support", inline: true);
+                embed.AddField("❔ Support", $"Need help with {bot.CurrentUser.Username}? Join our Discord for more support: {Global.Config.WebappURL}/support", inline: true);
 
                 await channel.SendMessageAsync(embed: embed.Build());
             };

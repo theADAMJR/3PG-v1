@@ -26,7 +26,7 @@ namespace Bot3PG.Modules.XP
         {
             target ??= Context.User as SocketGuildUser;
             
-            string imageURL = $"{Global.Config.WebappLink}/api/servers/{target.Guild.Id}/users/{target.Id}/xp-card";
+            string imageURL = $"{Global.Config.WebappURL}/api/servers/{target.Guild.Id}/users/{target.Id}/xp-card";
             System.Console.WriteLine(imageURL);
             var stream = CommandUtils.DownloadData(imageURL);
             await Context.Channel.SendFileAsync(stream, "server-xp-card.png");
@@ -50,7 +50,7 @@ namespace Bot3PG.Modules.XP
                 if (target is null)
                     throw new InvalidOperationException($"User at rank `{rank}` could not be found");
 
-                string imageURL = $"{Global.Config.WebappLink}/api/servers/{target.Guild.Id}/users/{target.Id}/xp-card";
+                string imageURL = $"{Global.Config.WebappURL}/api/servers/{target.Guild.Id}/users/{target.Id}/xp-card";
                 var stream = CommandUtils.DownloadData(imageURL);
                 await Context.Channel.SendFileAsync(stream, "server-xp-card.png");                
             }
@@ -92,7 +92,7 @@ namespace Bot3PG.Modules.XP
                 var embed = new EmbedBuilder();
                 embed.WithColor(Color.Teal);
                 embed.AddField($"🏆 **{ Context.Guild.Name} Leaderboard **", details, inline: false);
-                embed.AddField("View Leaderboard", $"{Global.Config.WebappLink}/servers/{Context.Guild.Id}/leaderboard");
+                embed.AddField("View Leaderboard", $"{Global.Config.WebappURL}/servers/{Context.Guild.Id}/leaderboard");
                 embed.WithThumbnailUrl(Context.Guild.IconUrl);
                 embed.WithFooter($"Page {page}/{guild.XP.MaxLeaderboardPage} • Users with XP: {users.Count}");
 
@@ -108,7 +108,7 @@ namespace Bot3PG.Modules.XP
         {
             target ??= Context.User;
             
-            string imageURL = $"{Global.Config.WebappLink}/api/users/{target.Id}/xp-card";
+            string imageURL = $"{Global.Config.WebappURL}/api/users/{target.Id}/xp-card";
             var stream = CommandUtils.DownloadData(imageURL);
             await Context.Channel.SendFileAsync(stream, "xp-card.png");
         }

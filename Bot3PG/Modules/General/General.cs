@@ -56,7 +56,7 @@ namespace Bot3PG.Modules.General
             CurrentGuild ??= await Guilds.GetAsync(Context.Guild);
             var prefix = CurrentGuild.General.CommandPrefix;
             string prefixQuery = prefix != "/" ? $"?prefix={prefix}" : "";
-            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"View all commands", $"{Global.Config.WebappLink}/commands{prefixQuery}", Color.DarkPurple));
+            await ReplyAsync(EmbedHandler.CreateBasicEmbed($"View all commands", $"{Global.Config.WebappURL}/commands{prefixQuery}", Color.DarkPurple));
         }
 
         [Command("Ping")]
@@ -126,7 +126,7 @@ namespace Bot3PG.Modules.General
         [Command("Support")]
         [Summary("Get a link to the 3PG support Discord server")]
         public async Task SendSupportMessage() 
-            => await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Support 💬", $"**3PG Discord Server**: {Global.Config.WebappLink}/support", Color.Purple));
+            => await ReplyAsync(EmbedHandler.CreateSimpleEmbed("Support 💬", $"**3PG Discord Server**: {Global.Config.WebappURL}/support", Color.Purple));
             
         [Command("Vote")]
         [Summary("The easiest way to support 3PG! 🤖")]

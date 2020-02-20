@@ -12,10 +12,10 @@ namespace Bot3PG.Modules.XP
 {
     public class Leveling
     {
-        public static async void ValidateForEXPAsync(SocketUserMessage message, Guild guild)
+        public static async Task ValidateForEXPAsync(IUserMessage message, Guild guild)
         {
             var guildUser = await ValidateCanEarnEXP(message, guild);
-            var user = await Users.GetAsync(message.Author);
+            var user = await Users.GetAsync(message.Author as SocketUser);
 
             guildUser.Status.LastMessage = message.Content;
             guildUser.XP.LastXPMsg = DateTime.Now;
@@ -34,10 +34,10 @@ namespace Bot3PG.Modules.XP
                 await SendLevelUpMessageAsync(message, guild, guildUser, oldLevel, newLevel);
         }
 
-        private static async Task<GuildUser> ValidateCanEarnEXP(SocketUserMessage message, Guild guild)
+        private static async Task<GuildUser> ValidateCanEarnEXP(IUserMessage message, Guild guild)
         {
-            if (message is null || guild is null || !(message.Author is SocketGuildUser guildAuthor))
-                throw new InvalidOperationException("Message author could not be found.");
+            if (message is null || guild is null || !(message.Author is IGuildUser guildAuthor))
+                throw new InvalidOperationException();
 
             var guildUser = await Users.GetAsync(guildAuthor);
 
@@ -46,7 +46,7 @@ namespace Bot3PG.Modules.XP
                 throw new InvalidOperationException("User cannot earn EXP.");
 
             bool channelIsBlacklisted = guild.XP.ExemptChannels.Any(id => id == message.Channel.Id);
-            bool roleIsBlackListed = guild.XP.ExemptRoles.Any(id => guildAuthor.Roles.Any(r => r.Id == id));
+            bool roleIsBlackListed = guild.XP.ExemptRoles.Any(id => guildAuthor.RoleIds.Any(roleId => roleId == id));
             if (channelIsBlacklisted || roleIsBlackListed)
                 throw new InvalidOperationException("Channel or role cannot earn EXP.");
 
@@ -74,7 +74,7 @@ namespace Bot3PG.Modules.XP
             return embed.Build();
         }
 
-        private static async Task SendLevelUpMessageAsync(SocketUserMessage message, Guild guild, GuildUser guildUser, int oldLevel, int newLevel)
+        private static async Task SendLevelUpMessageAsync(IUserMessage message, Guild guild, GuildUser guildUser, int oldLevel, int newLevel)
         {
             var guildAuthor = message.Author as SocketGuildUser;
             var embed = await GetLevelUpEmbed(guildAuthor, guild, guildUser, oldLevel, newLevel);
@@ -108,7 +108,8 @@ namespace Bot3PG.Modules.XP
                 if (oldLevelRole != null)
                     await guildAuthor.RemoveRoleAsync(oldLevelRole);
             }
-            if (levelRole is null) return false;
+            if (levelRole is null)
+                return false;
 
             try { await guildAuthor.AddRoleAsync(levelRole); }
             catch (Exception ex) { await Debug.LogErrorAsync("leveling", "Tried to add role but could not.", ex); }
@@ -127,7 +128,8 @@ namespace Bot3PG.Modules.XP
             for (int i = oldLevel - 1; i >= 0 ; i--)
             {
                 var levelRole = GetLevelRole(guild, oldLevel);
-                if (levelRole != null) return levelRole;
+                if (levelRole != null) 
+                    return levelRole;
             }
             return null;
         }

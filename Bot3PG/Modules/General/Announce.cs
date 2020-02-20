@@ -21,7 +21,7 @@ namespace Bot3PG.Modules.General
             var socketGuild = guildUser.Guild;
             var channel = socketGuild.GetTextChannel(announce.Welcomes.Channel) ?? socketGuild.SystemChannel ?? socketGuild.DefaultChannel;
 
-            string imageURL = $"{Global.Config.WebappLink}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/welcome";
+            string imageURL = $"{Global.Config.WebappURL}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/welcome";
             var stream = CommandUtils.DownloadData(imageURL);
             
             if (channel != null && !announce.DMNewUsers)
@@ -37,7 +37,7 @@ namespace Bot3PG.Modules.General
 
             var guild = await Guilds.GetAsync(guildUser.Guild);
 
-            string imageURL = $"{Global.Config.WebappLink}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/goodbye";
+            string imageURL = $"{Global.Config.WebappURL}/api/servers/{guildUser.Guild.Id}/users/{guildUser.Id}/goodbye";
             var stream = CommandUtils.DownloadData(imageURL);
 
             var channel = guildUser.Guild.GetTextChannel(guild.General.Announce.Goodbyes.Channel) ?? guildUser.Guild.SystemChannel ?? guildUser.Guild.DefaultChannel;

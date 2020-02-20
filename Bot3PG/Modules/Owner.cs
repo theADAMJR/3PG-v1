@@ -85,6 +85,15 @@ namespace Bot3PG.CommandModules
             await ReplyAsync(await EmbedHandler.CreateSimpleEmbed(ModuleName, $":robot: Updated `{count}`/`{count + failedCount}` users!", Color.Purple));
         }
 
+        [Command("Badge")]
+        public async Task AddBadge(string name, SocketUser target = null)
+        {
+            target ??= Context.User;
+            var user = await Users.GetAsync(target);
+            user.Badges = user.Badges.Append(name).ToArray();
+            await Users.Save(user);
+        }
+
         [Command("Test")]
         public async Task Test()
         {            

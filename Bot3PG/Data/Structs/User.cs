@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
@@ -15,6 +16,8 @@ namespace Bot3PG.Data.Structs
         public int MessageCount { get; set; }
         public int Reputation { get; set; }
         public bool IsPrivate { get; set; }
+        public int Votes { get; set; }
+        public string[] Badges { get; set; } = new[] { "" };
 
         public XPCardSettings XPCard { get; set; } = new XPCardSettings();
 
@@ -29,7 +32,7 @@ namespace Bot3PG.Data.Structs
             public string BackgroundColour { get; }
         }
 
-        public User(SocketUser socketUser) { _id = socketUser.Id; ID = socketUser.Id; }
+        public User(IUser socketUser) { _id = socketUser.Id; ID = socketUser.Id; }
         public void Reinitialize() => XPCard ??= new XPCardSettings();
     }
 }

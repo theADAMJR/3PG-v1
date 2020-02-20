@@ -6,7 +6,7 @@ namespace Bot3PG.Data.Structs
     {
         public string Token { get; set; }
         public string GameStatus { get; set; }
-        public string WebappLink { get; set; }
+        public string WebappURL { get; set; }
         public string Emote { get; set; }
         public LogSeverity LogSeverity { get; set; } = LogSeverity.Verbose;
 
