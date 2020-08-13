@@ -1,6 +1,5 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
-using Bot3PG.Handlers;
 using Bot3PG.Services;
 using Discord;
 using Discord.WebSocket;
@@ -18,7 +17,7 @@ namespace Bot3PG.Modules.Admin
             {
                 if (socketGuildUser is null || socketGuildUser.IsBot || reaction?.MessageId != guild.Admin.Rulebox.MessageId) return;
 
-                var user = await Users.GetAsync(socketGuildUser);
+                var user = await GuildUsers.GetAsync(socketGuildUser);
                 if (reaction.Emote.Name == guild.Admin.Rulebox.AgreeEmote)
                 {
                     var role = socketGuildUser.Guild.Roles.First(r => r.Id == guild.Admin.Rulebox.Role);
@@ -35,7 +34,7 @@ namespace Bot3PG.Modules.Admin
                     if (guild.Admin.Rulebox.KickOnDisagree && socketGuildUser.Hierarchy <= bot.Hierarchy)
                         await user.KickAsync($"Please agree to the rules to use `{socketGuildUser.Guild.Name}`.", Global.Client.CurrentUser);
                 }
-                await Users.Save(user);
+                await GuildUsers.Save(user);
             }
             catch (Exception ex) { await Debug.LogErrorAsync("rulebox", ex.StackTrace); }
         }
@@ -45,7 +44,7 @@ namespace Bot3PG.Modules.Admin
             try
             {
                 var socketGuildUser = reaction.User.Value as SocketGuildUser;
-                var user = await Users.GetAsync(socketGuildUser);
+                var user = await GuildUsers.GetAsync(socketGuildUser);
                 var guild = await Guilds.GetAsync(socketGuildUser.Guild);
 
                 if (!socketGuildUser.IsBot && reaction.MessageId == guild.Admin.Rulebox.MessageId && reaction.Emote.Name == guild.Admin.Rulebox.AgreeEmote)
@@ -54,7 +53,7 @@ namespace Bot3PG.Modules.Admin
                     roles.RemoveAt(0);
                     await socketGuildUser.RemoveRolesAsync(roles);
                 }
-                await Users.Save(user);                
+                await GuildUsers.Save(user);                
             }
             catch (Exception ex) { await Debug.LogErrorAsync("rulebox", ex.StackTrace); }
         }

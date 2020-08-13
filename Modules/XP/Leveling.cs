@@ -27,7 +27,7 @@ namespace Bot3PG.Modules.XP
             guildUser.Status.MessageCount++;
             user.MessageCount++;
 
-            await Users.Save(guildUser);
+            await GuildUsers.Save(guildUser);
             await Users.Save(user);
 
             if (oldLevel != newLevel)
@@ -39,7 +39,7 @@ namespace Bot3PG.Modules.XP
             if (message is null || guild is null || !(message.Author is IGuildUser guildAuthor))
                 throw new InvalidOperationException();
 
-            var guildUser = await Users.GetAsync(guildAuthor);
+            var guildUser = await GuildUsers.GetAsync(guildAuthor);
 
             bool inCooldown = await guildUser.XP.GetXPCooldown();
             if (guildUser is null || inCooldown || message.Content.Length <= guild.XP.MessageLengthThreshold)

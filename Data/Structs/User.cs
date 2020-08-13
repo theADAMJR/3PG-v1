@@ -1,9 +1,6 @@
 ﻿using Discord;
-using Discord.WebSocket;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using System;
-using System.Collections.Generic;
 
 namespace Bot3PG.Data.Structs
 {

@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Bot3PG.Data.Structs
 {
@@ -36,12 +34,8 @@ namespace Bot3PG.Data.Structs
         public DropdownAttribute(Type type) : base(type)
         {
             if (type.IsEnum)
-            {
                 foreach (var value in Enum.GetValues(type))
-                {
                     DropdownOptions.Add(value.ToString());
-                }
-            }
         }
     }
 
@@ -53,12 +47,8 @@ namespace Bot3PG.Data.Structs
         public ListAttribute(Type type) : base(type)
         {
             if (type.IsEnum)
-            {
                 foreach (var value in Enum.GetValues(type))
-                {
                     ListOptions.Add(value.ToString());
-                }
-            }
         }
     }
 

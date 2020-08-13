@@ -27,7 +27,7 @@ namespace Bot3PG.Data.Structs
 
         public static SocketGuildUser DiscordUser => Global.Client.GetGuild(_guildId)?.GetUser(_id);
 
-        private async static Task<GuildUser> GetUser() => await Users.GetAsync(DiscordUser);
+        private async static Task<GuildUser> GetUser() => await GuildUsers.GetAsync(DiscordUser);
         private async static Task<Guild> GetGuild() => await Guilds.GetAsync(DiscordUser?.Guild);
 
         public Leveling XP { get; private set; } = new Leveling();
@@ -51,7 +51,7 @@ namespace Bot3PG.Data.Structs
             {
                 var guild = await GetGuild();
                 if (guild.Moderation.ResetBannedUsers) 
-                    await Users.ResetAsync(DiscordUser);
+                    await GuildUsers.ResetAsync(DiscordUser);
 
                 await DiscordUser.Guild.AddBanAsync(ID, options: new RequestOptions() { AuditLogReason = reason });
 
@@ -60,7 +60,7 @@ namespace Bot3PG.Data.Structs
                         $"You have been banned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));              
             }
             catch (Exception) {}
-            finally { await Users.Save(this); }
+            finally { await GuildUsers.Save(this); }
         }
 
         public async Task MuteAsync(TimeSpan duration, string reason, SocketUser instigator)
@@ -85,7 +85,7 @@ namespace Bot3PG.Data.Structs
                         $"You have been muted from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));
             }
             catch (Exception) { }
-            finally { await Users.Save(this); }
+            finally { await GuildUsers.Save(this); }
         }
 
         public async Task UnmuteAsync(string reason, SocketUser discharger)
@@ -108,7 +108,7 @@ namespace Bot3PG.Data.Structs
                     $"You have been unmuted from {DiscordUser.Guild.Name} for '{reason}'", Color.Green));
             }
             catch (Exception) {}
-            finally { await Users.Save(this); }
+            finally { await GuildUsers.Save(this); }
         }
 
         public async Task KickAsync(string reason, SocketUser instigator)
@@ -126,7 +126,7 @@ namespace Bot3PG.Data.Structs
                 await DiscordUser.KickAsync(reason, new RequestOptions() { AuditLogReason = reason });
             }
             catch (Exception) {}
-            finally { await Users.Save(this); }
+            finally { await GuildUsers.Save(this); }
         }
 
         public async Task WarnAsync(string reason, SocketUser instigator)
@@ -145,7 +145,7 @@ namespace Bot3PG.Data.Structs
                         $"You have been warned from {DiscordUser.Guild.Name} for '{reason}'", Color.Red));               
             }
             catch (Exception) {}
-            finally { await Users.Save(this); }
+            finally { await GuildUsers.Save(this); }
         }
 
         private static DateTime GetEnd(TimeSpan duration) => (duration.TotalDays == -1) ? DateTime.MaxValue : DateTime.Now.Add(duration);

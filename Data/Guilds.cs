@@ -9,19 +9,16 @@ namespace Bot3PG.Data
     public static class Guilds
     {
         public static readonly IMongoCollection<Guild> Collection;
+        private static readonly DatabaseManager db = new DatabaseManager(Global.Config.MongoURI);
+
         private const string guildCollection = "guild";
-
-        private static readonly DatabaseManager db;
-
+        
         static Guilds()
         {
-            db = new DatabaseManager(Global.DatabaseConfig);
-
             var collections = db.Database.ListCollectionNames().ToList();
             if (!collections.Any(c => c == guildCollection))
-            {
                 db.Database.CreateCollection(guildCollection);
-            }
+
             Collection = db.Database.GetCollection<Guild>(guildCollection);
         }
 

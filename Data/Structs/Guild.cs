@@ -107,7 +107,7 @@ namespace Bot3PG.Data.Structs
             public AnnounceSubModule Announce { get; private set; } = new AnnounceSubModule();
 
             [Config("The character that is typed before commands")]
-            public string CommandPrefix { get; set; } = "/";
+            public string CommandPrefix { get; set; } = ".";
 
             [Config("Text channels that the bot ignores messages"), List(typeof(SocketTextChannel))]
             [BsonRepresentation(BsonType.String)]

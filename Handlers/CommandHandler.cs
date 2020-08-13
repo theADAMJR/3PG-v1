@@ -37,7 +37,6 @@ namespace Bot3PG.Handlers
 
         public async Task HandleCommandAsync(SocketMessage socketMessage)
         {
-            System.Console.WriteLine(socketMessage.Content);
             if (!(socketMessage is SocketUserMessage message)
                 || message.Author.IsWebhook
                 || message.Channel is IPrivateChannel) return;
@@ -52,7 +51,7 @@ namespace Bot3PG.Handlers
                         "Server configuration corrupted. Please type /reset to reset it."));
                 return;
             }
-            var prefix = guild?.General.CommandPrefix ?? "/";
+            var prefix = guild?.General.CommandPrefix ?? ".";
 
             int position = 0;
             bool isCommand = message.HasStringPrefix(prefix, ref position);

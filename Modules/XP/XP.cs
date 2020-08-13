@@ -42,7 +42,7 @@ namespace Bot3PG.Modules.XP
                 if (rank <= 0)
                     throw new ArgumentException("Rank cannot be less than 0");
 
-                var rankedUsers = await Users.GetRankedGuildUsersAsync(Context.Guild);
+                var rankedUsers = await GuildUsers.GetRankedGuildUsersAsync(Context.Guild);
                 if (rank > rankedUsers.Count)
                     throw new ArgumentException("Rank exceeds number of ranked users");
 
@@ -73,7 +73,7 @@ namespace Bot3PG.Modules.XP
                 int pageStartIndex = (page * usersPerPage) - usersPerPage;
                 int pageEndIndex = page * usersPerPage;
 
-                var users = await Users.GetGuildUsersAsync(Context.Guild);
+                var users = await GuildUsers.GetGuildUsersAsync(Context.Guild);
                 users = users.OrderByDescending(u => u.XP.EXP).ToList();
 
                 string details = "\n";

@@ -9,7 +9,9 @@ namespace Bot3PG.Data.Structs
         public class CommandsSubModule : Submodule
         {
             [Config("Modify existing module commands to your servers needs")]
-            public CommandOverride[] Overrides { get; set; } = { new CommandOverride{ Name = "", Enabled = true, Permission = GuildPermission.Administrator }};
+            public CommandOverride[] Overrides { get; set; } = {
+                new CommandOverride{ Name = "", Enabled = true, Permission = GuildPermission.Administrator
+            }};
         }
     }
 }

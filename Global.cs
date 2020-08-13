@@ -14,7 +14,6 @@ namespace Bot3PG
         public static DiscordSocketClient Client { get; private set; }
         public static LavaSocketClient Lavalink { get; private set; }
         public static Config Config { get; private set; }
-        public static Config.DatabaseConfig DatabaseConfig { get; private set; }
         public static CommandService CommandService { get; private set; }
 
         private static readonly DateTime _startTime = DateTime.Now;
@@ -26,7 +25,6 @@ namespace Bot3PG
             Lavalink = lavaSocketClient;
             Config = config;
             CommandService = commandService;
-            DatabaseConfig = config.DB;
         }
     }
 }

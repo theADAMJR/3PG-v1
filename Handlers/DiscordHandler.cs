@@ -1,10 +1,8 @@
 ﻿using Bot3PG.Data;
-using Bot3PG.Handlers;
 using Bot3PG.Modules.Music;
 using Bot3PG.Services;
 using Discord;
 using Discord.Commands;
-using Discord.Webhook;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -37,7 +35,7 @@ namespace Bot3PG.Handlers
             new Global(bot, lavaClient, GlobalConfig.Config, services.GetRequiredService<CommandService>());
 
             await ValidateBotToken();
-            await bot.LoginAsync(TokenType.Bot, Global.Config.Token);
+            await bot.LoginAsync(TokenType.Bot, Global.Config.Bot.Token);
             await bot.StartAsync();
 
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
@@ -47,7 +45,7 @@ namespace Bot3PG.Handlers
 
         private async Task ValidateBotToken()
         {
-            if (string.IsNullOrEmpty(Global.Config.Token))
+            if (string.IsNullOrEmpty(Global.Config.Bot.Token))
             {
                 await Debug.LogCriticalAsync("Bot", "Token is null - Check config");
                 Console.ReadKey();

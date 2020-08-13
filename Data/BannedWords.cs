@@ -9,8 +9,13 @@ namespace Bot3PG.Data
         private const string BadLinksFile = "ban-links.txt";
         private const string BadWordsFile = "ban-words.txt";
 
-        public static string[] Links => File.ReadAllLines(Folder + "/" + BadLinksFile).ToArray();
-        public static string[] Words => File.ReadAllLines(Folder + "/" + BadWordsFile).ToArray();
+        public static string[] Links => File
+            .ReadAllLines(Folder + "/" + BadLinksFile)
+            .ToArray();
+
+        public static string[] Words => File
+            .ReadAllLines(Folder + "/" + BadWordsFile)
+            .ToArray();
 
         protected BannedWords()
         {

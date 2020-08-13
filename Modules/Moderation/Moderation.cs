@@ -26,7 +26,7 @@ namespace Bot3PG.Modules.Moderation
         {
             try
             {
-                var user = await Users.GetAsync(target);
+                var user = await GuildUsers.GetAsync(target);
                 if (target.GuildPermissions.Administrator)
                     throw new InvalidOperationException($"Admins can't be kicked.");
                 
@@ -44,7 +44,7 @@ namespace Bot3PG.Modules.Moderation
         {
             try
             {
-                var user = await Users.GetAsync(target);
+                var user = await GuildUsers.GetAsync(target);
                 var banDuration = CommandUtils.ParseDuration(duration);
 
                 if (user.Status.IsBanned)
@@ -91,7 +91,7 @@ namespace Bot3PG.Modules.Moderation
         {
             try
             {
-                var user = await Users.GetAsync(target) ?? new GuildUser(target);
+                var user = await GuildUsers.GetAsync(target) ?? new GuildUser(target);
                 var muteDuration = CommandUtils.ParseDuration(duration);
 
                 if (target.GuildPermissions.Administrator)
@@ -113,7 +113,7 @@ namespace Bot3PG.Modules.Moderation
         {
             try
             {
-                var user = await Users.GetAsync(target);
+                var user = await GuildUsers.GetAsync(target);
                 if (!user.Status.IsMuted)
                     throw new InvalidOperationException($"User is not muted");
 
@@ -133,7 +133,7 @@ namespace Bot3PG.Modules.Moderation
                 if (target.IsBot)
                     throw new InvalidOperationException($"Bots cannot be warned");
 
-                var user = await Users.GetAsync(target);
+                var user = await GuildUsers.GetAsync(target);
                 if (target.GuildPermissions.Administrator)
                     throw new InvalidOperationException($"Admins can't be warned");
 
@@ -152,7 +152,7 @@ namespace Bot3PG.Modules.Moderation
             {
                 target ??= Context.User as SocketGuildUser;
 
-                var user = await Users.GetAsync(target);
+                var user = await GuildUsers.GetAsync(target);
                 if (action == "reset")
                 {
                     await ResetUser(target);
@@ -196,7 +196,7 @@ namespace Bot3PG.Modules.Moderation
                 throw new InvalidOperationException("User not found");
             else
             {
-                await Users.ResetAsync(target);
+                await GuildUsers.ResetAsync(target);
                 await ReplyAsync(await EmbedHandler.CreateBasicEmbed(ModuleName, "User account reset", Color.Orange));
             }
         }

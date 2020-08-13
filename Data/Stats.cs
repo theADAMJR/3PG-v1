@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Threading.Tasks;
-using Discord;
 using Discord.WebSocket;
 using MongoDB.Driver;
 
@@ -9,15 +8,12 @@ namespace Bot3PG.Data
     public static class Stats
     { 
         private static readonly IMongoCollection<GuildStats> statsCollection;
+        private static readonly DatabaseManager db = new DatabaseManager(Global.Config.MongoURI);
 
         private const string stats = "stats";
         
-        private static readonly DatabaseManager db;
-
         static Stats()
         {
-            db = new DatabaseManager(Global.Config.DB);
-
             var collections = db.Database.ListCollectionNames().ToList();
             
             if (!collections.Any(c => c == stats))

@@ -1,6 +1,5 @@
 ﻿using Bot3PG.Data;
 using Bot3PG.Data.Structs;
-using Bot3PG.Handlers;
 using Bot3PG.Utils;
 using Discord;
 using Discord.WebSocket;
@@ -25,7 +24,7 @@ namespace Bot3PG.Modules.Moderation
             {
                 if (socketUser is null) return;
 
-                var user = await Users.GetAsync(socketUser as SocketGuildUser);
+                var user = await GuildUsers.GetAsync(socketUser as SocketGuildUser);
                 var guild = await Guilds.GetAsync(socketGuild);
                 var log = ValidateLog(guild, socketGuild, LogEvent.Ban);
 
@@ -58,7 +57,7 @@ namespace Bot3PG.Modules.Moderation
         {
             try
             {
-                var user = await Users.GetAsync(discordUser as SocketGuildUser);
+                var user = await GuildUsers.GetAsync(discordUser as SocketGuildUser);
                 kick ??= user?.Status.Kicks.LastOrDefault();
                 if (kick is null) return;
 
@@ -88,7 +87,7 @@ namespace Bot3PG.Modules.Moderation
                 bool isCommand = message.Value.Content.Substring(0, prefix.Length).Contains(prefix);
                 if (guild.General.RemoveCommandMessages && isCommand || isCommand) return;
 
-                var user = await Users.GetAsync(guildAuthor);
+                var user = await GuildUsers.GetAsync(guildAuthor);
                 var log = ValidateLog(guild, socketGuild, LogEvent.MessageDeleted);
 
                 string validation = Auto.GetContentValidation(guild, message.Value.Content.ToString(), user).ToString();

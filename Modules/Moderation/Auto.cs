@@ -20,7 +20,7 @@ namespace Bot3PG.Modules.Moderation
             {
                 if (message is null || !(message.Author is SocketGuildUser guildAuthor) || guildAuthor.IsBot) return;
 
-                var user = await Users.GetAsync(guildAuthor);
+                var user = await GuildUsers.GetAsync(guildAuthor);
                 var guild = await Guilds.GetAsync(guildAuthor.Guild);
                 var autoMod = guild.Moderation.Auto;
 
@@ -42,7 +42,7 @@ namespace Bot3PG.Modules.Moderation
                     finally { await user.XP.ExtendXPCooldown(); }
                 }
                 user.Status.LastMessage = message.Content;
-                await Users.Save(user);
+                await GuildUsers.Save(user);
             }
             catch (InvalidOperationException) {}
             catch (Exception) {}//{ await Debug.LogAsync("auto", LogSeverity.Error, ex); }
@@ -143,7 +143,7 @@ namespace Bot3PG.Modules.Moderation
                 var guildUser = oldUser.Guild.GetUser(oldUser.Id);
                 if (!ContentIsExplicit(guild, guildUser.Nickname) && !ContentIsExplicit(guild, guildUser.Username)) return;
 
-                var user = await Users.GetAsync(guildUser);
+                var user = await GuildUsers.GetAsync(guildUser);
                 if (guild.Moderation.Auto.ResetNickname)
                 {
                     try { await guildUser.ModifyAsync(u => u.Nickname = guildUser.Username); }

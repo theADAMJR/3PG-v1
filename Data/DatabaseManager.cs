@@ -21,16 +21,16 @@ namespace Bot3PG.Data
         public MongoClient MongoClient { get; private set; }
         public IMongoDatabase Database { get; private set; }
 
-        public DatabaseManager(Config.DatabaseConfig db) => InitializeDB(db);
+        public DatabaseManager(string mongoURI) => InitializeDB(mongoURI);
 
-        private void InitializeDB(Config.DatabaseConfig db)
+        private void InitializeDB(string mongoURI)
         {
-            // MongoClient = new MongoClient($"mongodb://{db.User}:{db.Password}@{db.Server}:{db.Port}/{db.AuthDatabase}");
-            MongoClient = new MongoClient($"mongodb://{db.Server}:{db.Port}");
-            Database = MongoClient.GetDatabase(db.Database);
+            MongoClient = new MongoClient(mongoURI);
+            Database = MongoClient.GetDatabase("3PG-v1");
 
             bool connected = Database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait(1000);
-            var log = connected ? (LogSeverity.Info, $"Connected to database on port {db.Port}") : (LogSeverity.Critical, $"Database connection failed on port {db.Port}");
+            var log = connected ? (LogSeverity.Info, $"Connected to database") : (LogSeverity.Critical, $"Database connection failed");
+            
             new Task(async () => await Debug.LogAsync("Database", log.Item1, log.Item2)).Start();
 
             var pack = new ConventionPack

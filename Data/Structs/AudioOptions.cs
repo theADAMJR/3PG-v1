@@ -1,6 +1,4 @@
-﻿using Discord;
-
-namespace Bot3PG.Data.Structs
+﻿namespace Bot3PG.Data.Structs
 {
     public struct TrackOptions
     {

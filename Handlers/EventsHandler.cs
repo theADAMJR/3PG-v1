@@ -45,6 +45,7 @@ namespace Bot3PG.Handlers
                     { "latency", bot.Latency.ToString() }, 
                     { "startup", startup.ToString() }
                 };
+                
                 var body = new FormUrlEncodedContent(values);
                 try 
                 {
@@ -83,10 +84,9 @@ namespace Bot3PG.Handlers
                     await lavaClient.StartAsync(bot);
                     lavaClient.OnTrackFinished += services.GetService<AudioService>().OnFinished;
 
-                    await bot.SetGameAsync(Global.Config.Status);
+                    await bot.SetGameAsync(Global.Config.Bot.Status);
 
-                    // UpdateBotStats();
-                    await new DatabaseManager(Global.DatabaseConfig).UpdateCommands(new CommandHelp());
+                    await new DatabaseManager(Global.Config.MongoURI).UpdateCommands(new CommandHelp());
                 }
                 catch (Exception ex) { await Debug.LogCriticalAsync(ex.Source, ex.Message); }
             };

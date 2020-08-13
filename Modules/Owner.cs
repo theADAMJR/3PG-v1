@@ -104,7 +104,7 @@ namespace Bot3PG.CommandModules
         [Command("Test")]
         public async Task Test()
         {            
-            var user = await Users.GetAsync(Context.User as SocketGuildUser);
+            var user = await GuildUsers.GetAsync(Context.User as SocketGuildUser);
 
             string details = "";
             details += TestAnnounce(details);
@@ -175,10 +175,10 @@ namespace Bot3PG.CommandModules
         private async Task TestAnnounceModule() => await ReplyAsync(TestAnnounce());
 
         [Command("Test Staff Logs")]
-        private async Task TestStaffLogsModule() => await ReplyAsync(TestStaffLogs("", await Users.GetAsync(Context.User as SocketGuildUser)));
+        private async Task TestStaffLogsModule() => await ReplyAsync(TestStaffLogs("", await GuildUsers.GetAsync(Context.User as SocketGuildUser)));
 
         [Command("Test Rulebox")]
-        private async Task TestRulebox() => await ReplyAsync(await TestRulebox("", await Users.GetAsync(Context.User as SocketGuildUser)));
+        private async Task TestRulebox() => await ReplyAsync(await TestRulebox("", await GuildUsers.GetAsync(Context.User as SocketGuildUser)));
 
         public string Test(string label, Task task, bool? result = null) => $"{label}: {GetResultEmote(result ?? !task.IsFaulted)}\n";
         public string Test(string label, bool result) => $"{label}: {GetResultEmote(result)}\n";

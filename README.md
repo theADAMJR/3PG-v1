@@ -54,3 +54,20 @@ That's not all! Suggest features at -> [Support](https://3pg.xyz) and help 3PG b
 - [Support](https://3pg.xyz/support)
 - [Invite Link](https://3pg.xyz/invite)
 - [Edit XP Card](https://3pg.xyz/profile)
+
+---
+
+# Setup
+
+## Create a config.json
+```
+{
+    "Bot": {
+        "Token": "your discord bot token",
+        "Status": "3PG.xyz"
+    },
+    "DashboardURL": "http://localhost:3000",
+    "LogSeverity": "4",
+    "MongoURI": "mongodb://localhost/3PG-v1"
+}
+```
