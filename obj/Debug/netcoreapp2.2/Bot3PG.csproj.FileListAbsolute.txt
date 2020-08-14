@@ -1,0 +1,33 @@
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.deps.json
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.runtimeconfig.json
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.runtimeconfig.dev.json
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.dll
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.pdb
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.csprojAssemblyReference.cache
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.csproj.CoreCompileInputs.cache
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.AssemblyInfoInputs.cache
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.AssemblyInfo.cs
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.dll
+C:\Users\adamj\source\repos\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.pdb
+E:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.deps.json
+E:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.runtimeconfig.json
+E:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.runtimeconfig.dev.json
+E:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.dll
+E:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.pdb
+E:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.csproj.CoreCompileInputs.cache
+E:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.AssemblyInfoInputs.cache
+E:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.AssemblyInfo.cs
+E:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.dll
+E:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.pdb
+E:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.csprojAssemblyReference.cache
+F:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.deps.json
+F:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.runtimeconfig.json
+F:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.runtimeconfig.dev.json
+F:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.dll
+F:\Visual Studio\Bot3PGSolution\Bot3PG\bin\Debug\netcoreapp2.2\Bot3PG.pdb
+F:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.csprojAssemblyReference.cache
+F:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.csproj.CoreCompileInputs.cache
+F:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.AssemblyInfoInputs.cache
+F:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.AssemblyInfo.cs
+F:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.dll
+F:\Visual Studio\Bot3PGSolution\Bot3PG\obj\Debug\netcoreapp2.2\Bot3PG.pdb
