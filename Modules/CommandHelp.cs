@@ -1,5 +1,4 @@
-﻿using Bot3PG.Data;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -13,21 +12,26 @@ namespace Bot3PG.Modules
     public class CommandHelp : Dictionary<string, Command>
     {
         [BsonRepresentation(BsonType.Array)]
-        public HashSet<CommandModule> Modules => Values.Select(command => command.Module).Distinct().ToHashSet();
+        public HashSet<CommandModule> Modules => Values
+            .Select(command => command.Module)
+            .Distinct()
+            .ToHashSet();
 
         public CommandHelp()
         {
             var commandService = Global.CommandService;
             foreach (var command in commandService.Commands)
             {
-                bool requiresOwner = command.Preconditions.Any(p => p is RequireOwnerAttribute) || command.Module.Preconditions.Any(p => p is RequireOwnerAttribute);
+                bool requiresOwner = command.Preconditions.Any(p => p is RequireOwnerAttribute)
+                    || command.Module.Preconditions.Any(p => p is RequireOwnerAttribute);
                 if (requiresOwner) continue;
 
                 string usage = GetUsage(command);
                 var colour = GetColour(command);
                 var preconditions = GetPreconditions(command);
 
-                this[command.Name.ToLower()] = new Command(usage, command.Summary, command.Remarks, new CommandModule(command.Module.Name, colour), command.Aliases, preconditions);
+                this[command.Name.ToLower()] = new Command(usage, command.Summary,
+                    command.Remarks, new CommandModule(command.Module.Name, colour), command.Aliases, preconditions);
             }
         }
 
@@ -69,11 +73,9 @@ namespace Bot3PG.Modules
             }
             for (int i = 0; i < command.Module.Preconditions.Count; i++)
             {
-                if (command.Module.Preconditions[i] is RequireUserPermissionAttribute userPermissionAttribute)
-                {
-                    if (!preconditions.Contains(userPermissionAttribute.GuildPermission))
-                        preconditions.Add(userPermissionAttribute.GuildPermission);
-                }
+                if (command.Module.Preconditions[i] is RequireUserPermissionAttribute userPermissionAttribute
+                 && !preconditions.Contains(userPermissionAttribute.GuildPermission))
+                    preconditions.Add(userPermissionAttribute.GuildPermission);
             }
 
             return preconditions;

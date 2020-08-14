@@ -2,7 +2,6 @@
 using Discord;
 using Discord.WebSocket;
 using MongoDB.Driver;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,8 +30,10 @@ namespace Bot3PG.Data
         public static async Task<User> GetAsync(IUser socketUser) => await GetOrCreateAsync(socketUser);
 
         private static async Task<User> GetOrCreateAsync(IUser socketUser) 
-            => socketUser is null ? null : await db.GetAsync(u => u.ID == socketUser.Id, userCollection)
-                ?? await CreateUserAsync(socketUser);
+            => (socketUser is null)
+                ? null
+                : await db.GetAsync(u => u.ID == socketUser.Id, userCollection)
+                    ?? await CreateUserAsync(socketUser);
 
         private static async Task<User> CreateUserAsync(IUser socketUser)
         {

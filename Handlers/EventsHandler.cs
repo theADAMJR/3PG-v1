@@ -143,6 +143,8 @@ namespace Bot3PG.Handlers
 
                 await Auto.ValidateMessage(message);
                 await services.GetRequiredService<CommandHandler>().HandleCommandAsync(message);
+
+                await Users.GetAsync(message.Author);
             };
 
             bot.MessageUpdated += async (Cacheable<IMessage, ulong> before, SocketMessage message, ISocketMessageChannel channel) =>
