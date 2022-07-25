@@ -10,7 +10,7 @@ The Creator
 {
     "Bot": {
         "Token": "your discord bot token",
-        "Status": "3PG.xyz"
+        "Status": "threepg.xyz"
     },
     "DashboardURL": "http://localhost:3000",
     "LogSeverity": 4,
